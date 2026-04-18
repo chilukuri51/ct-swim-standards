@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CT Swimming Standards & Swimmer Lookup</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <h1>CT Swimming Standards & Swimmer Lookup</h1>
+        <nav>
+            <button class="nav-btn active" data-tab="standards">Time Standards</button>
+            <button class="nav-btn" data-tab="search">Swimmer Search</button>
+        </nav>
+    </header>
+
+    <main>
+        <!-- TIME STANDARDS TAB -->
+        <section id="standards" class="tab-content active">
+            <div class="standards-controls">
+                <div class="control-group">
+                    <label>Standard:</label>
+                    <select id="standardType">
+                        <option value="ct">CT Age Group (2025 LC)</option>
+                        <option value="ez">Eastern Zone (2025 LC)</option>
+                        <option value="usa">USA Motivational (2024-2028)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Age Group:</label>
+                    <select id="ageGroup"></select>
+                </div>
+                <div class="control-group" id="courseControl">
+                    <label>Course:</label>
+                    <select id="courseType"></select>
+                </div>
+            </div>
+            <div id="standardsTable" class="table-container"></div>
+        </section>
+
+        <!-- SWIMMER SEARCH TAB -->
+        <section id="search" class="tab-content">
+            <div class="search-form">
+                <h2>Search CT Swimming Database</h2>
+                <div class="form-row">
+                    <label>Last Name:</label>
+                    <input type="text" id="lastName" placeholder="Enter swimmer's last name">
+                </div>
+                <div class="form-row">
+                    <label>Date of Birth:</label>
+                    <div class="dob-input-wrap">
+                        <input type="date" id="dob" max="2025-12-31" min="2000-01-01">
+                        <span class="dob-hint">For age group & standards</span>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label>Gender:</label>
+                    <select id="gender">
+                        <option value="">-- Select --</option>
+                        <option value="F">Female</option>
+                        <option value="M">Male</option>
+                    </select>
+                </div>
+                <button id="searchBtn" class="btn-primary">Search</button>
+            </div>
+
+            <div id="searchResults" class="hidden">
+                <h3>Select a Swimmer</h3>
+                <div id="swimmerList"></div>
+            </div>
+
+            <!-- SWIMMER REPORT CARD -->
+            <div id="reportCard" class="hidden">
+                <div class="report-header">
+                    <div class="report-title">
+                        <h2 id="swimmerName"></h2>
+                        <div id="swimmerMeta" class="swimmer-meta"></div>
+                    </div>
+                    <button id="backToResults" class="btn-secondary">Back to Results</button>
+                </div>
+
+                <!-- DOB/Gender notice -->
+                <div id="noProfileNotice" class="hidden notice-box">
+                    Enter Date of Birth and Gender above, then re-search to see standards comparison and championship qualification.
+                </div>
+
+                <!-- ===== CHAMPIONSHIP QUALIFICATION ===== -->
+                <div id="champSection" class="hidden">
+                    <h3 class="section-title">Championship Qualification</h3>
+                    <div id="champCards" class="champ-cards"></div>
+                </div>
+
+                <!-- ===== USA MOTIVATIONAL PROGRESS ===== -->
+                <div id="usaSection" class="hidden">
+                    <h3 class="section-title">USA Motivational Standards Progress</h3>
+                    <div id="usaLadder" class="usa-ladder-summary"></div>
+                </div>
+
+                <!-- ===== CLOSEST TO CUT ===== -->
+                <div id="closestSection" class="hidden">
+                    <h3 class="section-title">Closest to Next Cut</h3>
+                    <div id="closestCards" class="closest-cards"></div>
+                </div>
+
+                <!-- ===== BEST TIMES TABLE ===== -->
+                <h3 class="section-title" style="margin-top:1.5rem">All Best Times</h3>
+                <div class="legend" id="legendBar">
+                    <span class="legend-title">Key:</span>
+                    <span class="badge badge-aaaa">AAAA</span>
+                    <span class="badge badge-aaa">AAA</span>
+                    <span class="badge badge-aa">AA</span>
+                    <span class="badge badge-a">A</span>
+                    <span class="badge badge-bb">BB</span>
+                    <span class="badge badge-b">B</span>
+                    <span class="badge badge-ct">CT AG</span>
+                    <span class="badge badge-ez">EZ</span>
+                </div>
+                <div id="bestTimesTable" class="table-container"></div>
+            </div>
+
+            <!-- Event History -->
+            <div id="eventHistory" class="hidden">
+                <div class="report-header">
+                    <h3 id="historyTitle"></h3>
+                    <button id="backToTimes" class="btn-secondary">Back to Report</button>
+                </div>
+                <div id="historyTable" class="table-container"></div>
+            </div>
+
+            <div id="loading" class="hidden">
+                <div class="spinner"></div>
+                <p>Loading...</p>
+            </div>
+            <div id="errorMsg" class="hidden"></div>
+        </section>
+    </main>
+
+    <script src="/static/standards_data.js"></script>
+    <script src="/static/app.js"></script>
+</body>
+</html>

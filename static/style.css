@@ -1,0 +1,292 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f0f4f8; color: #1a1a2e; min-height: 100vh;
+}
+header {
+    background: linear-gradient(135deg, #003366, #0055a4);
+    color: white; padding: 1.5rem 2rem 0; text-align: center;
+}
+header h1 { font-size: 1.6rem; margin-bottom: 1rem; }
+nav { display: flex; justify-content: center; }
+.nav-btn {
+    padding: 0.75rem 2rem; border: none; background: rgba(255,255,255,0.1);
+    color: white; cursor: pointer; font-size: 1rem; font-weight: 500;
+    border-radius: 8px 8px 0 0; transition: background 0.2s;
+}
+.nav-btn:hover { background: rgba(255,255,255,0.2); }
+.nav-btn.active { background: #f0f4f8; color: #003366; }
+main { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.hidden { display: none !important; }
+
+/* Controls */
+.standards-controls {
+    display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;
+    background: white; padding: 1rem 1.5rem; border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.control-group { display: flex; align-items: center; gap: 0.5rem; }
+.control-group label { font-weight: 600; font-size: 0.9rem; white-space: nowrap; }
+select, input[type="text"], input[type="date"] {
+    padding: 0.5rem 0.75rem; border: 1px solid #cbd5e0;
+    border-radius: 6px; font-size: 0.9rem; background: white;
+}
+select:focus, input:focus { outline: none; border-color: #0055a4; box-shadow: 0 0 0 2px rgba(0,85,164,0.2); }
+
+/* Tables */
+.table-container {
+    overflow-x: auto; background: white; border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+thead th {
+    background: #003366; color: white; padding: 0.6rem 0.5rem;
+    text-align: center; font-weight: 600; white-space: nowrap; position: sticky; top: 0;
+}
+tbody td {
+    padding: 0.5rem; text-align: center; border-bottom: 1px solid #e8ecf0; white-space: nowrap;
+}
+tbody tr:nth-child(even) { background: #f7fafc; }
+tbody tr:hover { background: #ebf5ff; }
+td.event-name { font-weight: 600; color: #c0392b; }
+
+/* Search */
+.search-form {
+    background: white; padding: 2rem; border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto 1.5rem;
+}
+.search-form h2 { margin-bottom: 1.5rem; color: #003366; font-size: 1.2rem; }
+.form-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+.form-row label { font-weight: 600; min-width: 110px; font-size: 0.9rem; }
+.form-row input, .form-row select { flex: 1; }
+.btn-primary {
+    display: block; width: 100%; padding: 0.75rem; background: #0055a4;
+    color: white; border: none; border-radius: 6px; font-size: 1rem;
+    font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: 0.5rem;
+}
+.btn-primary:hover { background: #003d7a; }
+.btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+.btn-secondary {
+    padding: 0.4rem 1rem; background: #e2e8f0; color: #334155;
+    border: none; border-radius: 6px; font-size: 0.85rem; cursor: pointer; font-weight: 500;
+}
+.btn-secondary:hover { background: #cbd5e0; }
+
+/* Swimmer List */
+#swimmerList {
+    background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    max-height: 400px; overflow-y: auto;
+}
+.swimmer-item {
+    padding: 0.6rem 1rem; cursor: pointer; border-bottom: 1px solid #f0f0f0;
+    display: flex; justify-content: space-between; align-items: center; transition: background 0.15s;
+}
+.swimmer-item:hover { background: #ebf5ff; }
+.swimmer-item .name { font-weight: 500; }
+.swimmer-item .team {
+    color: #64748b; font-size: 0.85rem; background: #f1f5f9;
+    padding: 0.15rem 0.5rem; border-radius: 4px;
+}
+
+/* Report Header */
+.report-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;
+}
+.report-header h2 { color: #003366; font-size: 1.4rem; }
+.report-header h3 { color: #003366; }
+.swimmer-meta { font-size: 0.9rem; color: #64748b; margin-top: 0.25rem; }
+
+.notice-box {
+    background: #fef3c7; border: 1px solid #fbbf24; color: #92400e;
+    padding: 1rem; border-radius: 8px; text-align: center; margin-bottom: 1rem; font-size: 0.9rem;
+}
+
+.section-title {
+    color: #003366; font-size: 1.1rem; margin-bottom: 0.75rem; padding-bottom: 0.3rem;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+/* ===== CHAMPIONSHIP QUALIFICATION CARDS ===== */
+.champ-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.champ-card {
+    background: white; border-radius: 12px; padding: 1.25rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 5px solid #cbd5e0;
+    position: relative; overflow: hidden;
+}
+.champ-card.qualified { border-left-color: #16a34a; background: linear-gradient(135deg, #f0fdf4, white); }
+.champ-card.not-qualified { border-left-color: #f59e0b; }
+.champ-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+.champ-card-title { font-weight: 700; font-size: 1rem; color: #003366; }
+.champ-status {
+    padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem;
+    font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.champ-status.yes { background: #dcfce7; color: #166534; }
+.champ-status.partial { background: #fef9c3; color: #854d0e; }
+.champ-status.no { background: #fee2e2; color: #991b1b; }
+.champ-qualified-count { font-size: 0.85rem; color: #64748b; margin-bottom: 0.5rem; }
+.champ-events { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.champ-event-chip {
+    padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.72rem; font-weight: 600;
+}
+.champ-event-chip.qual { background: #dcfce7; color: #166534; }
+.champ-event-chip.close { background: #fef3c7; color: #92400e; }
+.champ-event-chip.far { background: #f1f5f9; color: #94a3b8; }
+
+/* ===== USA MOTIVATIONAL LADDER ===== */
+.usa-ladder-summary {
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+.ladder-level {
+    background: white; border-radius: 8px; padding: 0.75rem 0.5rem;
+    text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-bottom: 3px solid #e2e8f0; transition: transform 0.2s;
+}
+.ladder-level:hover { transform: translateY(-2px); }
+.ladder-level.has-events { border-bottom-color: currentColor; }
+.ladder-level .level-name { font-weight: 800; font-size: 0.85rem; margin-bottom: 0.25rem; }
+.ladder-level .level-count { font-size: 1.6rem; font-weight: 800; }
+.ladder-level .level-label { font-size: 0.65rem; color: #64748b; text-transform: uppercase; margin-top: 0.15rem; }
+.ladder-level.level-b { color: #ea580c; }
+.ladder-level.level-bb { color: #ca8a04; }
+.ladder-level.level-a { color: #16a34a; }
+.ladder-level.level-aa { color: #0891b2; }
+.ladder-level.level-aaa { color: #2563eb; }
+.ladder-level.level-aaaa { color: #7c3aed; }
+
+/* ===== CLOSEST TO CUT ===== */
+.closest-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem; }
+.closest-card {
+    background: white; border-radius: 8px; padding: 0.75rem 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 0.3rem;
+}
+.closest-card .cc-event { font-weight: 700; color: #c0392b; font-size: 0.85rem; }
+.closest-card .cc-times { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
+.closest-card .cc-current { font-weight: 600; }
+.closest-card .cc-target { color: #64748b; }
+.closest-card .cc-gap {
+    font-weight: 800; font-size: 1rem; text-align: center; padding: 0.2rem;
+    border-radius: 4px;
+}
+.closest-card .cc-gap.very-close { color: #dc2626; background: #fef2f2; }
+.closest-card .cc-gap.close { color: #ca8a04; background: #fefce8; }
+.cc-progress { width: 100%; height: 5px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+.cc-progress-bar { height: 100%; border-radius: 3px; }
+
+/* Badges */
+.badge {
+    display: inline-block; padding: 0.15rem 0.4rem; border-radius: 4px;
+    font-size: 0.7rem; font-weight: 700; color: white; line-height: 1.3;
+}
+.badge-aaaa { background: #7c3aed; }
+.badge-aaa { background: #2563eb; }
+.badge-aa { background: #0891b2; }
+.badge-a { background: #16a34a; }
+.badge-bb { background: #ca8a04; }
+.badge-b { background: #ea580c; }
+.badge-ct { background: #dc2626; }
+.badge-ez { background: #9333ea; }
+
+/* Legend */
+.legend {
+    display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;
+    flex-wrap: wrap; padding: 0.5rem 1rem; background: white;
+    border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.legend-title { font-weight: 600; font-size: 0.85rem; color: #334155; }
+
+/* Best times enhanced */
+.time-cell { font-weight: 600; font-size: 0.9rem; }
+.time-cell.fast { color: #16a34a; }
+.achieved-badges { display: flex; gap: 0.2rem; justify-content: center; flex-wrap: wrap; }
+.event-link { color: #0055a4; cursor: pointer; text-decoration: underline; font-weight: 500; }
+.event-link:hover { color: #003366; }
+
+/* Next target in table */
+.next-target-cell { font-size: 0.8rem; }
+.next-target-cell .nt-label { display: flex; align-items: center; gap: 0.3rem; justify-content: center; }
+.next-target-cell .nt-time { color: #64748b; font-size: 0.75rem; }
+.nt-progress { width: 100%; height: 4px; background: #e2e8f0; border-radius: 2px; overflow: hidden; margin-top: 0.2rem; }
+.nt-progress-bar { height: 100%; border-radius: 2px; }
+
+.gap-cell { font-size: 0.8rem; color: #64748b; }
+.gap-cell.close { color: #ca8a04; font-weight: 600; }
+.gap-cell.very-close { color: #dc2626; font-weight: 700; }
+.gap-cell.achieved { color: #16a34a; font-weight: 600; }
+
+/* Course separator */
+.course-separator td {
+    background: #003366 !important; color: white; font-weight: 700;
+    text-align: left; padding: 0.5rem 1rem; font-size: 0.9rem; letter-spacing: 0.5px;
+}
+
+/* Loading / Error */
+#loading { text-align: center; padding: 2rem; }
+.spinner {
+    width: 36px; height: 36px; border: 3px solid #e2e8f0; border-top-color: #0055a4;
+    border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 0.75rem;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#errorMsg {
+    background: #fee2e2; color: #991b1b; padding: 1rem; border-radius: 8px;
+    text-align: center; margin-top: 1rem;
+}
+#searchResults h3 { margin-bottom: 0.75rem; }
+
+/* DOB input */
+.dob-input-wrap { flex: 1; display: flex; flex-direction: column; gap: 0.2rem; }
+.dob-input-wrap input { width: 100%; font-size: 1rem; padding: 0.6rem 0.75rem; }
+.dob-hint { font-size: 0.72rem; color: #94a3b8; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    header { padding: 1rem 1rem 0; }
+    header h1 { font-size: 1.1rem; margin-bottom: 0.75rem; }
+    .standards-controls { flex-direction: column; padding: 0.75rem; }
+    .form-row { flex-direction: column; align-items: stretch; gap: 0.35rem; }
+    .form-row label { min-width: auto; font-size: 0.85rem; }
+    main { padding: 0.75rem; }
+    .nav-btn { padding: 0.6rem 0.75rem; font-size: 0.85rem; }
+    .search-form { padding: 1.25rem; margin-bottom: 1rem; }
+    .search-form h2 { font-size: 1.05rem; margin-bottom: 1rem; }
+
+    /* Table mobile */
+    .table-container { border-radius: 6px; }
+    table { font-size: 0.7rem; }
+    thead th { padding: 0.4rem 0.3rem; font-size: 0.7rem; }
+    tbody td { padding: 0.35rem 0.25rem; }
+    .time-cell { font-size: 0.78rem; }
+    .badge { font-size: 0.6rem; padding: 0.1rem 0.3rem; }
+
+    /* Cards mobile */
+    .usa-ladder-summary { grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
+    .ladder-level { padding: 0.5rem 0.25rem; }
+    .ladder-level .level-count { font-size: 1.3rem; }
+    .ladder-level .level-name { font-size: 0.75rem; }
+    .champ-cards { grid-template-columns: 1fr; }
+    .champ-card { padding: 1rem; }
+    .closest-cards { grid-template-columns: 1fr; }
+
+    /* Report header mobile */
+    .report-header { flex-direction: column; align-items: flex-start; }
+    .report-header h2 { font-size: 1.15rem; }
+    .section-title { font-size: 0.95rem; }
+    .legend { padding: 0.4rem 0.75rem; gap: 0.3rem; }
+
+    /* Swimmer list mobile */
+    .swimmer-item { padding: 0.75rem 1rem; }
+    .swimmer-item .name { font-size: 0.9rem; }
+
+    /* Course separator */
+    .course-separator td { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+}
+
+@media (max-width: 380px) {
+    .usa-ladder-summary { grid-template-columns: repeat(3, 1fr); }
+    table { font-size: 0.65rem; }
+    .nav-btn { padding: 0.5rem 0.5rem; font-size: 0.78rem; }
+}
