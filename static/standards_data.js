@@ -423,6 +423,39 @@ const USA_STANDARDS = {
 };
 
 
+// ===== SCY <-> LCM CONVERSION FACTORS =====
+// Based on USA Swimming approved conversion factors
+// Factor: multiply SCY time by factor to get LCM time
+const CONVERSION_FACTORS = {
+    "50 Free":      { scy2lcm: 1.11, lcm2scy: 0.9009 },
+    "100 Free":     { scy2lcm: 1.11, lcm2scy: 0.9009 },
+    "200 Free":     { scy2lcm: 1.11, lcm2scy: 0.9009 },
+    "400/500 Free": { scy2lcm: 0.8925, lcm2scy: 1.1204 },
+    "800/1000 Free":{ scy2lcm: 0.8925, lcm2scy: 1.1204 },
+    "1500/1650 Free":{ scy2lcm: 0.9109, lcm2scy: 1.0978 },
+    "50 Back":      { scy2lcm: 1.11, lcm2scy: 0.9009 },
+    "100 Back":     { scy2lcm: 1.11, lcm2scy: 0.9009 },
+    "200 Back":     { scy2lcm: 1.11, lcm2scy: 0.9009 },
+    "50 Breast":    { scy2lcm: 1.11, lcm2scy: 0.9009 },
+    "100 Breast":   { scy2lcm: 1.11, lcm2scy: 0.9009 },
+    "200 Breast":   { scy2lcm: 1.11, lcm2scy: 0.9009 },
+    "50 Fly":       { scy2lcm: 1.11, lcm2scy: 0.9009 },
+    "100 Fly":      { scy2lcm: 1.11, lcm2scy: 0.9009 },
+    "200 Fly":      { scy2lcm: 1.11, lcm2scy: 0.9009 },
+    "100 IM":       { scy2lcm: 1.11, lcm2scy: 0.9009 },
+    "200 IM":       { scy2lcm: 1.11, lcm2scy: 0.9009 },
+    "400 IM":       { scy2lcm: 1.11, lcm2scy: 0.9009 },
+};
+
+// What-If event list per age group
+const WHATIF_EVENTS = {
+    "10/Under": ["50 Free","100 Free","200 Free","500 Free","50 Back","100 Back","50 Breast","100 Breast","50 Fly","100 Fly","100 IM","200 IM"],
+    "11/12": ["50 Free","100 Free","200 Free","500 Free","50 Back","100 Back","200 Back","50 Breast","100 Breast","200 Breast","50 Fly","100 Fly","200 Fly","100 IM","200 IM"],
+    "13/14": ["50 Free","100 Free","200 Free","500 Free","1000 Free","1650 Free","100 Back","200 Back","100 Breast","200 Breast","100 Fly","200 Fly","200 IM","400 IM"],
+    "15/16": ["50 Free","100 Free","200 Free","500 Free","1000 Free","1650 Free","100 Back","200 Back","100 Breast","200 Breast","100 Fly","200 Fly","200 IM","400 IM"],
+    "17/18": ["50 Free","100 Free","200 Free","500 Free","1000 Free","1650 Free","100 Back","200 Back","100 Breast","200 Breast","100 Fly","200 Fly","200 IM","400 IM"],
+};
+
 // ===== HELPER FUNCTIONS =====
 
 function timeToSeconds(timeStr) {

@@ -263,6 +263,11 @@ async function loadBestTimes(swimmerId, name) {
         }
 
         buildBestTimesTable(scyEvents, lcmEvents, hasProfile);
+
+        // Build progression dropdown from events that have history URLs
+        const eventsWithHistory = data.events.filter(e => e.history_url);
+        buildProgressDropdown(eventsWithHistory);
+
         reportCard.classList.remove('hidden');
     } catch (e) { hideLoading(); showError('Failed to load best times.'); }
 }
@@ -462,52 +467,164 @@ function buildRow(ev, hasProfile) {
     return html;
 }
 
-// ===== EVENT HISTORY =====
+// ===== EVENT HISTORY (standalone - for direct links) =====
 async function loadEventHistory(encodedUrl, eventName) {
     const url = decodeURIComponent(encodedUrl);
-    hideAllSections(); showLoading();
+    // Instead of navigating away, select this event in the progression dropdown
+    const select = document.getElementById('progressEventSelect');
+    for (let i = 0; i < select.options.length; i++) {
+        if (decodeURIComponent(select.options[i].value) === url) {
+            select.selectedIndex = i;
+            loadProgressForEvent();
+            // Scroll to the chart
+            document.getElementById('progressSection').scrollIntoView({ behavior: 'smooth' });
+            return;
+        }
+    }
+    // Fallback: load directly if not in dropdown
+    await loadProgressFromUrl(url, eventName);
+    document.getElementById('progressSection').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ===== PROGRESSION CHART ON REPORT CARD =====
+let allSwimmerEvents = []; // Store events with history URLs
+
+function buildProgressDropdown(events) {
+    const select = document.getElementById('progressEventSelect');
+    allSwimmerEvents = events.filter(e => e.history_url);
+
+    if (allSwimmerEvents.length === 0) {
+        document.getElementById('progressSection').classList.add('hidden');
+        return;
+    }
+
+    select.innerHTML = '<option value="">-- Select an event --</option>' +
+        allSwimmerEvents.map(e =>
+            `<option value="${encodeURIComponent(e.history_url)}">${e.event}</option>`
+        ).join('');
+
+    document.getElementById('progressSection').classList.remove('hidden');
+    // Clear previous chart/data
+    document.getElementById('progressChartContainer').classList.add('hidden');
+    document.getElementById('progressStats').innerHTML = '';
+    document.getElementById('historyTable').innerHTML = '';
+}
+
+document.getElementById('progressEventSelect').addEventListener('change', loadProgressForEvent);
+
+async function loadProgressForEvent() {
+    const select = document.getElementById('progressEventSelect');
+    const val = select.value;
+    if (!val) {
+        document.getElementById('progressChartContainer').classList.add('hidden');
+        document.getElementById('progressStats').innerHTML = '';
+        document.getElementById('historyTable').innerHTML = '';
+        return;
+    }
+    const url = decodeURIComponent(val);
+    const eventName = select.options[select.selectedIndex].text;
+    await loadProgressFromUrl(url, eventName);
+}
+
+async function loadProgressFromUrl(url, eventName) {
+    const pLoading = document.getElementById('progressLoading');
+    pLoading.classList.remove('hidden');
+
     try {
         const resp = await fetch('/api/event_history', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ history_url: url })
         });
         const data = await resp.json();
-        hideLoading();
-        if (data.error) { showError(data.error); return; }
+        pLoading.classList.add('hidden');
 
-        document.getElementById('historyTitle').textContent = data.title || `Event History: ${eventName}`;
-
-        if (!data.history?.length) {
+        if (data.error || !data.history?.length) {
+            document.getElementById('progressChartContainer').classList.add('hidden');
+            document.getElementById('progressStats').innerHTML = '';
             document.getElementById('historyTable').innerHTML = '<p style="padding:1rem">No history found.</p>';
-        } else {
-            let html = `<table><thead><tr><th>Time</th><th>Swim</th><th>Date</th><th>Improvement</th></tr></thead><tbody>`;
-            for (let i = 0; i < data.history.length; i++) {
-                const h = data.history[i];
-                const currSecs = timeToSeconds(h.time);
-                let improvement = '<span style="color:#94a3b8">First swim</span>';
-                if (i < data.history.length - 1) {
-                    const prevSecs = timeToSeconds(data.history[i + 1].time);
-                    const diff = prevSecs - currSecs;
-                    if (diff > 0) improvement = `<span style="color:#16a34a;font-weight:600">-${diff.toFixed(2)}s</span>`;
-                    else if (diff < 0) improvement = `<span style="color:#dc2626">+${Math.abs(diff).toFixed(2)}s</span>`;
-                    else improvement = '<span style="color:#94a3b8">0.00s</span>';
-                }
-                html += `<tr><td class="time-cell">${h.time}</td><td>${h.meet}</td><td>${h.date}</td><td>${improvement}</td></tr>`;
-            }
-            if (data.history.length >= 2) {
-                const firstSecs = timeToSeconds(data.history[data.history.length - 1].time);
-                const lastSecs = timeToSeconds(data.history[0].time);
-                const totalDrop = firstSecs - lastSecs;
-                html += `<tr style="border-top:2px solid #003366;font-weight:700">
-                    <td colspan="3" style="text-align:right">Total Improvement:</td>
-                    <td><span style="color:${totalDrop > 0 ? '#16a34a' : '#dc2626'}">${totalDrop > 0 ? '-' : '+'}${Math.abs(totalDrop).toFixed(2)}s</span></td>
-                </tr>`;
-            }
-            html += '</tbody></table>';
-            document.getElementById('historyTable').innerHTML = html;
+            return;
         }
-        document.getElementById('eventHistory').classList.remove('hidden');
-    } catch (e) { hideLoading(); showError('Failed to load event history.'); }
+
+        // Build chart
+        buildProgressChart(data.history);
+
+        // Build stats cards
+        buildProgressStats(data.history);
+
+        // Build history table
+        buildHistoryTableInline(data.history);
+
+    } catch (e) {
+        pLoading.classList.add('hidden');
+        document.getElementById('historyTable').innerHTML = '<p style="padding:1rem;color:#dc2626">Failed to load history.</p>';
+    }
+}
+
+function buildProgressStats(history) {
+    if (history.length < 2) { document.getElementById('progressStats').innerHTML = ''; return; }
+
+    const firstSecs = timeToSeconds(history[history.length - 1].time);
+    const bestSecs = timeToSeconds(history[0].time);
+    const totalDrop = firstSecs - bestSecs;
+    const numSwims = history.length;
+    const avgDrop = totalDrop / (numSwims - 1);
+
+    // Find biggest single drop
+    let biggestDrop = 0;
+    for (let i = 0; i < history.length - 1; i++) {
+        const curr = timeToSeconds(history[i].time);
+        const prev = timeToSeconds(history[i + 1].time);
+        const drop = prev - curr;
+        if (drop > biggestDrop) biggestDrop = drop;
+    }
+
+    const statsDiv = document.getElementById('progressStats');
+    statsDiv.innerHTML = `
+        <div class="pstat-card">
+            <div class="pstat-value">${numSwims}</div>
+            <div class="pstat-label">Total Swims</div>
+        </div>
+        <div class="pstat-card">
+            <div class="pstat-value" style="color:#16a34a">-${totalDrop.toFixed(2)}s</div>
+            <div class="pstat-label">Total Improved</div>
+        </div>
+        <div class="pstat-card">
+            <div class="pstat-value">-${avgDrop.toFixed(2)}s</div>
+            <div class="pstat-label">Avg per Swim</div>
+        </div>
+        <div class="pstat-card">
+            <div class="pstat-value" style="color:#0055a4">-${biggestDrop.toFixed(2)}s</div>
+            <div class="pstat-label">Biggest Drop</div>
+        </div>
+    `;
+}
+
+function buildHistoryTableInline(history) {
+    let html = `<table><thead><tr><th>Time</th><th>Swim</th><th>Date</th><th>Improvement</th></tr></thead><tbody>`;
+    for (let i = 0; i < history.length; i++) {
+        const h = history[i];
+        const currSecs = timeToSeconds(h.time);
+        let improvement = '<span style="color:#94a3b8">First swim</span>';
+        if (i < history.length - 1) {
+            const prevSecs = timeToSeconds(history[i + 1].time);
+            const diff = prevSecs - currSecs;
+            if (diff > 0) improvement = `<span style="color:#16a34a;font-weight:600">-${diff.toFixed(2)}s</span>`;
+            else if (diff < 0) improvement = `<span style="color:#dc2626">+${Math.abs(diff).toFixed(2)}s</span>`;
+            else improvement = '<span style="color:#94a3b8">0.00s</span>';
+        }
+        html += `<tr><td class="time-cell">${h.time}</td><td>${h.meet}</td><td>${h.date}</td><td>${improvement}</td></tr>`;
+    }
+    if (history.length >= 2) {
+        const firstSecs = timeToSeconds(history[history.length - 1].time);
+        const lastSecs = timeToSeconds(history[0].time);
+        const totalDrop = firstSecs - lastSecs;
+        html += `<tr style="border-top:2px solid #003366;font-weight:700">
+            <td colspan="3" style="text-align:right">Total Improvement:</td>
+            <td><span style="color:${totalDrop > 0 ? '#16a34a' : '#dc2626'}">${totalDrop > 0 ? '-' : '+'}${Math.abs(totalDrop).toFixed(2)}s</span></td>
+        </tr>`;
+    }
+    html += '</tbody></table>';
+    document.getElementById('historyTable').innerHTML = html;
 }
 
 // Back buttons
@@ -518,3 +635,352 @@ document.getElementById('backToTimes').addEventListener('click', () => {
     document.getElementById('eventHistory').classList.add('hidden'); reportCard.classList.remove('hidden');
 });
 window.loadEventHistory = loadEventHistory;
+
+
+// ===== PROGRESS CHART =====
+let progressChartInstance = null;
+
+function buildProgressChart(history) {
+    const canvas = document.getElementById('progressChart');
+    const container = document.getElementById('progressChartContainer');
+    if (!history || history.length < 2) { container.classList.add('hidden'); return; }
+    container.classList.remove('hidden');
+
+    if (progressChartInstance) { progressChartInstance.destroy(); }
+
+    // History comes newest-first; reverse for chronological
+    const chronological = [...history].reverse();
+    const labels = chronological.map(h => h.date);
+    const data = chronological.map(h => timeToSeconds(h.time));
+
+    progressChartInstance = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Time',
+                data: data,
+                borderColor: '#0055a4',
+                backgroundColor: 'rgba(0, 85, 164, 0.1)',
+                borderWidth: 2.5,
+                pointBackgroundColor: '#0055a4',
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                fill: true,
+                tension: 0.3,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) { return secondsToTime(ctx.parsed.y); }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    reverse: true,
+                    ticks: {
+                        callback: function(val) { return secondsToTime(val); }
+                    },
+                    title: { display: true, text: 'Time (lower is faster)', font: { size: 11 } }
+                },
+                x: {
+                    ticks: { maxRotation: 45, font: { size: 10 } }
+                }
+            }
+        }
+    });
+}
+
+
+// ===== PDF REPORT CARD =====
+document.getElementById('downloadPDF').addEventListener('click', generatePDF);
+
+function generatePDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const name = document.getElementById('swimmerName').textContent;
+    const meta = document.getElementById('swimmerMeta').textContent;
+
+    // Header
+    doc.setFillColor(0, 51, 102);
+    doc.rect(0, 0, 210, 30, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SwimProgression Report Card', 105, 13, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(new Date().toLocaleDateString(), 105, 22, { align: 'center' });
+
+    // Swimmer info
+    doc.setTextColor(0, 51, 102);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(name, 15, 42);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(meta, 15, 49);
+
+    // Best times table
+    const table = document.querySelector('#bestTimesTable table');
+    if (!table) { doc.save(`${name}_Report.pdf`); return; }
+
+    const rows = table.querySelectorAll('tbody tr');
+    let y = 58;
+
+    // Table header
+    doc.setFillColor(0, 51, 102);
+    doc.rect(15, y - 4, 180, 8, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Event', 17, y + 1);
+    doc.text('Best Time', 70, y + 1);
+    doc.text('Date', 100, y + 1);
+    doc.text('Level', 130, y + 1);
+    doc.text('Next Target', 155, y + 1);
+    y += 8;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+
+    rows.forEach(row => {
+        if (y > 275) { doc.addPage(); y = 20; }
+
+        const cells = row.querySelectorAll('td');
+        if (row.classList.contains('course-separator')) {
+            doc.setFillColor(0, 51, 102);
+            doc.rect(15, y - 4, 180, 7, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.text(cells[0]?.textContent || '', 17, y);
+            doc.setFont('helvetica', 'normal');
+            y += 7;
+            return;
+        }
+        if (cells.length < 3) return;
+
+        // Alternate row bg
+        const rowIdx = Array.from(rows).indexOf(row);
+        if (rowIdx % 2 === 0) { doc.setFillColor(247, 250, 252); doc.rect(15, y - 4, 180, 6, 'F'); }
+
+        doc.setTextColor(50, 50, 50);
+        doc.text(cells[0]?.textContent?.trim() || '', 17, y);
+        doc.text(cells[1]?.textContent?.trim() || '', 70, y);
+        doc.text(cells[2]?.textContent?.trim() || '', 100, y);
+
+        // Level badges (text extraction)
+        const badges = cells[3]?.querySelectorAll('.badge');
+        if (badges && badges.length > 0) {
+            let bx = 130;
+            badges.forEach(b => {
+                const txt = b.textContent.trim();
+                doc.setTextColor(0, 100, 0);
+                doc.text(txt, bx, y);
+                bx += doc.getTextWidth(txt) + 3;
+            });
+        }
+        doc.setTextColor(50, 50, 50);
+
+        // Next target
+        const ntBadge = cells[4]?.querySelector('.badge');
+        if (ntBadge) {
+            doc.text(ntBadge.textContent.trim(), 155, y);
+            const ntTime = cells[4]?.querySelector('.nt-time');
+            if (ntTime) doc.text(ntTime.textContent.trim(), 168, y);
+        }
+
+        y += 6;
+    });
+
+    // Footer
+    doc.setFontSize(7);
+    doc.setTextColor(150, 150, 150);
+    doc.text('Generated by SwimProgression.com', 105, 290, { align: 'center' });
+
+    doc.save(`${name.replace(/[^a-zA-Z0-9]/g, '_')}_Report.pdf`);
+}
+
+
+// ===== SCY <-> LCM CONVERTER =====
+function getTimeFromInputs(minId, secId, hunId) {
+    const m = parseInt(document.getElementById(minId).value) || 0;
+    const s = parseInt(document.getElementById(secId).value) || 0;
+    const h = parseInt(document.getElementById(hunId).value) || 0;
+    if (m === 0 && s === 0 && h === 0) return null;
+    return m * 60 + s + h / 100;
+}
+
+document.getElementById('convertBtn').addEventListener('click', () => {
+    const event = document.getElementById('convEvent').value;
+    const direction = document.getElementById('convDirection').value;
+    const timeSecs = getTimeFromInputs('convMin', 'convSec', 'convHun');
+
+    if (!timeSecs) { return; }
+
+    const factors = CONVERSION_FACTORS[event];
+    if (!factors) { return; }
+
+    const factor = factors[direction];
+    const converted = timeSecs * factor;
+    const fromCourse = direction === 'scy2lcm' ? 'SCY' : 'LCM';
+    const toCourse = direction === 'scy2lcm' ? 'LCM' : 'SCY';
+
+    const resultDiv = document.getElementById('convResult');
+    resultDiv.classList.remove('hidden');
+    resultDiv.innerHTML = `
+        <div class="result-label">${event} | ${fromCourse} → ${toCourse}</div>
+        <div class="result-time">${secondsToTime(converted)}</div>
+        <div class="result-detail">Original: ${secondsToTime(timeSecs)} ${fromCourse} | Factor: ${factor.toFixed(4)}</div>
+    `;
+
+    // Check what standards the converted time meets
+    const stdDiv = document.getElementById('convStandards');
+    const dob = document.getElementById('dob').value;
+    const gender = document.getElementById('gender').value;
+    const ageGrp = getAgeGroup(dob);
+
+    if (ageGrp && gender) {
+        // Build a fake eventInfo for the target course
+        const strokeMap = { 'Free': 'FREE', 'Back': 'BACK', 'Breast': 'BREAST', 'Fly': 'FLY', 'IM': 'IM' };
+        const parts = event.split(' ');
+        const dist = parts[0].split('/')[0];
+        const stroke = strokeMap[parts[parts.length - 1]] || parts[parts.length - 1].toUpperCase();
+        const usaStrokeMap = { 'FREE': 'FR', 'BACK': 'BK', 'BREAST': 'BR', 'FLY': 'FL', 'IM': 'IM' };
+        const eventInfo = {
+            distance: dist, course: toCourse, stroke: stroke,
+            standardName: `${dist} ${stroke}`, usaName: `${dist} ${usaStrokeMap[stroke] || stroke}`
+        };
+
+        const standards = lookupStandards(eventInfo, ageGrp, gender);
+        const comparison = compareToStandards(converted, standards);
+
+        let stdHtml = `<h4>Standards met at ${secondsToTime(converted)} (${toCourse}) — ${ageGrp} ${gender === 'F' ? 'Girls' : 'Boys'}</h4>`;
+        stdHtml += '<div class="achieved-badges" style="justify-content:flex-start;gap:0.4rem;margin:0.5rem 0">';
+
+        if (comparison.highestUSA) {
+            comparison.usaAchieved.forEach(a => {
+                stdHtml += `<span class="badge ${a.cssClass}">${a.type}</span>`;
+            });
+        }
+        comparison.champAchieved.forEach(a => {
+            stdHtml += `<span class="badge ${a.cssClass}">${a.type}</span>`;
+        });
+        if (!comparison.highestUSA && comparison.champAchieved.length === 0) {
+            stdHtml += '<span style="color:#94a3b8;font-size:0.85rem">No standards met at this time</span>';
+        }
+        stdHtml += '</div>';
+
+        if (comparison.usaNext) {
+            const gap = converted - timeToSeconds(comparison.usaNext.time);
+            stdHtml += `<div class="std-note">Next: <span class="badge ${comparison.usaNext.cssClass}">${comparison.usaNext.type}</span> ${comparison.usaNext.time} (need -${gap.toFixed(2)}s)</div>`;
+        }
+
+        stdDiv.innerHTML = stdHtml;
+        stdDiv.classList.remove('hidden');
+    } else {
+        stdDiv.innerHTML = '<div class="std-note">Enter DOB & Gender in Swimmer Search tab to see standards for converted time</div>';
+        stdDiv.classList.remove('hidden');
+    }
+});
+
+
+// ===== WHAT IF GOAL PLANNER =====
+const wiAgeGroup = document.getElementById('wiAgeGroup');
+const wiEvent = document.getElementById('wiEvent');
+const wiGender = document.getElementById('wiGender');
+const wiCourse = document.getElementById('wiCourse');
+
+function updateWiEvents() {
+    const ag = wiAgeGroup.value;
+    const events = WHATIF_EVENTS[ag] || [];
+    wiEvent.innerHTML = events.map(e => `<option value="${e}">${e}</option>`).join('');
+}
+
+wiAgeGroup.addEventListener('change', updateWiEvents);
+updateWiEvents();
+
+document.getElementById('whatifBtn').addEventListener('click', () => {
+    const timeSecs = getTimeFromInputs('wiMin', 'wiSec', 'wiHun');
+    if (!timeSecs) return;
+
+    const ag = wiAgeGroup.value;
+    const gender = wiGender.value;
+    const event = wiEvent.value;
+    const course = wiCourse.value;
+
+    // Build eventInfo
+    const strokeMap = { 'Free': 'FREE', 'Back': 'BACK', 'Breast': 'BREAST', 'Fly': 'FLY', 'IM': 'IM' };
+    const parts = event.split(' ');
+    const dist = parts[0];
+    const stroke = strokeMap[parts[parts.length - 1]] || parts[parts.length - 1].toUpperCase();
+    const usaStrokeMap = { 'FREE': 'FR', 'BACK': 'BK', 'BREAST': 'BR', 'FLY': 'FL', 'IM': 'IM' };
+    const eventInfo = {
+        distance: dist, course: course, stroke: stroke,
+        standardName: `${dist} ${stroke}`, usaName: `${dist} ${usaStrokeMap[stroke] || stroke}`
+    };
+
+    const standards = lookupStandards(eventInfo, ag, gender);
+    const comparison = compareToStandards(timeSecs, standards);
+
+    const resultDiv = document.getElementById('wiResult');
+    let html = `<div class="wi-summary">
+        <div class="wi-event">${event} | ${course} | ${ag} ${gender === 'F' ? 'Girls' : 'Boys'}</div>
+        <div class="wi-time">${secondsToTime(timeSecs)}</div>
+    </div>`;
+
+    html += '<div class="wi-standards-list">';
+
+    // USA standards (ordered B -> AAAA)
+    standards.usa.forEach(std => {
+        const stdSecs = timeToSeconds(std.time);
+        const achieved = timeSecs <= stdSecs;
+        const gap = timeSecs - stdSecs;
+        const cls = achieved ? 'achieved' : 'missed';
+        const gapText = achieved
+            ? `<span class="wi-std-gap pass">Made it by ${Math.abs(gap).toFixed(2)}s</span>`
+            : `<span class="wi-std-gap fail">Need -${gap.toFixed(2)}s</span>`;
+
+        html += `<div class="wi-std-row ${cls}">
+            <div class="wi-std-left">
+                <span class="badge ${std.cssClass}">${std.type}</span>
+                <span class="wi-std-cut">${std.time}</span>
+            </div>
+            ${gapText}
+        </div>`;
+    });
+
+    // Championship standards
+    standards.champ.forEach(std => {
+        const stdSecs = timeToSeconds(std.time);
+        const achieved = timeSecs <= stdSecs;
+        const gap = timeSecs - stdSecs;
+        const cls = achieved ? 'achieved' : 'missed';
+        const gapText = achieved
+            ? `<span class="wi-std-gap pass">Qualified by ${Math.abs(gap).toFixed(2)}s</span>`
+            : `<span class="wi-std-gap fail">Need -${gap.toFixed(2)}s</span>`;
+
+        html += `<div class="wi-std-row ${cls}">
+            <div class="wi-std-left">
+                <span class="badge ${std.cssClass}">${std.type}</span>
+                <span class="wi-std-cut">${std.time}</span>
+            </div>
+            ${gapText}
+        </div>`;
+    });
+
+    if (standards.usa.length === 0 && standards.champ.length === 0) {
+        html += '<div style="text-align:center;color:#94a3b8;padding:1rem">No standards found for this event/age group/course combination</div>';
+    }
+
+    html += '</div>';
+    resultDiv.innerHTML = html;
+    resultDiv.classList.remove('hidden');
+});

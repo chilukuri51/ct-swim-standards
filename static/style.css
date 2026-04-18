@@ -242,6 +242,99 @@ td.event-name { font-weight: 600; color: #c0392b; }
 .dob-input-wrap input { width: 100%; font-size: 1rem; padding: 0.6rem 0.75rem; }
 .dob-hint { font-size: 0.72rem; color: #94a3b8; }
 
+/* Report actions */
+.report-actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.btn-pdf {
+    padding: 0.4rem 1rem; background: #dc2626; color: white; border: none;
+    border-radius: 6px; font-size: 0.85rem; cursor: pointer; font-weight: 600;
+}
+.btn-pdf:hover { background: #b91c1c; }
+
+/* Progress Chart */
+.progress-controls {
+    display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+.progress-controls select { min-width: 200px; }
+.chart-container {
+    background: white; border-radius: 8px; padding: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1rem;
+    height: 280px; position: relative;
+}
+.progress-stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.5rem; margin-bottom: 1rem;
+}
+.pstat-card {
+    background: white; border-radius: 8px; padding: 0.75rem;
+    text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.pstat-card .pstat-value { font-size: 1.3rem; font-weight: 800; color: #003366; }
+.pstat-card .pstat-label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; margin-top: 0.15rem; }
+
+/* Converter & What-If tools */
+.tool-card {
+    background: white; border-radius: 12px; padding: 2rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08); max-width: 600px; margin: 0 auto;
+}
+.tool-card h2 { color: #003366; margin-bottom: 0.5rem; font-size: 1.3rem; }
+.tool-desc { color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem; }
+
+.converter-grid { display: flex; flex-direction: column; gap: 1rem; }
+.conv-group { display: flex; flex-direction: column; gap: 0.3rem; }
+.conv-group label { font-weight: 600; font-size: 0.9rem; color: #334155; }
+.conv-group select { padding: 0.6rem; font-size: 0.95rem; }
+
+.time-input-row { display: flex; align-items: center; gap: 0.25rem; }
+.time-part {
+    width: 60px; padding: 0.6rem 0.4rem; text-align: center;
+    border: 1px solid #cbd5e0; border-radius: 6px; font-size: 1.1rem; font-weight: 600;
+}
+.time-part:focus { outline: none; border-color: #0055a4; box-shadow: 0 0 0 2px rgba(0,85,164,0.2); }
+.time-sep { font-size: 1.3rem; font-weight: 700; color: #334155; }
+
+/* Converter result */
+.conv-result {
+    margin-top: 1.5rem; padding: 1.5rem; background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+    border-radius: 10px; border: 1px solid #bbf7d0; text-align: center;
+}
+.conv-result .result-label { font-size: 0.85rem; color: #64748b; margin-bottom: 0.25rem; }
+.conv-result .result-time { font-size: 2rem; font-weight: 800; color: #003366; }
+.conv-result .result-detail { font-size: 0.85rem; color: #64748b; margin-top: 0.5rem; }
+
+/* Converter standards check */
+.conv-standards {
+    margin-top: 1rem; padding: 1rem; background: #f8fafc;
+    border-radius: 8px; border: 1px solid #e2e8f0;
+}
+.conv-standards h4 { font-size: 0.9rem; color: #003366; margin-bottom: 0.5rem; }
+.conv-standards .std-note { font-size: 0.8rem; color: #94a3b8; margin-top: 0.5rem; }
+
+/* What-If result */
+#wiResult {
+    margin-top: 1.5rem;
+}
+.wi-summary {
+    padding: 1.25rem; background: linear-gradient(135deg, #eff6ff, #f0f9ff);
+    border-radius: 10px; border: 1px solid #bfdbfe; text-align: center; margin-bottom: 1rem;
+}
+.wi-summary .wi-time { font-size: 1.5rem; font-weight: 800; color: #003366; }
+.wi-summary .wi-event { font-size: 0.9rem; color: #64748b; margin-bottom: 0.5rem; }
+
+.wi-standards-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.wi-std-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.6rem 1rem; background: white; border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.wi-std-row.achieved { background: #f0fdf4; border-left: 3px solid #16a34a; }
+.wi-std-row.missed { background: #fefce8; border-left: 3px solid #eab308; }
+.wi-std-left { display: flex; align-items: center; gap: 0.5rem; }
+.wi-std-cut { font-size: 0.85rem; color: #64748b; }
+.wi-std-gap { font-size: 0.85rem; font-weight: 700; }
+.wi-std-gap.pass { color: #16a34a; }
+.wi-std-gap.fail { color: #ca8a04; }
+
 /* Responsive */
 @media (max-width: 768px) {
     header { padding: 1rem 1rem 0; }
@@ -283,6 +376,13 @@ td.event-name { font-weight: 600; color: #c0392b; }
 
     /* Course separator */
     .course-separator td { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+
+    /* Tools mobile */
+    .tool-card { padding: 1.25rem; }
+    .tool-card h2 { font-size: 1.1rem; }
+    .time-part { width: 50px; font-size: 1rem; padding: 0.5rem 0.3rem; }
+    .conv-result .result-time { font-size: 1.5rem; }
+    .report-actions { width: 100%; justify-content: space-between; }
 }
 
 @media (max-width: 380px) {

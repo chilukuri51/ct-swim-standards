@@ -3,15 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CT Swimming Standards & Swimmer Lookup</title>
+    <title>SwimProgression - CT Swimming Standards & Swimmer Lookup</title>
     <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
     <header>
-        <h1>CT Swimming Standards & Swimmer Lookup</h1>
+        <h1>SwimProgression</h1>
         <nav>
-            <button class="nav-btn active" data-tab="standards">Time Standards</button>
+            <button class="nav-btn active" data-tab="standards">Standards</button>
             <button class="nav-btn" data-tab="search">Swimmer Search</button>
+            <button class="nav-btn" data-tab="converter">Converter</button>
+            <button class="nav-btn" data-tab="whatif">What If</button>
         </nav>
     </header>
 
@@ -77,33 +81,35 @@
                         <h2 id="swimmerName"></h2>
                         <div id="swimmerMeta" class="swimmer-meta"></div>
                     </div>
-                    <button id="backToResults" class="btn-secondary">Back to Results</button>
+                    <div class="report-actions">
+                        <button id="downloadPDF" class="btn-pdf">PDF Report</button>
+                        <button id="backToResults" class="btn-secondary">Back to Results</button>
+                    </div>
                 </div>
 
-                <!-- DOB/Gender notice -->
                 <div id="noProfileNotice" class="hidden notice-box">
                     Enter Date of Birth and Gender above, then re-search to see standards comparison and championship qualification.
                 </div>
 
-                <!-- ===== CHAMPIONSHIP QUALIFICATION ===== -->
+                <!-- CHAMPIONSHIP QUALIFICATION -->
                 <div id="champSection" class="hidden">
                     <h3 class="section-title">Championship Qualification</h3>
                     <div id="champCards" class="champ-cards"></div>
                 </div>
 
-                <!-- ===== USA MOTIVATIONAL PROGRESS ===== -->
+                <!-- USA MOTIVATIONAL PROGRESS -->
                 <div id="usaSection" class="hidden">
                     <h3 class="section-title">USA Motivational Standards Progress</h3>
                     <div id="usaLadder" class="usa-ladder-summary"></div>
                 </div>
 
-                <!-- ===== CLOSEST TO CUT ===== -->
+                <!-- CLOSEST TO CUT -->
                 <div id="closestSection" class="hidden">
                     <h3 class="section-title">Closest to Next Cut</h3>
                     <div id="closestCards" class="closest-cards"></div>
                 </div>
 
-                <!-- ===== BEST TIMES TABLE ===== -->
+                <!-- BEST TIMES TABLE -->
                 <h3 class="section-title" style="margin-top:1.5rem">All Best Times</h3>
                 <div class="legend" id="legendBar">
                     <span class="legend-title">Key:</span>
@@ -117,15 +123,32 @@
                     <span class="badge badge-ez">EZ</span>
                 </div>
                 <div id="bestTimesTable" class="table-container"></div>
+
+                <!-- PROGRESSION CHART (on report card) -->
+                <div id="progressSection" class="hidden" style="margin-top:1.5rem">
+                    <h3 class="section-title">Event Progression</h3>
+                    <div class="progress-controls">
+                        <div class="control-group">
+                            <label>Event:</label>
+                            <select id="progressEventSelect"></select>
+                        </div>
+                        <div id="progressLoading" class="hidden" style="font-size:0.85rem;color:#64748b">Loading...</div>
+                    </div>
+                    <div id="progressChartContainer" class="chart-container">
+                        <canvas id="progressChart"></canvas>
+                    </div>
+                    <div id="progressStats" class="progress-stats"></div>
+                    <div id="historyTable" class="table-container"></div>
+                </div>
             </div>
 
-            <!-- Event History -->
+            <!-- Event History (standalone, kept for direct links) -->
             <div id="eventHistory" class="hidden">
                 <div class="report-header">
                     <h3 id="historyTitle"></h3>
                     <button id="backToTimes" class="btn-secondary">Back to Report</button>
                 </div>
-                <div id="historyTable" class="table-container"></div>
+                <div id="standaloneHistoryTable" class="table-container"></div>
             </div>
 
             <div id="loading" class="hidden">
@@ -133,6 +156,110 @@
                 <p>Loading...</p>
             </div>
             <div id="errorMsg" class="hidden"></div>
+        </section>
+
+        <!-- SCY / LCM CONVERTER TAB -->
+        <section id="converter" class="tab-content">
+            <div class="tool-card">
+                <h2>SCY &#8596; LCM Time Converter</h2>
+                <p class="tool-desc">Convert times between Short Course Yards and Long Course Meters using USA Swimming approved conversion factors.</p>
+                <div class="converter-grid">
+                    <div class="conv-group">
+                        <label>Event:</label>
+                        <select id="convEvent">
+                            <option value="50 Free">50 Freestyle</option>
+                            <option value="100 Free">100 Freestyle</option>
+                            <option value="200 Free">200 Freestyle</option>
+                            <option value="400/500 Free">400/500 Freestyle</option>
+                            <option value="800/1000 Free">800/1000 Freestyle</option>
+                            <option value="1500/1650 Free">1500/1650 Freestyle</option>
+                            <option value="50 Back">50 Backstroke</option>
+                            <option value="100 Back">100 Backstroke</option>
+                            <option value="200 Back">200 Backstroke</option>
+                            <option value="50 Breast">50 Breaststroke</option>
+                            <option value="100 Breast">100 Breaststroke</option>
+                            <option value="200 Breast">200 Breaststroke</option>
+                            <option value="50 Fly">50 Butterfly</option>
+                            <option value="100 Fly">100 Butterfly</option>
+                            <option value="200 Fly">200 Butterfly</option>
+                            <option value="100 IM">100 IM</option>
+                            <option value="200 IM">200 IM</option>
+                            <option value="400 IM">400 IM</option>
+                        </select>
+                    </div>
+                    <div class="conv-group">
+                        <label>Direction:</label>
+                        <select id="convDirection">
+                            <option value="scy2lcm">SCY → LCM</option>
+                            <option value="lcm2scy">LCM → SCY</option>
+                        </select>
+                    </div>
+                    <div class="conv-group">
+                        <label>Time:</label>
+                        <div class="time-input-row">
+                            <input type="number" id="convMin" min="0" max="59" placeholder="Min" class="time-part">
+                            <span class="time-sep">:</span>
+                            <input type="number" id="convSec" min="0" max="59" placeholder="Sec" class="time-part">
+                            <span class="time-sep">.</span>
+                            <input type="number" id="convHun" min="0" max="99" placeholder="00" class="time-part">
+                        </div>
+                    </div>
+                    <button id="convertBtn" class="btn-primary" style="max-width:300px">Convert</button>
+                </div>
+                <div id="convResult" class="hidden conv-result"></div>
+                <!-- Standards check for converted time -->
+                <div id="convStandards" class="hidden conv-standards"></div>
+            </div>
+        </section>
+
+        <!-- WHAT IF TAB -->
+        <section id="whatif" class="tab-content">
+            <div class="tool-card">
+                <h2>What If Goal Planner</h2>
+                <p class="tool-desc">Enter a target time to instantly see which standards and championship cuts it would unlock.</p>
+                <div class="converter-grid">
+                    <div class="conv-group">
+                        <label>Age Group:</label>
+                        <select id="wiAgeGroup">
+                            <option value="10/Under">10 & Under</option>
+                            <option value="11/12">11-12</option>
+                            <option value="13/14" selected>13-14</option>
+                            <option value="15/16">15-16</option>
+                            <option value="17/18">17-18</option>
+                        </select>
+                    </div>
+                    <div class="conv-group">
+                        <label>Gender:</label>
+                        <select id="wiGender">
+                            <option value="F">Female</option>
+                            <option value="M">Male</option>
+                        </select>
+                    </div>
+                    <div class="conv-group">
+                        <label>Event:</label>
+                        <select id="wiEvent"></select>
+                    </div>
+                    <div class="conv-group">
+                        <label>Course:</label>
+                        <select id="wiCourse">
+                            <option value="SCY">SCY</option>
+                            <option value="LCM">LCM</option>
+                        </select>
+                    </div>
+                    <div class="conv-group">
+                        <label>Target Time:</label>
+                        <div class="time-input-row">
+                            <input type="number" id="wiMin" min="0" max="59" placeholder="Min" class="time-part">
+                            <span class="time-sep">:</span>
+                            <input type="number" id="wiSec" min="0" max="59" placeholder="Sec" class="time-part">
+                            <span class="time-sep">.</span>
+                            <input type="number" id="wiHun" min="0" max="99" placeholder="00" class="time-part">
+                        </div>
+                    </div>
+                    <button id="whatifBtn" class="btn-primary" style="max-width:300px">Check Standards</button>
+                </div>
+                <div id="wiResult" class="hidden"></div>
+            </div>
         </section>
     </main>
 
