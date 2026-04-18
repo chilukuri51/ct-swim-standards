@@ -52,10 +52,15 @@
                     <input type="text" id="lastName" placeholder="Enter swimmer's last name">
                 </div>
                 <div class="form-row">
-                    <label>Date of Birth:</label>
+                    <label>Age Info:</label>
                     <div class="dob-input-wrap">
-                        <input type="date" id="dob" max="2025-12-31" min="2000-01-01">
-                        <span class="dob-hint">For age group & standards</span>
+                        <div class="age-toggle">
+                            <button type="button" class="age-tab-btn active" data-mode="dob">Date of Birth</button>
+                            <button type="button" class="age-tab-btn" data-mode="age">Age Today</button>
+                        </div>
+                        <input type="date" id="dob" max="2026-12-31" min="2000-01-01">
+                        <input type="number" id="ageInput" class="hidden" min="5" max="25" placeholder="Age in years">
+                        <span class="dob-hint">For age group & standards comparison</span>
                     </div>
                 </div>
                 <div class="form-row">

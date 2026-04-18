@@ -116,10 +116,49 @@ updateAgeGroups();
 // ===== SWIMMER SEARCH =====
 let currentTokens = null;
 let currentCookies = null;
+let ageMode = 'dob'; // 'dob' or 'age'
 
 const lastNameInput = document.getElementById('lastName');
 const dobInput = document.getElementById('dob');
+const ageInput = document.getElementById('ageInput');
 const genderInput = document.getElementById('gender');
+
+// Age/DOB toggle
+document.querySelectorAll('.age-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.age-tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        ageMode = btn.dataset.mode;
+        if (ageMode === 'dob') {
+            dobInput.classList.remove('hidden');
+            ageInput.classList.add('hidden');
+        } else {
+            dobInput.classList.add('hidden');
+            ageInput.classList.remove('hidden');
+        }
+    });
+});
+
+// Resolve current age (returns number or null) and age group
+function getCurrentAge() {
+    if (ageMode === 'age') {
+        const v = parseInt(ageInput.value);
+        return isFinite(v) && v > 0 ? v : null;
+    }
+    const dob = dobInput.value;
+    if (!dob) return null;
+    return getAge(dob);
+}
+
+function getCurrentAgeGroup() {
+    const age = getCurrentAge();
+    if (age === null) return null;
+    if (age <= 10) return '10/Under';
+    if (age <= 12) return '11/12';
+    if (age <= 14) return '13/14';
+    if (age <= 16) return '15/16';
+    return '17/18';
+}
 const searchBtn = document.getElementById('searchBtn');
 const searchResults = document.getElementById('searchResults');
 const swimmerList = document.getElementById('swimmerList');
@@ -177,10 +216,9 @@ async function loadBestTimes(swimmerId, name) {
         hideLoading();
         if (data.error) { showError(data.error); return; }
 
-        const dob = dobInput.value;
         const gender = genderInput.value;
-        const ageGrp = getAgeGroup(dob);
-        const age = getAge(dob);
+        const ageGrp = getCurrentAgeGroup();
+        const age = getCurrentAge();
         const hasProfile = !!(ageGrp && gender);
 
         document.getElementById('swimmerName').textContent = data.swimmer_name || name;
@@ -203,9 +241,17 @@ async function loadBestTimes(swimmerId, name) {
 
         // Process all events
         const scyEvents = [], lcmEvents = [];
-        const usaCounts = { B: 0, BB: 0, A: 0, AA: 0, AAA: 0, AAAA: 0 };
-        const champResults = { 'CT AG': { qual: [], close: [], far: [] }, 'EZ': { qual: [], close: [], far: [] } };
-        const closestToCut = []; // events closest to their next cut
+        // Split USA counts by course
+        const usaCountsByCourse = {
+            SCY: { B: 0, BB: 0, A: 0, AA: 0, AAA: 0, AAAA: 0 },
+            LCM: { B: 0, BB: 0, A: 0, AA: 0, AAA: 0, AAAA: 0 }
+        };
+        // Split champ results by course
+        const champResultsByCourse = {
+            SCY: { 'CT AG': { qual: [], close: [], far: [] }, 'EZ': { qual: [], close: [], far: [] } },
+            LCM: { 'CT AG': { qual: [], close: [], far: [] }, 'EZ': { qual: [], close: [], far: [] } }
+        };
+        const closestToCut = [];
 
         data.events.forEach(ev => {
             const eventInfo = normalizeEvent(ev.event);
@@ -216,27 +262,26 @@ async function loadBestTimes(swimmerId, name) {
                 standards = lookupStandards(eventInfo, ageGrp, gender);
                 const swimSecs = timeToSeconds(ev.time);
                 comparison = compareToStandards(swimSecs, standards);
+                const course = eventInfo.course; // 'SCY' or 'LCM'
 
-                // Count USA levels - count at HIGHEST level only
-                if (comparison.highestUSA) {
-                    usaCounts[comparison.highestUSA.type]++;
+                // Count USA levels - at HIGHEST achieved level, per course
+                if (comparison.highestUSA && usaCountsByCourse[course]) {
+                    usaCountsByCourse[course][comparison.highestUSA.type]++;
                 }
 
-                // Championship tracking
+                // Championship tracking per course
                 for (const cs of standards.champ) {
                     const stdSecs = timeToSeconds(cs.time);
                     const gap = swimSecs - stdSecs;
                     const type = cs.type;
-                    if (gap <= 0) {
-                        champResults[type].qual.push({ event: ev.event, gap: gap });
-                    } else if (gap <= 5) {
-                        champResults[type].close.push({ event: ev.event, gap: gap });
-                    } else {
-                        champResults[type].far.push({ event: ev.event, gap: gap });
-                    }
+                    const bucket = champResultsByCourse[course]?.[type];
+                    if (!bucket) continue;
+                    if (gap <= 0) bucket.qual.push({ event: ev.event, gap: gap });
+                    else if (gap <= 5) bucket.close.push({ event: ev.event, gap: gap });
+                    else bucket.far.push({ event: ev.event, gap: gap });
                 }
 
-                // Closest to cut (USA next or champ next)
+                // Closest to cut
                 const nextTargets = [];
                 if (comparison.usaNext) {
                     const gap = swimSecs - timeToSeconds(comparison.usaNext.time);
@@ -255,8 +300,8 @@ async function loadBestTimes(swimmerId, name) {
         });
 
         if (hasProfile) {
-            buildChampSection(champResults);
-            buildUSALadder(usaCounts);
+            buildChampSection(champResultsByCourse);
+            buildUSALadder(usaCountsByCourse);
             buildClosestSection(closestToCut);
         } else {
             ['champSection','usaSection','closestSection'].forEach(id => document.getElementById(id).classList.add('hidden'));
@@ -273,78 +318,82 @@ async function loadBestTimes(swimmerId, name) {
 }
 
 // ===== CHAMPIONSHIP QUALIFICATION SECTION =====
-function buildChampSection(results) {
+function buildChampSection(resultsByCourse) {
     const champCards = document.getElementById('champCards');
+    const champInfo = {
+        'CT AG': { title: 'CT Age Group Champs', color: '#dc2626' },
+        'EZ': { title: 'Eastern Zone Champs', color: '#9333ea' }
+    };
+    const courses = ['SCY', 'LCM'];
     let html = '';
 
-    const champInfo = {
-        'CT AG': { title: 'CT Age Group Championships', color: '#dc2626' },
-        'EZ': { title: 'Eastern Zone Championships', color: '#9333ea' }
-    };
+    for (const course of courses) {
+        const results = resultsByCourse[course];
+        if (!results) continue;
+        for (const [type, info] of Object.entries(champInfo)) {
+            const r = results[type];
+            if (!r) continue;
+            const total = r.qual.length + r.close.length + r.far.length;
+            if (total === 0) continue;
 
-    for (const [type, info] of Object.entries(champInfo)) {
-        const r = results[type];
-        if (!r) continue;
-        const total = r.qual.length + r.close.length + r.far.length;
-        if (total === 0) continue;
+            const statusClass = r.qual.length > 0 ? 'qualified' : 'not-qualified';
+            const statusBadge = r.qual.length > 0
+                ? `<span class="champ-status yes">Qualified</span>`
+                : r.close.length > 0
+                    ? `<span class="champ-status partial">Close</span>`
+                    : `<span class="champ-status no">Not Yet</span>`;
 
-        const isQualified = r.qual.length > 0;
-        const statusClass = r.qual.length > 0 ? 'qualified' : 'not-qualified';
-        const statusBadge = r.qual.length > 0
-            ? `<span class="champ-status yes">Qualified</span>`
-            : r.close.length > 0
-                ? `<span class="champ-status partial">Close</span>`
-                : `<span class="champ-status no">Not Yet</span>`;
-
-        html += `<div class="champ-card ${statusClass}">
-            <div class="champ-card-header">
-                <span class="champ-card-title">${info.title}</span>
-                ${statusBadge}
-            </div>
-            <div class="champ-qualified-count">${r.qual.length} of ${total} events qualified</div>
-            <div class="champ-events">`;
-
-        r.qual.forEach(e => {
-            html += `<span class="champ-event-chip qual">${e.event}</span>`;
-        });
-        r.close.forEach(e => {
-            html += `<span class="champ-event-chip close">${e.event} (-${e.gap.toFixed(1)}s)</span>`;
-        });
-        r.far.slice(0, 5).forEach(e => {
-            html += `<span class="champ-event-chip far">${e.event}</span>`;
-        });
-
-        html += `</div></div>`;
+            html += `<div class="champ-card ${statusClass}">
+                <div class="champ-card-header">
+                    <span class="champ-card-title">${info.title} <span class="course-tag">${course}</span></span>
+                    ${statusBadge}
+                </div>
+                <div class="champ-qualified-count">${r.qual.length} of ${total} events qualified</div>
+                <div class="champ-events">`;
+            r.qual.forEach(e => html += `<span class="champ-event-chip qual">${e.event}</span>`);
+            r.close.forEach(e => html += `<span class="champ-event-chip close">${e.event} (-${e.gap.toFixed(1)}s)</span>`);
+            r.far.slice(0, 5).forEach(e => html += `<span class="champ-event-chip far">${e.event}</span>`);
+            html += `</div></div>`;
+        }
     }
 
     champCards.innerHTML = html;
     document.getElementById('champSection').classList.toggle('hidden', html === '');
 }
 
-// ===== USA MOTIVATIONAL LADDER =====
-function buildUSALadder(counts) {
+// ===== USA MOTIVATIONAL LADDER - split by course =====
+function buildUSALadder(countsByCourse) {
     const levels = [
-        { key: 'B', label: 'B', cls: 'level-b' },
-        { key: 'BB', label: 'BB', cls: 'level-bb' },
-        { key: 'A', label: 'A', cls: 'level-a' },
-        { key: 'AA', label: 'AA', cls: 'level-aa' },
-        { key: 'AAA', label: 'AAA', cls: 'level-aaa' },
-        { key: 'AAAA', label: 'AAAA', cls: 'level-aaaa' },
+        { key: 'B', cls: 'level-b' }, { key: 'BB', cls: 'level-bb' },
+        { key: 'A', cls: 'level-a' }, { key: 'AA', cls: 'level-aa' },
+        { key: 'AAA', cls: 'level-aaa' }, { key: 'AAAA', cls: 'level-aaaa' },
     ];
 
     let html = '';
-    levels.forEach(l => {
-        const count = counts[l.key] || 0;
-        const hasClass = count > 0 ? ' has-events' : '';
-        html += `<div class="ladder-level ${l.cls}${hasClass}">
-            <div class="level-name">${l.label}</div>
-            <div class="level-count">${count}</div>
-            <div class="level-label">events</div>
-        </div>`;
-    });
+    let hasAny = false;
+    for (const course of ['SCY', 'LCM']) {
+        const counts = countsByCourse[course] || {};
+        const totalEvents = Object.values(counts).reduce((a, b) => a + b, 0);
+        if (totalEvents === 0) continue;
+        hasAny = true;
+
+        html += `<div class="usa-course-block">
+            <div class="usa-course-label">${course === 'SCY' ? 'Short Course Yards' : 'Long Course Meters'} <span class="course-tag">${course}</span></div>
+            <div class="usa-ladder-summary">`;
+        levels.forEach(l => {
+            const count = counts[l.key] || 0;
+            const hasClass = count > 0 ? ' has-events' : '';
+            html += `<div class="ladder-level ${l.cls}${hasClass}">
+                <div class="level-name">${l.key}</div>
+                <div class="level-count">${count}</div>
+                <div class="level-label">events</div>
+            </div>`;
+        });
+        html += `</div></div>`;
+    }
 
     document.getElementById('usaLadder').innerHTML = html;
-    document.getElementById('usaSection').classList.remove('hidden');
+    document.getElementById('usaSection').classList.toggle('hidden', !hasAny);
 }
 
 // ===== CLOSEST TO CUT =====
@@ -843,9 +892,8 @@ document.getElementById('convertBtn').addEventListener('click', () => {
 
     // Check what standards the converted time meets
     const stdDiv = document.getElementById('convStandards');
-    const dob = document.getElementById('dob').value;
     const gender = document.getElementById('gender').value;
-    const ageGrp = getAgeGroup(dob);
+    const ageGrp = getCurrentAgeGroup();
 
     if (ageGrp && gender) {
         // Build a fake eventInfo for the target course
