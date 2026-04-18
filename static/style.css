@@ -144,25 +144,48 @@ td.event-name { font-weight: 600; color: #c0392b; }
 }
 
 /* ===== USA MOTIVATIONAL LADDER ===== */
-.usa-course-block { margin-bottom: 1rem; }
+.usa-course-block {
+    background: white; border-radius: 10px; padding: 0.85rem 1rem;
+    margin-bottom: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
 .usa-course-label {
-    font-size: 0.85rem; font-weight: 600; color: #003366;
-    margin-bottom: 0.4rem; padding: 0.3rem 0;
+    font-size: 0.8rem; font-weight: 700; color: #003366;
+    margin-bottom: 0.65rem; display: flex; align-items: center; gap: 0.35rem;
 }
 .usa-ladder-summary {
-    display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.5rem;
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.4rem;
     margin-bottom: 0;
 }
 .ladder-level {
-    background: white; border-radius: 8px; padding: 0.75rem 0.5rem;
-    text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    border-bottom: 3px solid #e2e8f0; transition: transform 0.2s;
+    background: #f8fafc; border-radius: 8px;
+    padding: 0.5rem 0.25rem;
+    text-align: center;
+    border-top: 3px solid #cbd5e0;
+    position: relative; overflow: hidden;
+    min-height: 64px;
+    display: flex; flex-direction: column; justify-content: center;
 }
-.ladder-level:hover { transform: translateY(-2px); }
-.ladder-level.has-events { border-bottom-color: currentColor; }
-.ladder-level .level-name { font-weight: 800; font-size: 0.85rem; margin-bottom: 0.25rem; }
-.ladder-level .level-count { font-size: 1.6rem; font-weight: 800; }
-.ladder-level .level-label { font-size: 0.65rem; color: #64748b; text-transform: uppercase; margin-top: 0.15rem; }
+.ladder-level.has-events {
+    background: white;
+    border-top-color: currentColor;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+.ladder-level .level-name {
+    font-weight: 800; font-size: 0.72rem;
+    letter-spacing: 0.5px;
+    color: #94a3b8;
+}
+.ladder-level.has-events .level-name { color: currentColor; }
+.ladder-level .level-count {
+    font-size: 1.5rem; font-weight: 800;
+    line-height: 1.1; color: #cbd5e0;
+}
+.ladder-level.has-events .level-count { color: #0f172a; }
+.ladder-level .level-label {
+    font-size: 0.58rem; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-top: 0.1rem;
+}
 .ladder-level.level-b { color: #ea580c; }
 .ladder-level.level-bb { color: #ca8a04; }
 .ladder-level.level-a { color: #16a34a; }
@@ -378,11 +401,14 @@ td.event-name { font-weight: 600; color: #c0392b; }
     .time-cell { font-size: 0.78rem; }
     .badge { font-size: 0.6rem; padding: 0.1rem 0.3rem; }
 
-    /* Cards mobile */
-    .usa-ladder-summary { grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
-    .ladder-level { padding: 0.5rem 0.25rem; }
-    .ladder-level .level-count { font-size: 1.3rem; }
-    .ladder-level .level-name { font-size: 0.75rem; }
+    /* Cards mobile - keep 6 across, just tighter */
+    .usa-course-block { padding: 0.7rem 0.6rem; }
+    .usa-course-label { font-size: 0.75rem; }
+    .usa-ladder-summary { grid-template-columns: repeat(6, 1fr); gap: 0.3rem; }
+    .ladder-level { padding: 0.4rem 0.1rem; min-height: 56px; }
+    .ladder-level .level-count { font-size: 1.15rem; }
+    .ladder-level .level-name { font-size: 0.65rem; }
+    .ladder-level .level-label { display: none; }
     .champ-cards { grid-template-columns: 1fr; }
     .champ-card { padding: 1rem; }
     .closest-cards { grid-template-columns: 1fr; }
@@ -409,7 +435,10 @@ td.event-name { font-weight: 600; color: #c0392b; }
 }
 
 @media (max-width: 380px) {
-    .usa-ladder-summary { grid-template-columns: repeat(3, 1fr); }
+    .usa-ladder-summary { gap: 0.2rem; }
+    .ladder-level { padding: 0.35rem 0.05rem; min-height: 50px; }
+    .ladder-level .level-count { font-size: 1rem; }
+    .ladder-level .level-name { font-size: 0.6rem; }
     table { font-size: 0.65rem; }
     .nav-btn { padding: 0.5rem 0.5rem; font-size: 0.78rem; }
 }
