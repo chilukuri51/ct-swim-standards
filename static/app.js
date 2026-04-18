@@ -383,10 +383,11 @@ function buildUSALadder(countsByCourse) {
         levels.forEach(l => {
             const count = counts[l.key] || 0;
             const hasClass = count > 0 ? ' has-events' : '';
+            const evLabel = count === 1 ? 'event' : 'events';
             html += `<div class="ladder-level ${l.cls}${hasClass}">
                 <div class="level-name">${l.key}</div>
                 <div class="level-count">${count}</div>
-                <div class="level-label">events</div>
+                <div class="level-label">${evLabel}</div>
             </div>`;
         });
         html += `</div></div>`;

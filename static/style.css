@@ -193,6 +193,61 @@ td.event-name { font-weight: 600; color: #c0392b; }
 .ladder-level.level-aaa { color: #2563eb; }
 .ladder-level.level-aaaa { color: #7c3aed; }
 
+/* ===== MOBILE: vertical list layout ===== */
+@media (max-width: 640px) {
+    .usa-ladder-summary {
+        display: flex !important;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+    .ladder-level {
+        flex-direction: row !important;
+        justify-content: flex-start !important;
+        align-items: center;
+        min-height: 44px;
+        padding: 0.55rem 0.9rem;
+        text-align: left;
+        border-top: none;
+        border-left: 4px solid #cbd5e0;
+        gap: 0.75rem;
+    }
+    .ladder-level.has-events {
+        border-left-color: currentColor;
+    }
+    .ladder-level .level-name {
+        font-size: 0.95rem !important;
+        font-weight: 800;
+        min-width: 46px;
+        margin: 0 !important;
+        letter-spacing: 0.5px;
+    }
+    .ladder-level .level-count {
+        font-size: 1.35rem !important;
+        font-weight: 800;
+        margin-left: auto;
+        min-width: 28px;
+        text-align: right;
+    }
+    .ladder-level .level-label {
+        display: inline !important;
+        font-size: 0.72rem !important;
+        color: #64748b;
+        text-transform: none !important;
+        letter-spacing: 0 !important;
+        margin: 0 !important;
+    }
+    /* Small fill bar on mobile rows that have events */
+    .ladder-level.has-events::after {
+        content: '';
+        position: absolute;
+        bottom: 0; left: 0;
+        height: 2px;
+        width: 100%;
+        background: currentColor;
+        opacity: 0.15;
+    }
+}
+
 /* ===== CLOSEST TO CUT ===== */
 .closest-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem; }
 .closest-card {
@@ -401,14 +456,9 @@ td.event-name { font-weight: 600; color: #c0392b; }
     .time-cell { font-size: 0.78rem; }
     .badge { font-size: 0.6rem; padding: 0.1rem 0.3rem; }
 
-    /* Cards mobile - keep 6 across, just tighter */
-    .usa-course-block { padding: 0.7rem 0.6rem; }
-    .usa-course-label { font-size: 0.75rem; }
-    .usa-ladder-summary { grid-template-columns: repeat(6, 1fr); gap: 0.3rem; }
-    .ladder-level { padding: 0.4rem 0.1rem; min-height: 56px; }
-    .ladder-level .level-count { font-size: 1.15rem; }
-    .ladder-level .level-name { font-size: 0.65rem; }
-    .ladder-level .level-label { display: none; }
+    /* USA ladder mobile - vertical list handled in 640px query */
+    .usa-course-block { padding: 0.7rem 0.75rem; }
+    .usa-course-label { font-size: 0.78rem; }
     .champ-cards { grid-template-columns: 1fr; }
     .champ-card { padding: 1rem; }
     .closest-cards { grid-template-columns: 1fr; }
@@ -435,10 +485,10 @@ td.event-name { font-weight: 600; color: #c0392b; }
 }
 
 @media (max-width: 380px) {
-    .usa-ladder-summary { gap: 0.2rem; }
-    .ladder-level { padding: 0.35rem 0.05rem; min-height: 50px; }
-    .ladder-level .level-count { font-size: 1rem; }
-    .ladder-level .level-name { font-size: 0.6rem; }
+    .ladder-level { padding: 0.5rem 0.75rem; }
+    .ladder-level .level-name { font-size: 0.88rem !important; min-width: 42px; }
+    .ladder-level .level-count { font-size: 1.2rem !important; }
+    .ladder-level .level-label { font-size: 0.68rem !important; }
     table { font-size: 0.65rem; }
     .nav-btn { padding: 0.5rem 0.5rem; font-size: 0.78rem; }
 }
