@@ -1,11 +1,29 @@
+import os
 import re
+from functools import wraps
 import requests
 from bs4 import BeautifulSoup
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, session, redirect, url_for
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'change-me-in-production-please-a8f3d9x2')
 
 BASE_URL = "https://fast.ctswim.org/CTNet"
+
+# Simple hardcoded credentials (MVP). Override via env vars in production.
+APP_USERNAME = os.environ.get('APP_USERNAME', 'admin')
+APP_PASSWORD = os.environ.get('APP_PASSWORD', 'swimgoal')
+
+
+def login_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not session.get('logged_in'):
+            if request.path.startswith('/api/'):
+                return jsonify({'error': 'Authentication required'}), 401
+            return redirect(url_for('login', next=request.path))
+        return view(*args, **kwargs)
+    return wrapped
 
 
 def get_session_and_tokens():
@@ -33,12 +51,38 @@ def extract_tokens(html):
     }
 
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    error = None
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        if username == APP_USERNAME and password == APP_PASSWORD:
+            session['logged_in'] = True
+            session['username'] = username
+            session.permanent = True
+            next_url = request.args.get('next') or url_for('index')
+            return redirect(next_url)
+        error = 'Invalid username or password'
+    if session.get('logged_in'):
+        return redirect(url_for('index'))
+    return render_template('login.html', error=error)
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+
 @app.route('/')
+@login_required
 def index():
     return render_template('index.html')
 
 
 @app.route('/api/search', methods=['POST'])
+@login_required
 def search_swimmer():
     last_name = request.json.get('last_name', '').strip()
     if not last_name:
@@ -84,6 +128,7 @@ def search_swimmer():
 
 
 @app.route('/api/best_times', methods=['POST'])
+@login_required
 def get_best_times():
     swimmer_id = request.json.get('swimmer_id', '')
     tokens = request.json.get('tokens', {})
@@ -146,6 +191,7 @@ def get_best_times():
 
 
 @app.route('/api/event_history', methods=['POST'])
+@login_required
 def get_event_history():
     history_url = request.json.get('history_url', '')
     if not history_url:
