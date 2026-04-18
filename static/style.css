@@ -145,46 +145,49 @@ td.event-name { font-weight: 600; color: #c0392b; }
 
 /* ===== USA MOTIVATIONAL LADDER ===== */
 .usa-course-block {
-    background: white; border-radius: 10px; padding: 0.85rem 1rem;
-    margin-bottom: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    background: white; border-radius: 10px; padding: 1.1rem 1.25rem;
+    margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 .usa-course-label {
-    font-size: 0.8rem; font-weight: 700; color: #003366;
-    margin-bottom: 0.65rem; display: flex; align-items: center; gap: 0.35rem;
+    font-size: 0.95rem; font-weight: 700; color: #003366;
+    margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.45rem;
 }
 .usa-ladder-summary {
-    display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.4rem;
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.6rem;
     margin-bottom: 0;
 }
 .ladder-level {
-    background: #f8fafc; border-radius: 8px;
-    padding: 0.5rem 0.25rem;
+    background: #f8fafc; border-radius: 10px;
+    padding: 0.85rem 0.5rem;
     text-align: center;
-    border-top: 3px solid #cbd5e0;
+    border-top: 4px solid #cbd5e0;
     position: relative; overflow: hidden;
-    min-height: 64px;
+    min-height: 90px;
     display: flex; flex-direction: column; justify-content: center;
+    transition: transform 0.15s, box-shadow 0.15s;
 }
+.ladder-level:hover { transform: translateY(-2px); }
 .ladder-level.has-events {
     background: white;
     border-top-color: currentColor;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.08);
 }
 .ladder-level .level-name {
-    font-weight: 800; font-size: 0.72rem;
+    font-weight: 800; font-size: 0.95rem;
     letter-spacing: 0.5px;
     color: #94a3b8;
+    margin-bottom: 0.3rem;
 }
 .ladder-level.has-events .level-name { color: currentColor; }
 .ladder-level .level-count {
-    font-size: 1.5rem; font-weight: 800;
-    line-height: 1.1; color: #cbd5e0;
+    font-size: 2rem; font-weight: 800;
+    line-height: 1; color: #cbd5e0;
 }
 .ladder-level.has-events .level-count { color: #0f172a; }
 .ladder-level .level-label {
-    font-size: 0.58rem; color: #94a3b8;
+    font-size: 0.68rem; color: #94a3b8;
     text-transform: uppercase; letter-spacing: 0.5px;
-    margin-top: 0.1rem;
+    margin-top: 0.3rem;
 }
 .ladder-level.level-b { color: #ea580c; }
 .ladder-level.level-bb { color: #ca8a04; }
