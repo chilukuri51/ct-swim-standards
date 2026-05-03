@@ -20,7 +20,7 @@ from dataclasses import dataclass, asdict, field
 from typing import Optional
 from datetime import datetime, date, timedelta, timezone
 
-import requests
+from curl_cffi import requests as cffi_requests
 
 import db
 
@@ -142,7 +142,10 @@ MAX_DISAMBIG = 20
 def _fetch_one(slug: str) -> Optional[dict]:
     """Fetch a single slug. Returns swimmer dict or None on 404/missing."""
     url = f"{SWIMSTANDARDS_BASE}/{slug}"
-    r = requests.get(url, timeout=15, headers=BROWSER_HEADERS)
+    # impersonate='chrome120' makes the TLS handshake byte-identical to real
+    # Chrome, which is what Cloudflare on swimstandards.com fingerprints
+    # against. Plain `requests` 403s from cloud IPs even with browser headers.
+    r = cffi_requests.get(url, timeout=15, headers=BROWSER_HEADERS, impersonate='chrome120')
     if r.status_code == 404:
         return None
     if r.status_code != 200:
