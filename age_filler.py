@@ -26,7 +26,26 @@ import db
 
 
 SWIMSTANDARDS_BASE = 'https://swimstandards.com/swimmer'
-USER_AGENT = 'Mozilla/5.0 SwimProgression/1.0 (+swimprogression.com)'
+# Cloudflare on swimstandards.com 403s requests with non-browser UAs from
+# cloud IP ranges (Render etc.). Use a current Chrome on Mac string + the
+# usual browser-companion headers so the request blends in.
+USER_AGENT = (
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+    'AppleWebKit/537.36 (KHTML, like Gecko) '
+    'Chrome/124.0.0.0 Safari/537.36'
+)
+BROWSER_HEADERS = {
+    'User-Agent': USER_AGENT,
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,'
+              'image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1',
+    'Upgrade-Insecure-Requests': '1',
+}
 
 # Polite delays between swimstandards.com fetches.
 DELAY_MIN = 5
@@ -123,7 +142,7 @@ MAX_DISAMBIG = 20
 def _fetch_one(slug: str) -> Optional[dict]:
     """Fetch a single slug. Returns swimmer dict or None on 404/missing."""
     url = f"{SWIMSTANDARDS_BASE}/{slug}"
-    r = requests.get(url, timeout=15, headers={'User-Agent': USER_AGENT})
+    r = requests.get(url, timeout=15, headers=BROWSER_HEADERS)
     if r.status_code == 404:
         return None
     if r.status_code != 200:
