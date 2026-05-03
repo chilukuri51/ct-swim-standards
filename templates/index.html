@@ -10,15 +10,26 @@
 </head>
 <body>
     <header>
-        <a href="/logout" class="logout-link" title="Sign out">Sign out</a>
+        <div class="header-top">
+            <span class="role-badge role-{{ role }}">{{ username }}</span>
+            <a href="/logout" class="logout-link" title="Sign out">Sign out</a>
+        </div>
         <h1>SwimProgression</h1>
         <nav>
             <button class="nav-btn active" data-tab="standards">Standards</button>
             <button class="nav-btn" data-tab="search">Swimmer Search</button>
-            <button class="nav-btn" data-tab="converter">Converter</button>
             <button class="nav-btn" data-tab="whatif">What If</button>
+            <button class="nav-btn" data-tab="dashboard" data-requires="dashboard">Coach Dashboard</button>
+            <button class="nav-btn" data-tab="champqual" data-requires="dashboard">Championship Qual</button>
+            <button class="nav-btn" data-tab="roster" data-requires="roster">Roster</button>
+            <button class="nav-btn" data-tab="stdedit" data-requires="standards_edit">Standards Editor</button>
+            <button class="nav-btn" data-tab="admin" data-requires="batch">Admin</button>
         </nav>
     </header>
+    <script>
+      window.APP_ROLE = "{{ role }}";
+      window.APP_PERMISSIONS = {{ permissions | tojson }};
+    </script>
 
     <main>
         <!-- TIME STANDARDS TAB -->
@@ -26,11 +37,7 @@
             <div class="standards-controls">
                 <div class="control-group">
                     <label>Standard:</label>
-                    <select id="standardType">
-                        <option value="ct">CT Age Group (2025 LC)</option>
-                        <option value="ez">Eastern Zone (2025 LC)</option>
-                        <option value="usa">USA Motivational (2024-2028)</option>
-                    </select>
+                    <select id="standardType"></select>
                 </div>
                 <div class="control-group">
                     <label>Age Group:</label>
@@ -88,6 +95,7 @@
                         <div id="swimmerMeta" class="swimmer-meta"></div>
                     </div>
                     <div class="report-actions">
+                        <button id="refreshSwimmer" class="btn-refresh" data-requires="refresh">Refresh from CT Swim</button>
                         <button id="downloadPDF" class="btn-pdf">PDF Report</button>
                         <button id="backToResults" class="btn-secondary">Back to Results</button>
                     </div>
@@ -164,60 +172,6 @@
             <div id="errorMsg" class="hidden"></div>
         </section>
 
-        <!-- SCY / LCM CONVERTER TAB -->
-        <section id="converter" class="tab-content">
-            <div class="tool-card">
-                <h2>SCY &#8596; LCM Time Converter</h2>
-                <p class="tool-desc">Convert times between Short Course Yards and Long Course Meters using USA Swimming approved conversion factors.</p>
-                <div class="converter-grid">
-                    <div class="conv-group">
-                        <label>Event:</label>
-                        <select id="convEvent">
-                            <option value="50 Free">50 Freestyle</option>
-                            <option value="100 Free">100 Freestyle</option>
-                            <option value="200 Free">200 Freestyle</option>
-                            <option value="400/500 Free">400/500 Freestyle</option>
-                            <option value="800/1000 Free">800/1000 Freestyle</option>
-                            <option value="1500/1650 Free">1500/1650 Freestyle</option>
-                            <option value="50 Back">50 Backstroke</option>
-                            <option value="100 Back">100 Backstroke</option>
-                            <option value="200 Back">200 Backstroke</option>
-                            <option value="50 Breast">50 Breaststroke</option>
-                            <option value="100 Breast">100 Breaststroke</option>
-                            <option value="200 Breast">200 Breaststroke</option>
-                            <option value="50 Fly">50 Butterfly</option>
-                            <option value="100 Fly">100 Butterfly</option>
-                            <option value="200 Fly">200 Butterfly</option>
-                            <option value="100 IM">100 IM</option>
-                            <option value="200 IM">200 IM</option>
-                            <option value="400 IM">400 IM</option>
-                        </select>
-                    </div>
-                    <div class="conv-group">
-                        <label>Direction:</label>
-                        <select id="convDirection">
-                            <option value="scy2lcm">SCY → LCM</option>
-                            <option value="lcm2scy">LCM → SCY</option>
-                        </select>
-                    </div>
-                    <div class="conv-group">
-                        <label>Time:</label>
-                        <div class="time-input-row">
-                            <input type="number" id="convMin" min="0" max="59" placeholder="Min" class="time-part">
-                            <span class="time-sep">:</span>
-                            <input type="number" id="convSec" min="0" max="59" placeholder="Sec" class="time-part">
-                            <span class="time-sep">.</span>
-                            <input type="number" id="convHun" min="0" max="99" placeholder="00" class="time-part">
-                        </div>
-                    </div>
-                    <button id="convertBtn" class="btn-primary" style="max-width:300px">Convert</button>
-                </div>
-                <div id="convResult" class="hidden conv-result"></div>
-                <!-- Standards check for converted time -->
-                <div id="convStandards" class="hidden conv-standards"></div>
-            </div>
-        </section>
-
         <!-- WHAT IF TAB -->
         <section id="whatif" class="tab-content">
             <div class="tool-card">
@@ -267,8 +221,585 @@
                 <div id="wiResult" class="hidden"></div>
             </div>
         </section>
+
+        <!-- ADMIN TAB (admin only) -->
+        <!-- COACH DASHBOARD (admin & coach) -->
+        <section id="dashboard" class="tab-content">
+            <div class="report-header">
+                <div class="report-title">
+                    <h2>Coach Dashboard</h2>
+                    <div class="swimmer-meta" id="dbStats">Loading roster…</div>
+                </div>
+                <div class="report-actions">
+                    <button id="dbReloadBtn" class="btn-secondary">Reload</button>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="standards-controls" id="dbFilters">
+                <div class="control-group">
+                    <label>Age:</label>
+                    <select id="dbAge">
+                        <option value="">All</option>
+                        <option value="10/Under">10 &amp; Under</option>
+                        <option value="11/12">11-12</option>
+                        <option value="13/14">13-14</option>
+                        <option value="15/16">15-16</option>
+                        <option value="17/18">17-18</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Gender:</label>
+                    <select id="dbGender">
+                        <option value="">All</option>
+                        <option value="F">Female</option>
+                        <option value="M">Male</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Group:</label>
+                    <select id="dbRoster"><option value="">All Groups</option></select>
+                </div>
+                <div class="control-group">
+                    <label>Stroke:</label>
+                    <select id="dbStroke">
+                        <option value="">All</option>
+                        <option value="FREE">Freestyle</option>
+                        <option value="BACK">Backstroke</option>
+                        <option value="BREAST">Breaststroke</option>
+                        <option value="FLY">Butterfly</option>
+                        <option value="IM">IM</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Course:</label>
+                    <select id="dbCourse">
+                        <option value="SCY">SCY</option>
+                        <option value="LCM">LCM</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 2. USA Motivational distribution -->
+            <h3 class="section-title">USA Motivational Distribution</h3>
+            <p class="tool-desc" style="margin-top:-0.5rem">Click any level to see the swimmers in that bucket.</p>
+            <div class="standards-controls" style="margin-bottom:0.5rem">
+                <div class="control-group">
+                    <label>Course:</label>
+                    <select id="dbDistCourse">
+                        <option value="SCY" selected>SCY</option>
+                        <option value="LCM">LCM</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Event:</label>
+                    <select id="dbDistEvent" style="min-width:170px"></select>
+                </div>
+                <span style="color:#64748b;font-size:0.85rem" id="dbDistHint"></span>
+            </div>
+            <div id="dbUsaDist" class="usa-ladder-summary" style="margin-bottom:1.25rem"></div>
+
+            <!-- 3. Team Specialty Radar -->
+            <h3 class="section-title">Team Specialty (avg strength per stroke)</h3>
+            <p class="tool-desc" style="margin-top:-0.5rem">
+                Each stroke is scored using each swimmer's <em>highest</em> USA Motivational level
+                in any event of that stroke. Swimmers with a recorded time but no cut yet count as
+                <strong>&lt;B</strong> (1) — so beginning swimmers show on the radar. Scale: &lt;B=1, B=2, BB=3, A=4, AA=5, AAA=6, AAAA=7.
+                <strong>Click any stroke row</strong> to drill into specific events.
+            </p>
+            <div class="dash-radar-row">
+                <div class="dash-radar-card">
+                    <div class="radar-canvas-wrap"><canvas id="dbSpecialtyChart"></canvas></div>
+                    <div class="radar-hint">Click any axis or point to drill into that stroke.</div>
+                </div>
+                <div class="dash-radar-stats" id="dbSpecialtyStats"></div>
+            </div>
+
+            <!-- 3b. Coach Action Items -->
+            <h3 class="section-title">Coach Action Items</h3>
+            <p class="tool-desc" style="margin-top:-0.5rem">Prioritized recommendations computed from the current filter. Re-runs as you change filters above.</p>
+            <div id="dbActionItems" class="action-grid" style="margin-bottom:1.25rem"></div>
+
+            <!-- 4. Event Leaderboard -->
+            <h3 class="section-title">Event Leaderboard</h3>
+            <div class="standards-controls" style="margin-bottom:0.5rem">
+                <div class="control-group">
+                    <label>Event:</label>
+                    <select id="dbLeaderEvent" style="min-width:220px"></select>
+                </div>
+                <span style="color:#64748b;font-size:0.85rem" id="dbLeaderHint"></span>
+            </div>
+            <div class="table-container" id="dbLeaderboard" style="margin-bottom:1.25rem"></div>
+
+            <!-- 5. Event Performance Matrix -->
+            <h3 class="section-title">Event Performance Matrix</h3>
+            <p class="tool-desc" style="margin-top:-0.5rem">Times across events, color-coded by USA level. Use the filters to narrow the view.</p>
+            <div class="matrix-controls">
+                <div class="mc-group">
+                    <span class="mc-label">Distances:</span>
+                    <div class="mc-pills" id="dbMatrixDistPills"></div>
+                </div>
+                <div class="mc-group">
+                    <span class="mc-label">Show only:</span>
+                    <select id="dbMatrixLevelFilter">
+                        <option value="all">All swimmers</option>
+                        <option value="any">Any time recorded</option>
+                        <option value="below-bb">Below BB (needs work)</option>
+                        <option value="b-bb">B / BB</option>
+                        <option value="a-plus">A or higher</option>
+                        <option value="aa-plus">AA or higher</option>
+                        <option value="aaa-plus">AAA or higher</option>
+                    </select>
+                </div>
+                <div class="mc-group">
+                    <label class="mc-toggle"><input type="checkbox" id="dbMatrixCompact"> Compact (badges only)</label>
+                </div>
+                <div class="mc-group">
+                    <label class="mc-toggle"><input type="checkbox" id="dbMatrixHideEmpty" checked> Hide swimmers with no times</label>
+                </div>
+            </div>
+            <div class="table-container" id="dbEventMatrix" style="margin-bottom:1.25rem"></div>
+
+            <!-- 4. Closest to next cut -->
+            <h3 class="section-title">Closest to Next Cut</h3>
+            <div class="closest-cards" id="dbClosestCards"></div>
+
+            <!-- 5. Championship Spotlight -->
+            <h3 class="section-title" style="margin-top:1.25rem">Championship Spotlight</h3>
+            <div class="champ-cards" id="dbChampCards"></div>
+        </section>
+
+        <!-- CHAMPIONSHIP QUALIFICATION TAB (admin & coach) -->
+        <section id="champqual" class="tab-content">
+            <div class="report-header">
+                <div class="report-title">
+                    <h2>Championship Qualification</h2>
+                    <div class="swimmer-meta">Who's in, who's close.</div>
+                </div>
+            </div>
+            <div class="standards-controls">
+                <div class="control-group">
+                    <label>Championship:</label>
+                    <select id="cqProgram" style="min-width:240px"></select>
+                </div>
+                <div class="control-group">
+                    <label>Course:</label>
+                    <select id="cqCourse">
+                        <option value="SCY">SCY</option>
+                        <option value="LCM" selected>LCM</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Group:</label>
+                    <select id="cqRoster">
+                        <option value="">All Groups</option>
+                    </select>
+                </div>
+            </div>
+
+            <p class="tool-desc" style="margin-top:0.4rem">
+                Closeness is ranked by <strong>% gap</strong>, not seconds. A swimmer 2 seconds off
+                a 50 (≈ 6%) is much further away than 2 seconds off a 400 (≈ 0.8%).
+            </p>
+
+            <h3 class="section-title">Qualified swimmers</h3>
+            <div id="cqQualified" class="cq-qualified"></div>
+
+            <h3 class="section-title" style="margin-top:1.25rem">Closest to a cut</h3>
+            <p class="tool-desc" style="margin-top:-0.5rem">Sorted by smallest % gap. Top of the list = best chance to qualify next meet.</p>
+            <div class="table-container" id="cqClosest"></div>
+        </section>
+
+        <!-- ROSTER TAB (admin & coach) -->
+        <section id="roster" class="tab-content">
+            <div class="report-header">
+                <div class="report-title">
+                    <h2>Team Roster</h2>
+                    <div class="swimmer-meta" id="rosterStats">Loading...</div>
+                </div>
+                <div class="report-actions">
+                    <button id="rosterAddBtn" class="btn-primary" style="padding:0.45rem 1rem">+ Add Swimmer</button>
+                </div>
+            </div>
+
+            <!-- Group filter -->
+            <div class="standards-controls">
+                <div class="control-group">
+                    <label>Group:</label>
+                    <select id="rosterGroupFilter">
+                        <option value="">All Groups</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Gender:</label>
+                    <select id="rosterGenderFilter">
+                        <option value="">All</option>
+                        <option value="F">Female</option>
+                        <option value="M">Male</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Search:</label>
+                    <input type="text" id="rosterSearchFilter" placeholder="Name contains..." style="min-width:180px">
+                </div>
+            </div>
+
+            <!-- Auto-fill ages from swimstandards.com (admin-only) -->
+            <div class="autofill-panel" data-requires="batch">
+                <div class="autofill-head">
+                    <div>
+                        <strong>Auto-fill ages</strong>
+                        <span class="autofill-sub">Pulls birth year/month from swimstandards.com using meet-by-meet age triangulation. Polite delays — runs in background. Cached for 90 days.</span>
+                    </div>
+                    <div class="autofill-actions">
+                        <label class="mc-toggle" style="margin-right:0.6rem"><input type="checkbox" id="afForceAll"> Force all (ignore cache)</label>
+                        <button id="afStartBtn" class="btn-primary" style="padding:0.4rem 0.9rem">Start</button>
+                        <button id="afCancelBtn" class="btn-secondary hidden" style="padding:0.4rem 0.9rem">Cancel</button>
+                    </div>
+                </div>
+                <div id="afStatus" class="autofill-status hidden"></div>
+            </div>
+
+            <div class="table-container" id="rosterTableContainer"></div>
+        </section>
+
+        <!-- ROSTER EDIT MODAL -->
+        <!-- SWIMMER PROFILE MODAL (radar + strengths + targets) -->
+        <div id="swimmerProfileModal" class="modal-backdrop hidden">
+            <div class="modal sp-modal">
+                <div class="modal-header">
+                    <div>
+                        <h3 id="spName">Swimmer</h3>
+                        <div class="sp-subline" id="spMeta"></div>
+                    </div>
+                    <button class="modal-close" id="spClose" type="button">&times;</button>
+                </div>
+                <div class="modal-body sp-body">
+                    <div class="sp-controls">
+                        <span class="sp-course-label">Course:</span>
+                        <button type="button" class="sp-course-pill on" data-course="SCY">SCY</button>
+                        <button type="button" class="sp-course-pill" data-course="LCM">LCM</button>
+                    </div>
+                    <div class="sp-grid">
+                        <div class="sp-radar-card">
+                            <div class="sp-radar-canvas-wrap"><canvas id="spRadar"></canvas></div>
+                            <div class="sp-empty hidden" id="spRadarEmpty">No times in this course yet.</div>
+                        </div>
+                        <div class="sp-side">
+                            <div class="sp-block">
+                                <h4>Strengths</h4>
+                                <div id="spStrengths" class="sp-list"></div>
+                            </div>
+                            <div class="sp-block">
+                                <h4>Targets <span class="sp-block-hint">(closest to next USA cut)</span></h4>
+                                <div id="spTargets" class="sp-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sp-block">
+                        <h4>Best Times</h4>
+                        <div id="spBestTimes" class="table-container sp-table"></div>
+                    </div>
+                    <div class="sp-block">
+                        <h4>Event Progression <span class="sp-block-hint">(history per event)</span></h4>
+                        <div class="sp-progress-controls">
+                            <select id="spProgressEvent">
+                                <option value="">— Select an event —</option>
+                            </select>
+                            <span id="spProgressLoading" class="sp-progress-loading hidden">Loading…</span>
+                        </div>
+                        <div id="spProgressStats" class="sp-progress-stats"></div>
+                        <div id="spProgressChartWrap" class="sp-progress-chart-wrap hidden">
+                            <canvas id="spProgressChart"></canvas>
+                        </div>
+                        <div id="spProgressHistory" class="sp-progress-history"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="spDone" type="button">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- DASHBOARD DRILL-DOWN MODAL -->
+        <div id="dbDrillModal" class="modal-backdrop hidden">
+            <div class="modal" style="max-width:780px">
+                <div class="modal-header">
+                    <h3 id="dbDrillTitle">Swimmers</h3>
+                    <button class="modal-close" id="dbDrillClose" type="button">&times;</button>
+                </div>
+                <div class="modal-body" id="dbDrillBody"></div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="dbDrillDone" type="button">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="rosterModal" class="modal-backdrop hidden">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3 id="rosterModalTitle">Add Swimmer</h3>
+                    <button class="modal-close" id="rosterModalClose" type="button">&times;</button>
+                </div>
+                <form id="rosterForm" class="modal-body">
+                    <div class="form-row">
+                        <label>First Name:</label>
+                        <input type="text" id="rmFirstName" required>
+                    </div>
+                    <div class="form-row">
+                        <label>Last Name:</label>
+                        <input type="text" id="rmLastName" required>
+                    </div>
+                    <div class="form-row">
+                        <label>Group:</label>
+                        <input type="text" id="rmRoster" placeholder="e.g. Breakers 2, Seniors, Waves" list="rosterGroupsDataList">
+                        <datalist id="rosterGroupsDataList"></datalist>
+                    </div>
+                    <div class="form-row">
+                        <label>Gender:</label>
+                        <select id="rmGender">
+                            <option value="">--</option>
+                            <option value="F">Female</option>
+                            <option value="M">Male</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label>Birth Year/Month:</label>
+                        <input type="month" id="rmBirthMonth" min="2000-01" placeholder="YYYY-MM">
+                    </div>
+                    <p class="dob-hint" id="rmDobHint" style="margin-top:-0.25rem">
+                        Year + month only — no exact birthday is stored. Age may also auto-fill
+                        from CT Swim once a fetch links this swimmer; you can leave this blank then.
+                    </p>
+                    <div class="form-row">
+                        <label>Parent Email:</label>
+                        <input type="email" id="rmParentEmail" placeholder="parent@example.com" autocomplete="off">
+                    </div>
+                    <p class="dob-hint" style="margin-top:-0.25rem">
+                        Lets the parent log in with this email to see their kid's profile.
+                        Multiple kids can share the same email.
+                    </p>
+                    <div class="modal-error hidden" id="rmError"></div>
+                </form>
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="rosterCancelBtn" type="button">Cancel</button>
+                    <button class="btn-pdf hidden" id="rosterDeleteBtn" type="button">Delete</button>
+                    <button class="btn-primary" id="rosterSaveBtn" type="button" style="margin:0;max-width:160px">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADD PROGRAM MODAL -->
+        <div id="addProgramModal" class="modal-backdrop hidden">
+            <div class="modal" style="max-width:540px">
+                <div class="modal-header">
+                    <h3>Add New Program</h3>
+                    <button class="modal-close" id="apClose" type="button">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-row"><label>Program ID:</label>
+                        <input type="text" id="apId" placeholder="my_champs (lowercase, no spaces)">
+                    </div>
+                    <div class="form-row"><label>Display Name:</label>
+                        <input type="text" id="apName" placeholder="My Championships">
+                    </div>
+                    <div class="form-row"><label>Subtitle:</label>
+                        <input type="text" id="apSubtitle" placeholder="2026 SCY">
+                    </div>
+                    <div class="form-row"><label>Season:</label>
+                        <input type="text" id="apSeason" placeholder="2026">
+                    </div>
+                    <div class="form-row"><label>Effective Date:</label>
+                        <input type="date" id="apEffective">
+                    </div>
+                    <div class="form-row"><label>Type:</label>
+                        <select id="apType">
+                            <option value="single">Single qualifying time per event (like CT/EZ)</option>
+                            <option value="multi">Multi-level (B/BB/A or custom levels)</option>
+                        </select>
+                    </div>
+                    <div class="form-row" id="apGenderRow">
+                        <label>Gender Keys:</label>
+                        <select id="apGenderType">
+                            <option value="girls,boys">girls / boys</option>
+                            <option value="women,men">women / men</option>
+                        </select>
+                    </div>
+                    <div class="form-row hidden" id="apLevelsRow">
+                        <label>Levels:</label>
+                        <input type="text" id="apLevels" placeholder="AAAA,AAA,AA,A,BB,B" value="AAAA,AAA,AA,A,BB,B">
+                    </div>
+                    <div class="form-row"><label>Initial Groups:</label>
+                        <input type="text" id="apGroups" placeholder="10/Under, 11-12, 13-14">
+                    </div>
+                    <p class="dob-hint">Comma-separated. Add more groups later via the editor.</p>
+                    <div class="modal-error hidden" id="apError"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="apCancel" type="button">Cancel</button>
+                    <button class="btn-primary" id="apSave" type="button" style="margin:0;max-width:160px">Create</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STANDARDS EDITOR (admin & coach) -->
+        <section id="stdedit" class="tab-content">
+            <div class="report-header">
+                <div class="report-title">
+                    <h2>Standards Editor</h2>
+                    <div class="swimmer-meta">Edit qualifying times. Changes save to <code>data/standards.json</code>.</div>
+                </div>
+            </div>
+
+            <!-- Metadata card -->
+            <div class="tool-card" style="margin-bottom:1rem;max-width:100%">
+                <h3 class="section-title" style="border:none;margin-bottom:0.4rem;display:flex;justify-content:space-between;align-items:center">
+                    <span>Program</span>
+                    <span style="display:flex;gap:0.4rem">
+                        <button id="seAddProgramBtn" class="btn-primary" style="padding:0.35rem 0.85rem;margin:0;font-size:0.85rem;max-width:none">+ Add Program</button>
+                        <button id="seDeleteProgramBtn" class="btn-pdf" style="font-size:0.78rem">Delete Program</button>
+                    </span>
+                </h3>
+                <div class="standards-controls" style="margin-bottom:0.75rem">
+                    <div class="control-group">
+                        <label>Program:</label>
+                        <select id="seProgramSel"></select>
+                    </div>
+                    <div class="control-group">
+                        <label>Subtitle:</label>
+                        <input type="text" id="seSubtitle" style="min-width:160px">
+                    </div>
+                    <div class="control-group">
+                        <label>Season:</label>
+                        <input type="text" id="seSeason" style="width:110px">
+                    </div>
+                    <div class="control-group">
+                        <label>Effective:</label>
+                        <input type="date" id="seEffective">
+                    </div>
+                    <button id="seSaveMetaBtn" class="btn-primary" style="max-width:140px;margin:0">Save Meta</button>
+                </div>
+
+                <div class="standards-controls" style="margin-bottom:0">
+                    <div class="control-group">
+                        <label>Group:</label>
+                        <select id="seGroupSel"></select>
+                    </div>
+                    <div class="control-group" id="seGenderControl">
+                        <label>Gender:</label>
+                        <select id="seGenderSel"></select>
+                    </div>
+                    <div class="control-group" id="seCourseControl">
+                        <label>Course:</label>
+                        <select id="seCourseSel"></select>
+                    </div>
+                    <button id="seAddGroupBtn" class="btn-primary" style="margin:0;padding:0.35rem 0.85rem;font-size:0.85rem;max-width:none">+ Add Group</button>
+                    <button id="seDeleteGroupBtn" class="btn-pdf" style="font-size:0.78rem">Delete Group</button>
+                </div>
+            </div>
+
+            <!-- Editable grid -->
+            <div class="table-container" id="seGridContainer"></div>
+
+            <!-- Add event -->
+            <div class="tool-card" style="margin-top:1rem;max-width:100%">
+                <h3 class="section-title" style="border:none;margin-bottom:0.5rem">Add New Event</h3>
+                <div id="seAddEventForm"></div>
+            </div>
+
+            <div id="seError" class="hidden"></div>
+            <div id="seToast" class="hidden"></div>
+        </section>
+
+        <section id="admin" class="tab-content">
+            <div class="tool-card" style="max-width:760px">
+                <h2>Batch Fetch from CT Swim</h2>
+                <p class="tool-desc">Pre-populate the local cache so parents and coaches see swimmer data instantly. Requests are sent to CT Swim with a 5-second delay between each. Safe to close the browser &mdash; the job keeps running on the server.</p>
+
+                <!-- Cache stats -->
+                <div id="adminStats" class="admin-stats">
+                    <div class="pstat-card"><div class="pstat-value" id="statTotal">-</div><div class="pstat-label">Swimmers in DB</div></div>
+                    <div class="pstat-card"><div class="pstat-value" id="statCached">-</div><div class="pstat-label">With Cached Times</div></div>
+                </div>
+
+                <!-- Maintenance: link cached swimmers to team_members -->
+                <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap">
+                    <button id="autoLinkBtn" class="btn-secondary" style="font-size:0.85rem">Link Cached Times to Roster</button>
+                    <span id="autoLinkResult" style="font-size:0.8rem;color:#64748b"></span>
+                </div>
+
+                <!-- Mode selector -->
+                <div class="batch-mode-switch">
+                    <button type="button" class="batch-mode-btn active" data-mode="team_roster">From Team Roster</button>
+                    <button type="button" class="batch-mode-btn" data-mode="last_names">By Last Names</button>
+                    <button type="button" class="batch-mode-btn" data-mode="team_code">By Team Code (A-Z)</button>
+                </div>
+
+                <!-- Mode: From Team Roster -->
+                <div id="batchTeamRoster" class="batch-mode-panel">
+                    <p class="tool-desc" style="margin-bottom:0.5rem">Fetches CT Swim times for swimmers in your <a href="#" id="goToRosterLink" style="color:#0055a4">team roster</a>. Already-matched swimmers get refreshed; unmatched ones are searched and linked.</p>
+                    <label class="mc-toggle" style="margin:0.25rem 0 0.5rem">
+                        <input type="checkbox" id="batchOnlyNew" checked>
+                        Only newly added (skip swimmers already cached)
+                    </label>
+                    <div id="rosterBatchPreview" class="pdf-preview-stats"></div>
+                </div>
+
+                <!-- Mode A: last names -->
+                <div id="batchLastNames" class="batch-mode-panel hidden">
+                    <div class="conv-group">
+                        <label>Last Names (one per line):</label>
+                        <textarea id="batchNames" rows="6" placeholder="Smith&#10;Johnson&#10;Williams" class="batch-textarea"></textarea>
+                    </div>
+                    <div class="conv-group">
+                        <label>Team Code Filter (optional):</label>
+                        <input type="text" id="batchTeamFilter" placeholder="e.g. WRAT (leave blank for all teams)" class="batch-input">
+                    </div>
+                </div>
+
+                <!-- Mode B: team code -->
+                <div id="batchTeamCodePanel" class="batch-mode-panel hidden">
+                    <div class="conv-group">
+                        <label>Team Code:</label>
+                        <input type="text" id="batchTeamCodeInput" placeholder="e.g. WRAT" class="batch-input">
+                    </div>
+                    <p class="tool-desc" style="margin:0.5rem 0 0;font-size:0.8rem">Iterates through letters A-Z searching for swimmers whose team matches. Takes ~2 min to search + 5 sec per swimmer found. A team of 50 = ~7 minutes total.</p>
+                </div>
+
+                <div style="display:flex;gap:0.5rem;margin-top:1rem">
+                    <button id="batchStartBtn" class="btn-primary" style="max-width:260px">Start Fetch</button>
+                    <button id="batchCancelBtn" class="btn-secondary hidden">Cancel</button>
+                </div>
+
+                <!-- Progress panel -->
+                <div id="batchProgress" class="batch-progress hidden">
+                    <div class="batch-progress-header">
+                        <span class="batch-status-pill" id="batchStatusPill">Running</span>
+                        <span id="batchEta"></span>
+                    </div>
+                    <div class="batch-bar"><div id="batchBarFill" class="batch-bar-fill" style="width:0%"></div></div>
+                    <div class="batch-details">
+                        <div><strong>Phase 1 — Search:</strong> <span id="batchSearchProgress">-</span></div>
+                        <div><strong>Phase 2 — Fetch:</strong> <span id="batchFetchProgress">-</span></div>
+                        <div><strong>Current:</strong> <span id="batchCurrent">-</span></div>
+                        <div><strong>Swimmers cached:</strong> <span id="batchCached">0</span></div>
+                    </div>
+                    <div id="batchErrors" class="batch-errors hidden"></div>
+                </div>
+
+                <!-- Recent sync log -->
+                <h3 class="section-title" style="margin-top:1.5rem;font-size:0.95rem">Recent Activity</h3>
+                <div class="table-container" style="max-height:280px;overflow-y:auto">
+                    <table id="syncLogTable">
+                        <thead><tr><th>Time</th><th>Action</th><th>Status</th><th>Message</th></tr></thead>
+                        <tbody id="syncLogBody"><tr><td colspan="4" style="padding:1rem;color:#94a3b8">No activity yet</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
     </main>
 
+    <script>window.STANDARDS_DATA = {{ standards | tojson }};</script>
     <script src="/static/standards_data.js"></script>
     <script src="/static/app.js"></script>
 </body>

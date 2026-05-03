@@ -8,3 +8,14 @@ venv/
 dist/
 build/
 .DS_Store
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+Screenshot*.png
+data/team_roster.json
+data/standards.json
+
+# Local-only operational notes — not for source control
+DEPLOY_DIGITALOCEAN.md
+DEPLOY_RENDER.md
