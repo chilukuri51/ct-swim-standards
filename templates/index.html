@@ -444,12 +444,12 @@
                 </div>
             </div>
 
-            <!-- Auto-fill ages from swimstandards.com (admin-only) -->
+            <!-- Auto-fill ages from CT Swim meet result PDFs (admin-only) -->
             <div class="autofill-panel" data-requires="batch">
                 <div class="autofill-head">
                     <div>
                         <strong>Auto-fill ages</strong>
-                        <span class="autofill-sub">Pulls birth year/month from swimstandards.com using meet-by-meet age triangulation. Polite delays — runs in background. Cached for 90 days.</span>
+                        <span class="autofill-sub">Triangulates birth year/month from CT Swim meet result PDFs using the championship age-up rule. First run is slow (parses meet PDFs); re-runs reuse the cache. Polite delays — runs in background.</span>
                     </div>
                     <div class="autofill-actions">
                         <label class="mc-toggle" style="margin-right:0.6rem"><input type="checkbox" id="afForceAll"> Force all (ignore cache)</label>

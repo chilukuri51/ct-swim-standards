@@ -78,9 +78,11 @@ class FillerState:
         return int((self.done / self.total) * 100)
 
     def eta_seconds(self) -> int:
-        avg = (DELAY_MIN + DELAY_MAX) / 2
-        # Each member triggers ~5 fetches on average (events + meets).
-        return int(max(0, self.total - self.done) * avg * 5)
+        # Per swimmer first-run cost: index scrape (~30s once) + walk events
+        # + parse PDFs (~1-3 min depending on meet count). After cache warms
+        # up, subsequent swimmers reuse parsed PDFs and run in ~10-30s.
+        # Use 90s as a rough average — accurate enough to set expectations.
+        return int(max(0, self.total - self.done) * 90)
 
 
 _state = FillerState()
@@ -241,9 +243,13 @@ def _gather_meet_history(member: dict) -> list:
 # ===== Per-meet PDF resolution =====
 
 def _ensure_index_cached() -> list:
-    """Scrape Results.aspx once per run (~5s). Cached in module-level dict."""
+    """Scrape Results.aspx once per run (~5-30s on first call). Cached in
+    module-level dict. Progress is surfaced via _state.current so the UI
+    doesn't appear stuck during the index scrape."""
     if _index_cache['rows']:
         return _index_cache['rows']
+    with _lock:
+        _state.current = 'Scraping CT Swim results index…'
     rows = ct_pdf.scrape_results_index()
     _index_cache['rows'] = rows
     _index_cache['fetched_at'] = _now_iso()
@@ -317,23 +323,30 @@ def _process_member(member: dict, force_all: bool = False) -> dict:
     name_key = ct_pdf.normalize_name(
         member.get('first_name', ''), member.get('last_name', '')
     )
+    full_name = f"{member.get('first_name','')} {member.get('last_name','')}".strip()
+
+    with _lock:
+        _state.current = f'{full_name}: collecting meet history…'
 
     meets = _gather_meet_history(member)
     if not meets:
-        # No meet history at all — likely a brand-new linked swimmer or
-        # one whose CT Swim cache hasn't been batch-fetched yet.
         db.save_member_triangulation(member['id'])
         return {'status': 'not_found'}
 
     records = []
     observed_age = None
     observed_gender = None
-    for m in meets:
+    total_meets = len(meets)
+    for idx, m in enumerate(meets):
         if not m.get('ct_meet_id'):
             continue
         meet_date = ct_pdf.parse_us_date(m.get('date', ''))
         if not meet_date:
             continue
+        with _lock:
+            if _state.cancelled:
+                break
+            _state.current = f'{full_name}: meet {idx+1}/{total_meets}'
         cache = _resolve_meet_pdf(member['ct_id'], m['ct_meet_id'])
         if not cache or not cache.get('parsed_at'):
             continue
@@ -341,11 +354,10 @@ def _process_member(member: dict, force_all: bool = False) -> dict:
         if not hit:
             continue
         records.append({'age': hit['age'], 'meet_date': meet_date})
-        # Track the most recent observation for age_observed + gender backfill
         if observed_age is None or meet_date > _record_date_max(records[:-1]):
             observed_age = hit['age']
             observed_gender = hit.get('gender')
-        time.sleep(_next_delay() / 4)  # tiny inter-meet pause
+        time.sleep(_next_delay() / 4)
 
     if not records:
         db.save_member_triangulation(member['id'])
@@ -489,6 +501,10 @@ def _sleep_respecting_cancel(seconds: float) -> bool:
 
 def _run(candidates, force_all: bool = False):
     try:
+        # Pre-warm the meet index so the first member doesn't pay a hidden
+        # 30s pause inside _resolve_meet_pdf — UI shows the index scrape
+        # status while it's happening.
+        _ensure_index_cached()
         for i, m in enumerate(candidates):
             with _lock:
                 if _state.cancelled:

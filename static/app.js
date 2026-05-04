@@ -1466,7 +1466,7 @@ if (hasPerm('roster')) {
 }
 
 
-// ===== Auto-fill ages from swimstandards.com (admin only) =====
+// ===== Auto-fill ages from CT Swim meet result PDFs (admin only) =====
 if (hasPerm('batch')) {
     const afStartBtn = document.getElementById('afStartBtn');
     const afCancelBtn = document.getElementById('afCancelBtn');
