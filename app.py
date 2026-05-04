@@ -591,14 +591,22 @@ def api_diagnose_pipeline():
     if not meta:
         return jsonify(out)
 
-    # Step 2: Index scrape
+    # Step 2: Load index from data/meet_index.json (same path auto-fill uses)
     try:
-        index = ct_pdf.scrape_results_index()
+        import age_filler as _af
+        index = _af._load_index_from_json()
         out['steps']['2_index_scrape'] = {
             'success': bool(index),
             'count': len(index),
             'sample_urls': [p['url'] for p in index[:3]],
+            'source': 'data/meet_index.json',
         }
+        # If the bundled JSON is missing, fall through to live scrape so
+        # we can tell whether ctswim.org is reachable at all.
+        if not index:
+            live = ct_pdf.scrape_results_index()
+            out['steps']['2_index_scrape']['live_fallback_count'] = len(live)
+            index = live
     except Exception as e:
         out['steps']['2_index_scrape'] = {'success': False, 'error': str(e)}
         return jsonify(out)
