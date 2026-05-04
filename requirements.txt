@@ -3,4 +3,3 @@ requests==2.31.0
 beautifulsoup4==4.12.2
 gunicorn==21.2.0
 pdfplumber==0.11.4
-curl_cffi==0.7.1

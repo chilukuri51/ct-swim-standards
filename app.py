@@ -206,7 +206,13 @@ def ct_fetch_best_times(swimmer_id, tokens, cookies):
 
 
 def ct_fetch_event_history(history_url):
-    """Fetch event history. Returns {title, history}."""
+    """Fetch event history. Returns {title, history}.
+
+    Each row's 4th cell holds a [Meet] link to SwimmerAtMeet.aspx?...&m=<id>.
+    We capture that meet_id so age_filler can look up the swimmer's age in
+    the corresponding result PDF (the swim_type column only says
+    'Finals'/'Prelims', not the actual meet name).
+    """
     full_url = f"{BASE_URL}/{history_url}"
     r = requests.get(full_url, timeout=15)
     soup = BeautifulSoup(r.text, 'html.parser')
@@ -220,16 +226,38 @@ def ct_fetch_event_history(history_url):
         title = label3.get_text(strip=True) + ' - ' + title
 
     history = []
-    table = soup.find('table', id='Table1')
-    if table:
-        for row in table.find_all('tr')[1:]:
+    # The history table is the one whose header is Time | Swim | Date | [Meet].
+    target_table = None
+    for tbl in soup.find_all('table'):
+        rows = tbl.find_all('tr')
+        if not rows:
+            continue
+        hdr = [c.get_text(strip=True) for c in rows[0].find_all(['td', 'th'])]
+        if hdr[:3] == ['Time', 'Swim', 'Date']:
+            target_table = tbl
+            break
+    if target_table:
+        for row in target_table.find_all('tr')[1:]:
             cells = row.find_all('td')
-            if len(cells) >= 3:
-                time_val = cells[0].get_text(strip=True)
-                swim_type = cells[1].get_text(strip=True)
-                date_val = cells[2].get_text(strip=True)
-                if time_val and time_val != 'Time':
-                    history.append({'time': time_val, 'meet': swim_type, 'date': date_val})
+            if len(cells) < 3:
+                continue
+            time_val = cells[0].get_text(strip=True)
+            swim_type = cells[1].get_text(strip=True)
+            date_val = cells[2].get_text(strip=True)
+            meet_id = ''
+            if len(cells) >= 4:
+                link = cells[3].find('a', href=True)
+                if link:
+                    m = re.search(r'm=(\d+)', link['href'])
+                    if m:
+                        meet_id = m.group(1)
+            if time_val and time_val != 'Time':
+                history.append({
+                    'time': time_val,
+                    'meet': swim_type,
+                    'date': date_val,
+                    'ct_meet_id': meet_id,
+                })
 
     return {'title': title, 'history': history}
 

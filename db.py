@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS event_history (
     time TEXT NOT NULL,
     swim_type TEXT,
     date TEXT,
+    ct_meet_id TEXT,                        -- m= param on SwimmerAtMeet.aspx
     FOREIGN KEY (swimmer_ct_id) REFERENCES swimmers(ct_id) ON DELETE CASCADE
 );
 
@@ -89,6 +90,35 @@ CREATE TABLE IF NOT EXISTS sync_log (
     message TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+-- CT Swim meet PDF cache. Populated lazily as we triangulate ages.
+-- ct_meet_id is the `m` parameter on SwimmerAtMeet.aspx (string of digits).
+CREATE TABLE IF NOT EXISTS meet_pdf_cache (
+    ct_meet_id TEXT PRIMARY KEY,
+    meet_name TEXT,
+    start_date TEXT,            -- ISO YYYY-MM-DD
+    end_date TEXT,              -- ISO YYYY-MM-DD
+    pdf_url TEXT,               -- path or absolute URL; NULL if no PDF found
+    parsed_at TEXT,             -- ISO timestamp when PDF was parsed (NULL = not yet)
+    note TEXT                   -- 'no_pdf' | 'parse_error' | NULL
+);
+
+-- One row per swimmer per meet (deduped from possibly many event rows).
+CREATE TABLE IF NOT EXISTS meet_pdf_swimmers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ct_meet_id TEXT NOT NULL,
+    name_key TEXT NOT NULL,     -- 'lastname_firstname' lowercase
+    first_name TEXT,
+    last_name TEXT,
+    age INTEGER NOT NULL,
+    gender TEXT,
+    team TEXT,
+    UNIQUE(ct_meet_id, name_key, age),
+    FOREIGN KEY (ct_meet_id) REFERENCES meet_pdf_cache(ct_meet_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_meet_pdf_sw_lookup
+    ON meet_pdf_swimmers(name_key, ct_meet_id);
 """
 
 
@@ -126,6 +156,11 @@ def init_db():
                 conn.execute(f"ALTER TABLE team_members ADD COLUMN {col} {typ}")
             except sqlite3.OperationalError:
                 pass
+        # Add ct_meet_id to existing event_history (Phase: CT PDF triangulation)
+        try:
+            conn.execute("ALTER TABLE event_history ADD COLUMN ct_meet_id TEXT")
+        except sqlite3.OperationalError:
+            pass
         # One-time migration: backfill birth_year/month from any existing dob values.
         conn.execute("""
             UPDATE team_members
@@ -240,12 +275,29 @@ def _extract_name_only(full_label):
 def get_event_history(history_url):
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT time, swim_type, date FROM event_history WHERE history_url = ? ORDER BY id",
+            "SELECT time, swim_type, date, ct_meet_id FROM event_history "
+            "WHERE history_url = ? ORDER BY id",
             (history_url,)
         ).fetchall()
     if not rows:
         return None
-    return [{'time': r['time'], 'meet': r['swim_type'] or '', 'date': r['date'] or ''} for r in rows]
+    return [{'time': r['time'], 'meet': r['swim_type'] or '',
+             'date': r['date'] or '',
+             'ct_meet_id': r['ct_meet_id'] or ''} for r in rows]
+
+
+def get_member_meet_history(member_id: int):
+    """Return distinct (ct_meet_id, date) tuples across all of one member's
+    cached event_history rows. The triangulator uses these to figure out
+    which meets to look up in meet_pdf_cache."""
+    with get_conn() as conn:
+        rows = conn.execute("""
+            SELECT DISTINCT eh.ct_meet_id, eh.date
+            FROM event_history eh
+            JOIN team_members tm ON tm.ct_id = eh.swimmer_ct_id
+            WHERE tm.id = ? AND eh.ct_meet_id IS NOT NULL AND eh.ct_meet_id != ''
+        """, (member_id,)).fetchall()
+    return [{'ct_meet_id': r['ct_meet_id'], 'date': r['date']} for r in rows]
 
 
 def save_event_history(history_url, swimmer_ct_id, event_name, history):
@@ -253,9 +305,86 @@ def save_event_history(history_url, swimmer_ct_id, event_name, history):
         conn.execute("DELETE FROM event_history WHERE history_url = ?", (history_url,))
         for h in history:
             conn.execute("""
-                INSERT INTO event_history (swimmer_ct_id, event, history_url, time, swim_type, date)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (swimmer_ct_id, event_name, history_url, h.get('time', ''), h.get('meet', ''), h.get('date', '')))
+                INSERT INTO event_history
+                  (swimmer_ct_id, event, history_url, time, swim_type, date, ct_meet_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (swimmer_ct_id, event_name, history_url,
+                  h.get('time', ''), h.get('meet', ''), h.get('date', ''),
+                  h.get('ct_meet_id', '')))
+
+
+# ===== Meet PDF cache =====
+
+def get_meet_cache(ct_meet_id: str):
+    """Return cached meet metadata, or None if never seen."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT ct_meet_id, meet_name, start_date, end_date, pdf_url, "
+            "parsed_at, note FROM meet_pdf_cache WHERE ct_meet_id = ?",
+            (ct_meet_id,)
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def save_meet_cache(ct_meet_id: str, meet_name: str = None,
+                    start_date: str = None, end_date: str = None,
+                    pdf_url: str = None, parsed_at: str = None,
+                    note: str = None):
+    """Upsert one row of meet_pdf_cache. Only non-None args overwrite existing."""
+    with get_conn() as conn:
+        existing = conn.execute(
+            "SELECT meet_name, start_date, end_date, pdf_url, parsed_at, note "
+            "FROM meet_pdf_cache WHERE ct_meet_id = ?", (ct_meet_id,)
+        ).fetchone()
+        if existing:
+            conn.execute("""
+                UPDATE meet_pdf_cache
+                SET meet_name = COALESCE(?, meet_name),
+                    start_date = COALESCE(?, start_date),
+                    end_date = COALESCE(?, end_date),
+                    pdf_url = COALESCE(?, pdf_url),
+                    parsed_at = COALESCE(?, parsed_at),
+                    note = ?
+                WHERE ct_meet_id = ?
+            """, (meet_name, start_date, end_date, pdf_url,
+                  parsed_at, note, ct_meet_id))
+        else:
+            conn.execute("""
+                INSERT INTO meet_pdf_cache
+                  (ct_meet_id, meet_name, start_date, end_date, pdf_url,
+                   parsed_at, note)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (ct_meet_id, meet_name, start_date, end_date, pdf_url,
+                  parsed_at, note))
+
+
+def save_meet_pdf_swimmers(ct_meet_id: str, swimmers: list):
+    """Bulk insert parsed PDF rows. Replaces any existing rows for this meet."""
+    with get_conn() as conn:
+        conn.execute("DELETE FROM meet_pdf_swimmers WHERE ct_meet_id = ?",
+                     (ct_meet_id,))
+        for sw in swimmers:
+            try:
+                conn.execute("""
+                    INSERT OR IGNORE INTO meet_pdf_swimmers
+                      (ct_meet_id, name_key, first_name, last_name, age, gender, team)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (ct_meet_id, sw.get('name_key'), sw.get('first'),
+                      sw.get('last'), sw.get('age'), sw.get('gender'),
+                      sw.get('team')))
+            except Exception:
+                continue
+
+
+def lookup_swimmer_age_at_meet(ct_meet_id: str, name_key: str):
+    """Return {age, gender, team} for our swimmer at this meet, or None."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT age, gender, team FROM meet_pdf_swimmers "
+            "WHERE ct_meet_id = ? AND name_key = ? LIMIT 1",
+            (ct_meet_id, name_key)
+        ).fetchone()
+    return dict(row) if row else None
 
 
 # ===== Sync logging =====
