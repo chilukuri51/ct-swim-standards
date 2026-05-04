@@ -32,13 +32,11 @@ import ct_pdf
 import paths
 
 
-# Parallel PDF resolution within a single member. Render Starter only
-# has 512 MB RAM; pdfplumber holds layout/word/line caches per loaded
-# PDF (~20-50 MB working set each), so we cap at 2 concurrent parses
-# to leave headroom for Flask + the rest of the app. With 2 workers,
-# first-run for a 48-meet swimmer is ~90s instead of ~50s @ 4 workers,
-# but stays comfortably under the memory cap.
-PDF_CONCURRENCY = 2
+# Parallel PDF resolution within a single member. With pypdf each
+# parse peaks at ~37 MB working set (vs pdfplumber's 154 MB), so 4
+# concurrent fits comfortably under Render Starter's 512 MB cap:
+# 4 * 37 = 148 MB peak + ~100 MB Flask base = ~250 MB total.
+PDF_CONCURRENCY = 4
 
 
 # Polite delays between CT Swim requests inside the triangulation loop.

@@ -10,14 +10,13 @@ Three responsibilities:
 3. Match a meet (name + date range) to its PDF in the index.
 """
 
-import os
+import io
 import re
-import tempfile
 from datetime import date
 from typing import Optional
 
 import requests
-import pdfplumber
+from pypdf import PdfReader
 from bs4 import BeautifulSoup
 
 
@@ -150,14 +149,20 @@ def find_pdf_for_meet(
 
 # ===== PDF parsing =====
 
-# CT Swim Hy-Tek result rows: "<rank> Last, First Age TEAM-CT TimeOrPlace"
-# Two-column layouts confuse extract_text() word order, but the regex still
-# matches because each row's signature is self-contained.
+# pypdf extracts Hy-Tek result rows in this order (different from how the
+# columns are laid out visually): "TEAM-CT  AGE Last, First<rank> Time"
+# Examples actually seen on CT meet PDFs:
+#   "IVY -CT  9Chilukuri, Saanvi12 41.18"
+#   "HHAC-CT 10Destefano, Mackenzie1 36.12"
+# Note: short team codes get padded with a space before -CT ("IVY -CT").
+# Age is jammed up against last name; rank is jammed up against first name.
+# pdfplumber preserved the visual column order but uses ~4x more memory,
+# so we accept this layout and shape the regex to match it.
 _PDF_ROW_RE = re.compile(
-    r"\b([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*),\s+"   # Last (multi-word OK)
-    r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*)\s+"      # First (multi-word OK)
-    r"(\d{1,2})\s+"                                          # Age
-    r"([A-Z]{2,6})-CT\b"                                     # Team-CT
+    r"\b([A-Z]{2,6})\s*-CT\s+"                                # team
+    r"(\d{1,2})"                                              # age (jammed)
+    r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*),\s+"       # last
+    r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*)\d"         # first + start of rank
 )
 _GENDER_HEADER_RE = re.compile(
     r"\b(Girls|Boys|Women|Men|Mixed)\s+\d", re.IGNORECASE
@@ -165,45 +170,39 @@ _GENDER_HEADER_RE = re.compile(
 
 
 def parse_results_pdf(path_or_bytes) -> list[dict]:
-    """Parse one Hy-Tek result PDF. Returns one dict per swimmer-event row:
+    """Parse one Hy-Tek result PDF using pypdf (lighter than pdfplumber:
+    ~37 MB peak vs ~154 MB, important on Render Starter's 512 MB cap).
+
+    Returns one dict per swimmer-event row:
       {first, last, name_key, age, team, gender}
-    Same swimmer appears once per event — caller should dedupe by name_key
-    if they want one row per swimmer."""
+
+    Same swimmer appears once per event in the meet — callers that want
+    one row per swimmer should dedupe by name_key (the lookup helper
+    `lookup_swimmer_age_at_meet` already returns a single row).
+    """
     out = []
     if isinstance(path_or_bytes, (bytes, bytearray)):
-        # write to a temp file for pdfplumber
-        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
-            tmp.write(path_or_bytes)
-            path = tmp.name
-        cleanup = True
+        reader = PdfReader(io.BytesIO(path_or_bytes))
     else:
-        path = path_or_bytes
-        cleanup = False
-    try:
-        with pdfplumber.open(path) as pdf:
-            current_gender = ''
-            for page in pdf.pages:
-                text = page.extract_text() or ''
-                for line in text.split('\n'):
-                    g = _GENDER_HEADER_RE.search(line)
-                    if g:
-                        current_gender = g.group(1)[0].upper()
-                    for m in _PDF_ROW_RE.finditer(line):
-                        last, first, age, team = m.groups()
-                        out.append({
-                            'first': first,
-                            'last': last,
-                            'name_key': normalize_name(first, last),
-                            'age': int(age),
-                            'team': team,
-                            'gender': current_gender,
-                        })
-    finally:
-        if cleanup:
-            try:
-                os.unlink(path)
-            except OSError:
-                pass
+        reader = PdfReader(path_or_bytes)
+
+    current_gender = ''
+    for page in reader.pages:
+        text = page.extract_text() or ''
+        for line in text.split('\n'):
+            g = _GENDER_HEADER_RE.search(line)
+            if g:
+                current_gender = g.group(1)[0].upper()
+            for m in _PDF_ROW_RE.finditer(line):
+                team, age, last, first = m.groups()
+                out.append({
+                    'first': first,
+                    'last': last,
+                    'name_key': normalize_name(first, last),
+                    'age': int(age),
+                    'team': team,
+                    'gender': current_gender,
+                })
     return out
 
 
