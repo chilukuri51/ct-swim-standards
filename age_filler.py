@@ -256,6 +256,21 @@ def _ensure_index_cached() -> list:
     return rows
 
 
+def _is_stale_no_pdf(cached: dict) -> bool:
+    """Earlier code versions wrote bad cache rows (truncated meet_name from
+    a regex bug). Detect those so we re-attempt with the current code."""
+    if not cached:
+        return False
+    name = (cached.get('meet_name') or '').strip()
+    sd = cached.get('start_date')
+    # Bad rows look like: meet_name="2023" / no start_date / no pdf_url.
+    if not sd:
+        return True
+    if len(re.sub(r'[^A-Za-z]', '', name)) < 4:
+        return True
+    return False
+
+
 def _resolve_meet_pdf(swimmer_ct_id: str, ct_meet_id: str) -> Optional[dict]:
     """Ensure meet_pdf_cache + meet_pdf_swimmers are populated for this meet.
     Returns the cache row dict, or None if no PDF available.
@@ -263,8 +278,8 @@ def _resolve_meet_pdf(swimmer_ct_id: str, ct_meet_id: str) -> Optional[dict]:
     cached = db.get_meet_cache(ct_meet_id)
     if cached and cached.get('parsed_at'):
         return cached
-    if cached and cached.get('note') == 'no_pdf':
-        return cached  # already determined unfindable
+    if cached and cached.get('note') == 'no_pdf' and not _is_stale_no_pdf(cached):
+        return cached  # already determined unfindable (with current code)
 
     # Step 1: get meet name + dates from CT Swim
     meta = ct_pdf.fetch_swimmer_at_meet(swimmer_ct_id, ct_meet_id)

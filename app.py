@@ -499,12 +499,123 @@ def api_auto_link():
 @app.route('/api/team_members/autofill_ages/start', methods=['POST'])
 @role_required('admin')
 def api_autofill_ages_start():
-    """Kick off the swimstandards.com age triangulation job."""
+    """Kick off the CT Swim PDF age triangulation job."""
     force = bool((request.json or {}).get('force_all'))
     started = age_filler.start_autofill(force_all=force)
     if not started:
         return jsonify({'error': 'A job is already running. Cancel it first.'}), 409
     return jsonify({'ok': True, 'status': age_filler.get_status()})
+
+
+@app.route('/api/admin/diagnose_pipeline', methods=['GET'])
+@role_required('admin')
+def api_diagnose_pipeline():
+    """Trace one meet through the full age-fill pipeline and return JSON
+    showing what each step produced. Use to debug 'Not found' issues.
+
+    Query params:
+      ct_id    — swimmer's CT Swim id (required)
+      meet_id  — the m= number from a SwimmerAtMeet URL (required)
+      reset    — '1' to clear all 'no_pdf' cache entries before running
+    """
+    import ct_pdf
+    ct_id = request.args.get('ct_id', '').strip()
+    meet_id = request.args.get('meet_id', '').strip()
+    if not ct_id or not meet_id:
+        return jsonify({'error': 'ct_id and meet_id required'}), 400
+
+    out = {'ct_id': ct_id, 'meet_id': meet_id, 'steps': {}}
+
+    if request.args.get('reset') == '1':
+        with db.get_conn() as conn:
+            n = conn.execute(
+                "DELETE FROM meet_pdf_cache WHERE note = 'no_pdf'"
+            ).rowcount
+        out['cache_cleared'] = n
+
+    # Step 1: SwimmerAtMeet metadata
+    try:
+        meta = ct_pdf.fetch_swimmer_at_meet(ct_id, meet_id)
+        out['steps']['1_swimmer_at_meet'] = {
+            'success': meta is not None,
+            'meet_name': meta.get('meet_name') if meta else None,
+            'start_date': meta['start_date'].isoformat() if meta and meta.get('start_date') else None,
+            'end_date': meta['end_date'].isoformat() if meta and meta.get('end_date') else None,
+        }
+    except Exception as e:
+        out['steps']['1_swimmer_at_meet'] = {'success': False, 'error': str(e)}
+        return jsonify(out)
+
+    if not meta:
+        return jsonify(out)
+
+    # Step 2: Index scrape
+    try:
+        index = ct_pdf.scrape_results_index()
+        out['steps']['2_index_scrape'] = {
+            'success': bool(index),
+            'count': len(index),
+            'sample_urls': [p['url'] for p in index[:3]],
+        }
+    except Exception as e:
+        out['steps']['2_index_scrape'] = {'success': False, 'error': str(e)}
+        return jsonify(out)
+
+    # Step 3: Match PDF
+    try:
+        pdf = ct_pdf.find_pdf_for_meet(
+            meta.get('meet_name', ''),
+            meta.get('start_date'),
+            meta.get('end_date'),
+            index,
+        )
+        out['steps']['3_find_pdf'] = {
+            'success': pdf is not None,
+            'pdf_url': pdf['url'] if pdf else None,
+        }
+    except Exception as e:
+        out['steps']['3_find_pdf'] = {'success': False, 'error': str(e)}
+        return jsonify(out)
+
+    if not pdf:
+        return jsonify(out)
+
+    # Step 4: Download PDF
+    try:
+        body = ct_pdf.download_pdf(pdf['url'])
+        out['steps']['4_download'] = {
+            'success': body is not None,
+            'size_bytes': len(body) if body else 0,
+        }
+    except Exception as e:
+        out['steps']['4_download'] = {'success': False, 'error': str(e)}
+        return jsonify(out)
+
+    if not body:
+        return jsonify(out)
+
+    # Step 5: Parse PDF
+    try:
+        rows = ct_pdf.parse_results_pdf(body)
+        # Look for our team's swimmers in the parsed rows
+        ivy_rows = [r for r in rows if r['team'] == 'IVY']
+        out['steps']['5_parse'] = {
+            'success': True,
+            'total_rows': len(rows),
+            'ivy_rows': len(ivy_rows),
+            'sample_ivy': [
+                {'name': f"{r['first']} {r['last']}", 'age': r['age'],
+                 'gender': r['gender'], 'name_key': r['name_key']}
+                for r in ivy_rows[:5]
+            ],
+        }
+    except Exception as e:
+        out['steps']['5_parse'] = {
+            'success': False,
+            'error': f"{type(e).__name__}: {e}",
+        }
+
+    return jsonify(out)
 
 
 @app.route('/api/team_members/autofill_ages/status', methods=['GET'])
