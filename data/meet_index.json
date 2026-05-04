@@ -1,0 +1,1410 @@
+{
+  "fetched_at": "2026-05-04T20:49:43.166835+00:00",
+  "count": 351,
+  "rows": [
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Jan/010326oak_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Jan/010326zeus_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Jan/010326grit_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Dec/121625wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Dec/121325hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Dec/121225hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Dec/121225saq_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Dec/121225bull_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Dec/120725cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Dec/120525rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Nov/112825gywd_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Nov/112425cat_meet_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Nov/112125rst_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Nov/112225seal_meet_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Nov/112125what_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Nov/112125oak_meet_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Nov/112125glas_meet_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Nov/111425grit_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Nov/111425wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Nov/111425wrat_meet_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Nov/110925vsym_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Nov/110825hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Nov/110825rst_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Nov/110725rst_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Nov/110725cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Nov/110625rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Nov/110425wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Oct/102625hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Oct/102525lehy_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Oct/102425cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Oct/102425wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Oct/102425rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Oct/102425lehy_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Oct/101925rays_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Oct/101925oak_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Oct/101825cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Oct/101825wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Oct/101725cpac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Oct/101825fvyt_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Oct/101425rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Oct/101225nca_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Oct/101125rst_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Oct/101125what_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Oct/100325rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Sept/092725bull_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/Aug/080325nutmeggames_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/Age_Groups/072425_age_group_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/Regionals/071925cdog13o_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/Regionals/071925wyw12u_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/Regionals/071925rywc12u_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/Regionals/071925hhac13o_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/Regionals/071925lehy12u_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/Regionals/071825cdogdistance_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/July/071125what_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/Seniors/071025ctswim-senior_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/July/070225rst_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/CT_Open_Water/062825hhac_openwater_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/062825lehy_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/062725what_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/062725rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/062425wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/062225oak_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/062225hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/062025cac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/062025cpac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/061925zeus_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/061725wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/061425hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/061425eow_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/061325rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/061325cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/061225grit_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/061025wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/060725cat_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/060625cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/060625grym_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/060625wac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/June/060225rst_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/May/053025mac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/May/052925wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/May/052125rst_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/May/052025wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/May/051725cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/051625what_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/May/051525cpac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/May/051625grym_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/May/051525rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/May/051025rst_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/May/051525hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/May/050925wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/May/050925cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/May/050925wrat_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/May/050225zeus_meet_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/May/050225cac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/May/050625rywc_meet_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2025/April/040825rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Mar/032125rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Championships/031325agc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Championships/03092510u_champs_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Mar/031225what_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Championships/030125grym_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Championships/030125bull_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Championships/030125lehy_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Championships/030125cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Championships/030125hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Championships/022825cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Championships/022825bull_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Championships/022825grym_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Feb/022225rst_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Feb/021725wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Feb/021425bull_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Feb/020825vsym_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Feb/020825grit_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Feb/020825rst_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Feb/020725wac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Feb/020725wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Feb/020725cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Feb/020125hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Feb/020125grym_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Jan/013125hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Jan/012825gywd_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Jan/012525arac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Jan/012525seal_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Jan/012425arac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Jan/012425cpac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Jan/011725sys_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Jan/011725grym_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Jan/011725wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Jan/011025rst_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Jan/010725wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Jan/010425grit_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Jan/010325cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Dec/122124rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Dec/121424hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Dec/121324hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Dec/121324bull_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Dec/121224what_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Dec/120824cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Dec/120624rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Dec/120624cpac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Dec/120124mac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Nov/112324rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Nov/112324rst_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Nov/112224rst_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Nov/112224what_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Nov/112224oak_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Nov/112224glas_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Nov/112624seal_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Nov/111524wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Nov/111524wrat_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Nov/111024vsym_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Nov/110924rst_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Nov/110924hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Nov/110824nca_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Nov/110224grym_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Nov/110124cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Oct/102724what_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Oct/102724hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Oct/102624lehy_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Oct/102624rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Oct/102524lehy_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Oct/1025cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Oct/102024rays_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Oct/102024mac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Oct/101924cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Oct/101824grym_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Oct/101224fvyt_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Oct/101224rst_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Oct/100924rysc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2425/Oct/100624bull_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/Aug/080424nutmeg_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/Regionals/13-O/072024cdog_13o_reg_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/Regionals/13-O/072024saqq_13o_reg_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/Regionals/12-U/072024wyw_12u_reg_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/Regionals/12-U/072024lehy_12u_reg_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/Regionals/Friday/071924cdog_fri_reg_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/July/071224what_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/Seniors/071124ctswim_senior_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/July/070224rst_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/June/062924lehy_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/June/062824rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/June/062824WHAT_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/June/062524wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/June/062324hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/June/062124nc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/June/051824wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/June/061524mac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/June/061424grit_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/June/061424cpac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/June/051424rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/June/061124wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/June/060924fa_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/June/060824saq_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/June/060724wac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/June/060724grym_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/June/060724cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/June/060124cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/June/060124hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/May/053124cpac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/May/053124mac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/May/053124wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/May/052124wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/May/051824saq_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/May/051724grym_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/May/051724what_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/May/051624rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/May/051024cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/May/051324wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/May/050924rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/May/050424cpac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/May/050324oak_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/May/050324rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/042724saq_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2024/040924rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/March/032224rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Age_Groups/031424age_group_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/March/030924cpac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/March/030724what_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Regionals/030124lehyregional_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Regionals/030124rstregional_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Regionals/030224hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Regionals/030124grymregional_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Regionals/030124cdogregional_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Regionals/030124bull_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Regionals/030124grymfriday_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Regionals/030124cdogfridayregionals_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Feb/022524hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Feb/021824what_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Feb/021724mac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Feb/021724bull_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Feb/021324wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Feb/021624vsym_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Feb/021024what_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Feb/020924what_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Feb/020224cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Feb/020224oak_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Jan/013024wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Jan/012724arac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Jan/012724hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Jan/012624hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Jan/012624arac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Jan/012324wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Jan/012324gywd_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Jan/012024nca_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Jan/011924wrat_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Jan/011924nca_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Jan/011224sys_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Jan/011224cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Jan/011224cpac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Jan/010624rst_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Jan/010924rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Jan/010624grit_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Jan/010524seal_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Jan/010524seal_Dist_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Jan/010524cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Dec/121623hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Dec/121623rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Dec/121623what_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Dec/121523what_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Dec/121523hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Dec/121623fvyt_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Dec/121523bull_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Dec/121523wrat_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Dec/121223wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Dec/120823grit_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Dec/120323grym_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Dec/120123cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Dec/120123cpac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Dec/120123rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Nov/112623mac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Nov/112423gywd_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Nov/111823rst_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Nov/111823what_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Nov/111723what_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Nov/111723glas_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Nov/111723oak_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Nov/111223vsym_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Nov/111223rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Nov/110923hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Dec/111023ncy_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Nov/110923ncy_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Nov/110923cpac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Nov/110923wrat_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Nov/110923wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Nov/110323seal_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Nov/110323cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Oct/102823rst_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Oct/102923hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Oct/102823sys_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Oct/102723wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Oct/102723lehy_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Oct/102723cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Oct/102123mac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Oct/102123cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Oct/102123nca_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Oct/102123wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Oct/102023rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Oct/102023nca_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Oct/101523rays_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Oct/101423oak_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Oct/101423cpac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Oct/101323GRYM_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Oct/100823bull_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2324/Oct/100823wrat_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/July/2023_nutmeg_state_games_meet_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/July/072923nca_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/July/070123lehy_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/063023what_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/062323rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/062723nca-cac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/062323rywc_Rodney_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/062323cpac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/062223wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/061723hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/062623grit_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/061523wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/061023saq_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/060923wac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/060923cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/060923wrat_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/060923grym_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/060323bull_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/060323rst_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/060323cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/060323hhac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/060223rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/060223mac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/June/060123wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/May/052023saq_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/May/051923zeus_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/May/051923cpac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/May/052423rywc_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/May/051223wrat_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/May/051223nca_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/May/050623cdog_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/May/050523wyw_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/April/042923cpac_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/April/041523bull_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2023/April/041423bull_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2223/SC_Sr_Invite_Champs/030223ctswimsrivnite_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2223/SC_Regionals/022523bull_sat-sun_reg_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2223/SC_Regionals/022523hhac_regional_results.pdf",
+      "label": "HHAC Sat-Sun Regional Champs"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2223/SC_Regionals/022523lehy_regional_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2223/SC_Regionals/022523cdog_regional_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2223/SC_Regionals/022523rst_regional_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2223/SC_Regionals/022423bull_fri_regional_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2223/SC_Regionals/022423cdog_fri_regional_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2223/SC_Regionals/022423grym_fri_regional_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2223/Oct_Meets/100222bull_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC22/July_Meets/nutmeg_state_games_2022_results.pdf",
+      "label": ""
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC22/Championship_Meets/Age_Groups/2022_ct_lcag_full_results.pdf",
+      "label": ""
+    }
+  ]
+}
