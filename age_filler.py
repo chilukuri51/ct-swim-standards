@@ -12,6 +12,7 @@ Match swimmers by name (not strict team) so a club change like Simon Allegra
 FVYT → IVY still finds his historical FVYT swims.
 """
 
+import gc
 import json
 import os
 import threading
@@ -31,10 +32,13 @@ import ct_pdf
 import paths
 
 
-# Parallel PDF resolution within a single member. CT Swim has no rate
-# limit on /Customer-Content static PDFs, and 4 concurrent downloads
-# cuts a 7-min first-run to ~2 min.
-PDF_CONCURRENCY = 4
+# Parallel PDF resolution within a single member. Render Starter only
+# has 512 MB RAM; pdfplumber holds layout/word/line caches per loaded
+# PDF (~20-50 MB working set each), so we cap at 2 concurrent parses
+# to leave headroom for Flask + the rest of the app. With 2 workers,
+# first-run for a 48-meet swimmer is ~90s instead of ~50s @ 4 workers,
+# but stays comfortably under the memory cap.
+PDF_CONCURRENCY = 2
 
 
 # Polite delays between CT Swim requests inside the triangulation loop.
@@ -637,6 +641,11 @@ def _run(candidates, force_all: bool = False):
 
             with _lock:
                 _state.done = i + 1
+
+            # Free pdfplumber's per-PDF layout caches before the next
+            # member (Render Starter has only 512 MB RAM and we OOM'd
+            # without this).
+            gc.collect()
 
             if i < len(candidates) - 1:
                 if not _sleep_respecting_cancel(_next_delay()):
