@@ -18,6 +18,7 @@ from typing import Optional
 
 import requests
 import pdfplumber
+from bs4 import BeautifulSoup
 
 
 CT_SWIM_BASE = 'https://www.ctswim.org'
@@ -236,7 +237,15 @@ _SINGLE_DATE_RE = re.compile(r'(\d{1,2}/\d{1,2}/\d{4})')
 
 def fetch_swimmer_at_meet(swimmer_ct_id: str, ct_meet_id: str) -> Optional[dict]:
     """Hit SwimmerAtMeet.aspx → return {meet_name, start_date, end_date}.
-    Dates are date objects; meet_name is the cleaned event title."""
+    Dates are date objects; meet_name is the cleaned event title.
+
+    Uses BeautifulSoup so nested HTML inside Label4 (br/span/etc.) is
+    handled correctly. The label has three logical parts concatenated:
+      meet_name + location + date_range
+    e.g. '2025 CT LEHY 12U Regional Sat-SunEast Hartford, CT7/19/2025 - 7/20/2025'
+    We pull the date range first, then strip the trailing 'City, ST' as
+    location, and what remains is the meet name.
+    """
     if not swimmer_ct_id or not ct_meet_id:
         return None
     url = f'{CT_FAST_BASE}/SwimmerAtMeet.aspx?id={swimmer_ct_id}&m={ct_meet_id}'
@@ -247,41 +256,48 @@ def fetch_swimmer_at_meet(swimmer_ct_id: str, ct_meet_id: str) -> Optional[dict]
     except Exception:
         return None
 
-    # Cheap label extraction: find <span id="Label4"> ... </span> body.
-    m = re.search(
-        r'<span[^>]*id=["\']Label4["\'][^>]*>(.*?)</span>',
-        r.text, re.DOTALL | re.IGNORECASE
-    )
-    if not m:
+    soup = BeautifulSoup(r.text, 'html.parser')
+    # Try Label4 first, fall back to Label3 if absent (page layout varies
+    # for some older meets).
+    label_text = ''
+    for label_id in ('Label4', 'Label3'):
+        el = soup.find(id=label_id)
+        if not el:
+            continue
+        # get_text with a separator so "Sat-Sun<br>City" doesn't collapse
+        # into "Sat-SunCity"; we'll re-collapse whitespace below.
+        text = el.get_text(separator=' ', strip=True)
+        text = re.sub(r'\s+', ' ', text).strip()
+        if text and any(c.isdigit() for c in text):
+            label_text = text
+            break
+    if not label_text:
         return None
-    label = re.sub(r'<[^>]+>', '', m.group(1))   # strip nested tags
-    label = re.sub(r'\s+', ' ', label).strip()
 
-    # Pull dates first.
-    drm = _DATE_RANGE_RE.search(label)
+    # Pull dates first (range or single). meet_name keeps the full pre-date
+    # text including any "City, ST" location — extra keywords don't hurt
+    # the matcher, and trying to strip them by regex was producing wrong
+    # cuts (e.g. "2023 CT NCA Fall Invite" had its first "CT" mistaken
+    # for a state code).
+    drm = _DATE_RANGE_RE.search(label_text)
     if drm:
         start = parse_us_date(drm.group(1))
         end = parse_us_date(drm.group(2))
-        meet_name = label[:drm.start()].strip()
+        name = label_text[:drm.start()].strip()
     else:
-        sdm = _SINGLE_DATE_RE.search(label)
+        sdm = _SINGLE_DATE_RE.search(label_text)
         if not sdm:
-            return None
+            return {
+                'meet_name': label_text.strip(),
+                'start_date': None,
+                'end_date': None,
+            }
         start = parse_us_date(sdm.group(1))
         end = start
-        meet_name = label[:sdm.start()].strip()
-
-    # Strip trailing location ("…East Hartford, CT") — anything after a
-    # comma+state-code+CT is location, not meet name. Heuristic: find the
-    # last occurrence of a city-then-state pattern at the end of meet_name.
-    loc_strip = re.sub(
-        r'(?:[A-Z][A-Za-z\s]+?,\s*[A-Z]{2})\s*$', '', meet_name
-    ).strip()
-    if loc_strip:
-        meet_name = loc_strip
+        name = label_text[:sdm.start()].strip()
 
     return {
-        'meet_name': meet_name,
+        'meet_name': name,
         'start_date': start,
         'end_date': end,
     }
