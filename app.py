@@ -507,6 +507,40 @@ def api_autofill_ages_start():
     return jsonify({'ok': True, 'status': age_filler.get_status()})
 
 
+@app.route('/api/admin/diagnose_index', methods=['GET'])
+@role_required('admin')
+def api_diagnose_index():
+    """Show what ctswim.org/Meets/Results.aspx looks like from Render's
+    view — status code, body length, first 800 chars, and whether the
+    PDF-link regex finds anything."""
+    import requests as _req
+    import re as _re
+    import ct_pdf
+    page = request.args.get('page', '1')
+    url = f'https://www.ctswim.org/Meets/Results.aspx?page={page}'
+    out = {'url': url}
+    try:
+        r = _req.get(url, timeout=15, headers={'User-Agent': ct_pdf.USER_AGENT})
+        out['status_code'] = r.status_code
+        out['body_length'] = len(r.text)
+        out['body_head'] = r.text[:800]
+        # Count regex matches
+        matches = _re.findall(
+            r'href="([^"]*_results\.pdf)"', r.text, _re.IGNORECASE
+        )
+        out['pdf_matches'] = len(matches)
+        out['sample_matches'] = matches[:3]
+        # Also check for any pdf hrefs at all (in case URL pattern changed)
+        any_pdf = _re.findall(r'href="([^"]*\.pdf)"', r.text, _re.IGNORECASE)
+        out['any_pdf_links'] = len(any_pdf)
+        out['sample_any_pdf'] = any_pdf[:3]
+        # Headers may reveal Cloudflare / CDN behavior
+        out['response_headers'] = dict(r.headers)
+    except Exception as e:
+        out['error'] = f"{type(e).__name__}: {e}"
+    return jsonify(out)
+
+
 @app.route('/api/admin/diagnose_pipeline', methods=['GET'])
 @role_required('admin')
 def api_diagnose_pipeline():
