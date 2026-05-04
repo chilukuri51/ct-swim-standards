@@ -18,6 +18,7 @@ import threading
 import time
 import random
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, asdict, field
 from typing import Optional
 from datetime import datetime, date, timedelta, timezone
@@ -28,6 +29,12 @@ from bs4 import BeautifulSoup
 import db
 import ct_pdf
 import paths
+
+
+# Parallel PDF resolution within a single member. CT Swim has no rate
+# limit on /Customer-Content static PDFs, and 4 concurrent downloads
+# cuts a 7-min first-run to ~2 min.
+PDF_CONCURRENCY = 4
 
 
 # Polite delays between CT Swim requests inside the triangulation loop.
@@ -81,11 +88,16 @@ class FillerState:
         return int((self.done / self.total) * 100)
 
     def eta_seconds(self) -> int:
-        # Per swimmer first-run cost: index scrape (~30s once) + walk events
-        # + parse PDFs (~1-3 min depending on meet count). After cache warms
-        # up, subsequent swimmers reuse parsed PDFs and run in ~10-30s.
-        # Use 90s as a rough average — accurate enough to set expectations.
-        return int(max(0, self.total - self.done) * 90)
+        # First swimmer pays the cache-cold cost: ~50 meet PDFs × ~3s
+        # (parallelized at 4-wide) ≈ 40-60s. Each subsequent swimmer
+        # mostly hits cache, so ~10s. Estimate accordingly: cap remaining
+        # cold cost at 60s for the next member, 10s after that.
+        remaining = max(0, self.total - self.done)
+        if remaining == 0:
+            return 0
+        # Heuristic: first remaining = cold (60s), rest = warm (10s each).
+        cold = 60 if self.pdfs_parsed == 0 else 10
+        return int(cold + max(0, remaining - 1) * 10)
 
 
 _state = FillerState()
@@ -197,15 +209,15 @@ def _fetch_event_history_meets(history_url: str) -> list:
 
 def _gather_meet_history(member: dict) -> list:
     """Collect all unique (ct_meet_id, date) tuples for this swimmer.
-    Reads cached event_history first; falls back to live fetches for any
-    missing event histories."""
+    Reads cached event_history first; parallelizes live fetches for any
+    missing event histories (4 concurrent — ~7s for 26 events vs ~26s
+    sequential)."""
     out = {}  # ct_meet_id -> date_str (keep latest seen)
     # Cached path first (fast): use any (ct_meet_id, date) already in DB.
     for r in db.get_member_meet_history(member['id']):
         if r['ct_meet_id']:
             out[r['ct_meet_id']] = r['date']
 
-    # Walk best-times to find events whose history we haven't fetched yet.
     ct_id = member.get('ct_id')
     if not ct_id:
         return [{'ct_meet_id': mid, 'date': dstr} for mid, dstr in out.items()]
@@ -213,6 +225,8 @@ def _gather_meet_history(member: dict) -> list:
     if not bt:
         return [{'ct_meet_id': mid, 'date': dstr} for mid, dstr in out.items()]
 
+    # Split into cached (fast) vs need-to-fetch (parallelized).
+    to_fetch = []
     for ev in bt.get('events', []):
         hu = ev.get('history_url')
         if not hu:
@@ -224,9 +238,14 @@ def _gather_meet_history(member: dict) -> list:
                 if mid:
                     out.setdefault(mid, h.get('date', ''))
             continue
-        # Not cached — fetch
+        to_fetch.append(ev)
+
+    if not to_fetch:
+        return [{'ct_meet_id': mid, 'date': dstr} for mid, dstr in out.items()]
+
+    def _fetch_and_save(ev):
+        hu = ev.get('history_url')
         rows = _fetch_event_history_meets(hu)
-        # Persist what we found so future runs are fast.
         if rows:
             try:
                 db.save_event_history(
@@ -236,9 +255,12 @@ def _gather_meet_history(member: dict) -> list:
                 )
             except Exception:
                 pass
-        for r in rows:
-            out.setdefault(r['ct_meet_id'], r['date'])
-        time.sleep(_next_delay())
+        return rows
+
+    with ThreadPoolExecutor(max_workers=PDF_CONCURRENCY) as executor:
+        for rows in executor.map(_fetch_and_save, to_fetch):
+            for r in rows:
+                out.setdefault(r['ct_meet_id'], r['date'])
 
     return [{'ct_meet_id': mid, 'date': dstr} for mid, dstr in out.items()]
 
@@ -364,7 +386,12 @@ def _resolve_meet_pdf(swimmer_ct_id: str, ct_meet_id: str) -> Optional[dict]:
 
 def _process_member(member: dict, force_all: bool = False) -> dict:
     """Walk one swimmer's meets, look up age in each parsed PDF, triangulate.
-    Returns a status tag dict the runner records into FillerState."""
+
+    Per-meet PDF resolution runs in a ThreadPoolExecutor (PDF_CONCURRENCY
+    workers) since the bottleneck is I/O (network downloads + pdfplumber
+    parses) and ctswim.org's static PDFs have no rate limit. SQLite
+    connections are per-call so concurrent writes serialize cleanly.
+    """
     name_key = ct_pdf.normalize_name(
         member.get('first_name', ''), member.get('last_name', '')
     )
@@ -378,31 +405,56 @@ def _process_member(member: dict, force_all: bool = False) -> dict:
         db.save_member_triangulation(member['id'])
         return {'status': 'not_found'}
 
+    # Filter to only meets with valid date + meet_id BEFORE parallelizing.
+    valid_meets = []
+    for m in meets:
+        if not m.get('ct_meet_id'):
+            continue
+        if not ct_pdf.parse_us_date(m.get('date', '')):
+            continue
+        valid_meets.append(m)
+
+    total = len(valid_meets)
     records = []
     observed_age = None
     observed_gender = None
-    total_meets = len(meets)
-    for idx, m in enumerate(meets):
-        if not m.get('ct_meet_id'):
-            continue
-        meet_date = ct_pdf.parse_us_date(m.get('date', ''))
-        if not meet_date:
-            continue
-        with _lock:
-            if _state.cancelled:
-                break
-            _state.current = f'{full_name}: meet {idx+1}/{total_meets}'
-        cache = _resolve_meet_pdf(member['ct_id'], m['ct_meet_id'])
-        if not cache or not cache.get('parsed_at'):
-            continue
-        hit = db.lookup_swimmer_age_at_meet(m['ct_meet_id'], name_key)
-        if not hit:
-            continue
-        records.append({'age': hit['age'], 'meet_date': meet_date})
-        if observed_age is None or meet_date > _record_date_max(records[:-1]):
-            observed_age = hit['age']
-            observed_gender = hit.get('gender')
-        time.sleep(_next_delay() / 4)
+
+    if total == 0:
+        db.save_member_triangulation(member['id'])
+        return {'status': 'not_found'}
+
+    def _resolve_one(meet):
+        """Worker: resolve one meet's PDF, return (meet, cache_row) tuple."""
+        try:
+            cache = _resolve_meet_pdf(member['ct_id'], meet['ct_meet_id'])
+        except Exception:
+            cache = None
+        return meet, cache
+
+    completed = 0
+    with ThreadPoolExecutor(max_workers=PDF_CONCURRENCY) as executor:
+        futures = {executor.submit(_resolve_one, m): m for m in valid_meets}
+        for fut in as_completed(futures):
+            with _lock:
+                if _state.cancelled:
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    break
+            completed += 1
+            with _lock:
+                _state.current = f'{full_name}: meet {completed}/{total}'
+            meet, cache = fut.result()
+            if not cache or not cache.get('parsed_at'):
+                continue
+            hit = db.lookup_swimmer_age_at_meet(meet['ct_meet_id'], name_key)
+            if not hit:
+                continue
+            meet_date = ct_pdf.parse_us_date(meet['date'])
+            records.append({'age': hit['age'], 'meet_date': meet_date})
+            # Track most-recent observation for age_observed/gender backfill
+            most_recent = max((r['meet_date'] for r in records), default=date(1900, 1, 1))
+            if meet_date >= most_recent:
+                observed_age = hit['age']
+                observed_gender = hit.get('gender')
 
     if not records:
         db.save_member_triangulation(member['id'])
@@ -438,12 +490,6 @@ def _process_member(member: dict, force_all: bool = False) -> dict:
         'gender_filled': gender_filled,
         'samples': tri.get('samples'),
     }
-
-
-def _record_date_max(records):
-    if not records:
-        return date(1900, 1, 1)
-    return max(r['meet_date'] for r in records)
 
 
 # ===== Selection logic + job orchestration =====
