@@ -149,20 +149,36 @@ def find_pdf_for_meet(
 
 # ===== PDF parsing =====
 
-# pypdf extracts Hy-Tek result rows in this order (different from how the
-# columns are laid out visually): "TEAM-CT  AGE Last, First<rank> Time"
-# Examples actually seen on CT meet PDFs:
-#   "IVY -CT  9Chilukuri, Saanvi12 41.18"
-#   "HHAC-CT 10Destefano, Mackenzie1 36.12"
-# Note: short team codes get padded with a space before -CT ("IVY -CT").
-# Age is jammed up against last name; rank is jammed up against first name.
-# pdfplumber preserved the visual column order but uses ~4x more memory,
-# so we accept this layout and shape the regex to match it.
-_PDF_ROW_RE = re.compile(
+# CT meet result PDFs come in (at least) two formats, depending on the
+# Hy-Tek version + how pypdf reorders columns:
+#
+# Format A — newer LC Regional / SC Champ meets (LEHY 2025):
+#   "HHAC-CT 10Destefano, Mackenzie1 36.12   7"
+#   = TEAM-CT AGE Last, First<rank> Time [points]
+#
+# Format B — older / dual-meet style (NCA 2023):
+#   "IVY -CT  73 24.46Chilukuri, Saanvi"
+#   "NCA-CT  81 17.31Ensling, Delaney M"
+#   = TEAM-CT AGE<rank> Time Last, First [middle-initial]
+#
+# Both have TEAM-CT and "Last, First" — only the position of the time/
+# rank differs. We try Format A first (it has the cleaner anchor of
+# `,\s+First\d`), then Format B for lines that didn't match.
+_PDF_ROW_A_RE = re.compile(
     r"\b([A-Z]{2,6})\s*-CT\s+"                                # team
     r"(\d{1,2})"                                              # age (jammed)
     r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*),\s+"       # last
     r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*)\d"         # first + start of rank
+)
+# Format B: time has digits + period or colon, optionally preceded by minutes;
+# also allows DQ/NS/--- markers. Name is at the end with optional initial.
+_PDF_ROW_B_RE = re.compile(
+    r"\b([A-Z]{2,6})\s*-CT\s+"                                # team
+    r"(\d{1,2})"                                              # age (jammed)
+    r"\d{1,2}\s+"                                             # rank
+    r"(?:\d+:\d+\.\d+|\d+\.\d+|---|DQ|NS|DFS|SCR)\s*"         # time / status
+    r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*),\s+"       # last
+    r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z](?:\s|$))?)"               # first + opt initial
 )
 _GENDER_HEADER_RE = re.compile(
     r"\b(Girls|Boys|Women|Men|Mixed)\s+\d", re.IGNORECASE
@@ -173,12 +189,12 @@ def parse_results_pdf(path_or_bytes) -> list[dict]:
     """Parse one Hy-Tek result PDF using pypdf (lighter than pdfplumber:
     ~37 MB peak vs ~154 MB, important on Render Starter's 512 MB cap).
 
-    Returns one dict per swimmer-event row:
-      {first, last, name_key, age, team, gender}
+    Tries both Format A (newer, name-before-time) and Format B (older,
+    time-before-name) regexes per line. Returns one dict per swimmer-
+    event row: {first, last, name_key, age, team, gender}.
 
-    Same swimmer appears once per event in the meet — callers that want
-    one row per swimmer should dedupe by name_key (the lookup helper
-    `lookup_swimmer_age_at_meet` already returns a single row).
+    Gender comes from the most recent "Girls 10 & Under"-style header
+    seen above the row in the extracted text.
     """
     out = []
     if isinstance(path_or_bytes, (bytes, bytearray)):
@@ -193,12 +209,30 @@ def parse_results_pdf(path_or_bytes) -> list[dict]:
             g = _GENDER_HEADER_RE.search(line)
             if g:
                 current_gender = g.group(1)[0].upper()
-            for m in _PDF_ROW_RE.finditer(line):
+            # Try Format A first
+            matched_spans = []
+            for m in _PDF_ROW_A_RE.finditer(line):
                 team, age, last, first = m.groups()
                 out.append({
-                    'first': first,
-                    'last': last,
-                    'name_key': normalize_name(first, last),
+                    'first': first.strip(),
+                    'last': last.strip(),
+                    'name_key': normalize_name(first.strip(), last.strip()),
+                    'age': int(age),
+                    'team': team,
+                    'gender': current_gender,
+                })
+                matched_spans.append(m.span())
+            # Then Format B in any spans Format A didn't claim
+            for m in _PDF_ROW_B_RE.finditer(line):
+                if any(s <= m.start() < e for s, e in matched_spans):
+                    continue
+                team, age, last, first = m.groups()
+                # Strip trailing single-letter initial like "Delaney M"
+                first_clean = re.sub(r'\s+[A-Z]$', '', first.strip())
+                out.append({
+                    'first': first_clean,
+                    'last': last.strip(),
+                    'name_key': normalize_name(first_clean, last.strip()),
                     'age': int(age),
                     'team': team,
                     'gender': current_gender,

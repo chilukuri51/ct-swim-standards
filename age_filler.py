@@ -176,10 +176,10 @@ def _http_get(url: str, timeout: int = 15) -> Optional[str]:
 
 
 def _fetch_event_history_meets(history_url: str) -> list:
-    """Fetch one event-history page and extract (date, ct_meet_id) tuples
-    from each row's [Meet] link. The cached event_history table is
-    refreshed by app.ct_fetch_event_history during regular fetches; we
-    parse fresh here too in case caches are stale."""
+    """Fetch one event-history page and extract a full row per swim:
+    {time, swim_type, date, ct_meet_id}. We capture every column the
+    Profile-modal event-progression UI needs so age_filler's save
+    doesn't blow away time/meet data when it caches the page."""
     if not history_url:
         return []
     html = _http_get(f"{CT_FAST_BASE}/{history_url}")
@@ -198,13 +198,22 @@ def _fetch_event_history_meets(history_url: str) -> list:
             cells = row.find_all('td')
             if len(cells) < 4:
                 continue
+            time_val = cells[0].get_text(strip=True)
+            swim_type = cells[1].get_text(strip=True)
             date_str = cells[2].get_text(strip=True)
             link = cells[3].find('a', href=True)
-            if not link:
-                continue
-            m = re.search(r'm=(\d+)', link['href'])
-            if m:
-                out.append({'date': date_str, 'ct_meet_id': m.group(1)})
+            meet_id = ''
+            if link:
+                m = re.search(r'm=(\d+)', link['href'])
+                if m:
+                    meet_id = m.group(1)
+            if time_val and time_val != 'Time':
+                out.append({
+                    'time': time_val,
+                    'swim_type': swim_type,
+                    'date': date_str,
+                    'ct_meet_id': meet_id,
+                })
         break
     return out
 
@@ -252,8 +261,9 @@ def _gather_meet_history(member: dict) -> list:
             try:
                 db.save_event_history(
                     hu, ct_id, ev.get('event', ''),
-                    [{'time': '', 'meet': '', 'date': r['date'],
-                      'ct_meet_id': r['ct_meet_id']} for r in rows]
+                    [{'time': r['time'], 'meet': r['swim_type'],
+                      'date': r['date'], 'ct_meet_id': r['ct_meet_id']}
+                     for r in rows]
                 )
             except Exception:
                 pass
