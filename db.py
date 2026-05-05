@@ -124,9 +124,14 @@ CREATE INDEX IF NOT EXISTS idx_meet_pdf_sw_lookup
 
 @contextmanager
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
+    # timeout=30 lets concurrent writers wait up to 30s for the write
+    # lock instead of immediately raising "database is locked". Combined
+    # with WAL mode (set in init_db), this lets the 4-wide age_filler
+    # thread pool save concurrently without dropping rows.
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA busy_timeout = 30000")
     try:
         yield conn
         conn.commit()
@@ -136,6 +141,10 @@ def get_conn():
 
 def init_db():
     with get_conn() as conn:
+        # WAL mode: allow concurrent reads + serialized writes without
+        # raising "database is locked" under thread contention. Persists
+        # across connections once set.
+        conn.execute("PRAGMA journal_mode = WAL")
         conn.executescript(SCHEMA)
         # Add roster column to existing DBs (no-op if it already exists)
         try:

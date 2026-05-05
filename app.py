@@ -507,6 +507,89 @@ def api_autofill_ages_start():
     return jsonify({'ok': True, 'status': age_filler.get_status()})
 
 
+@app.route('/api/admin/diagnose_member', methods=['GET'])
+@role_required('admin')
+def api_diagnose_member():
+    """Show full age-fill state for one swimmer in a single response.
+
+    Query: GET /api/admin/diagnose_member?name=Chilukuri
+    """
+    import ct_pdf as _ctp
+    name_q = (request.args.get('name') or '').strip()
+    if not name_q:
+        return jsonify({'error': 'name= query required'}), 400
+
+    out = {'query': name_q}
+
+    # 1. team_member row(s) matching name
+    with db.get_conn() as conn:
+        rows = conn.execute(
+            "SELECT id, first_name, last_name, gender, birth_year, "
+            "birth_month, age_observed, age_window_days, age_synced_at, "
+            "ct_id FROM team_members WHERE last_name LIKE ? OR first_name LIKE ?",
+            (f"%{name_q}%", f"%{name_q}%")
+        ).fetchall()
+    out['team_members'] = [dict(r) for r in rows]
+    if not rows:
+        return jsonify(out)
+
+    member = dict(rows[0])
+    out['target'] = f"{member['first_name']} {member['last_name']}"
+    name_key = _ctp.normalize_name(member['first_name'], member['last_name'])
+    out['name_key'] = name_key
+
+    # 2. event_history meet_id distribution
+    with db.get_conn() as conn:
+        eh = conn.execute(
+            "SELECT COUNT(*) AS total, "
+            "SUM(CASE WHEN ct_meet_id IS NOT NULL AND ct_meet_id != '' THEN 1 ELSE 0 END) AS with_mid "
+            "FROM event_history WHERE swimmer_ct_id = ?",
+            (member.get('ct_id'),)
+        ).fetchone()
+    out['event_history'] = dict(eh)
+
+    # 3. distinct meets we know about for this swimmer
+    distinct_meets = db.get_member_meet_history(member['id'])
+    out['distinct_meets_count'] = len(distinct_meets)
+
+    # 4. meet_pdf_cache state for those meets
+    if distinct_meets:
+        ids = [m['ct_meet_id'] for m in distinct_meets]
+        placeholders = ','.join('?' * len(ids))
+        with db.get_conn() as conn:
+            cache_rows = conn.execute(
+                f"SELECT ct_meet_id, parsed_at, note FROM meet_pdf_cache "
+                f"WHERE ct_meet_id IN ({placeholders})", ids
+            ).fetchall()
+        cache_dict = {r['ct_meet_id']: dict(r) for r in cache_rows}
+        out['cache_summary'] = {
+            'total_meets_for_swimmer': len(ids),
+            'in_cache': len(cache_dict),
+            'parsed': sum(1 for r in cache_rows if r['parsed_at']),
+            'no_pdf': sum(1 for r in cache_rows if r['note'] == 'no_pdf'),
+            'no_meta': sum(1 for r in cache_rows if r['note'] == 'no_meta'),
+            'other_note': sum(1 for r in cache_rows
+                              if r['note'] and r['note'] not in ('no_pdf', 'no_meta')),
+        }
+
+    # 5. swimmer rows in meet_pdf_swimmers (the actual triangulation source)
+    with db.get_conn() as conn:
+        sw_rows = conn.execute(
+            "SELECT ct_meet_id, age, gender, team FROM meet_pdf_swimmers "
+            "WHERE name_key = ? ORDER BY ct_meet_id",
+            (name_key,)
+        ).fetchall()
+    out['parsed_swimmer_rows'] = [dict(r) for r in sw_rows]
+    out['parsed_swimmer_count'] = len(sw_rows)
+    if sw_rows:
+        ages = sorted({r['age'] for r in sw_rows})
+        genders = sorted({r['gender'] or '' for r in sw_rows})
+        teams = sorted({r['team'] or '' for r in sw_rows})
+        out['parsed_summary'] = {'ages': ages, 'genders': genders, 'teams': teams}
+
+    return jsonify(out)
+
+
 @app.route('/api/admin/diagnose_index', methods=['GET'])
 @role_required('admin')
 def api_diagnose_index():

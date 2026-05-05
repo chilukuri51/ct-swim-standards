@@ -436,12 +436,12 @@ def _process_member(member: dict, force_all: bool = False) -> dict:
         return {'status': 'not_found'}
 
     def _resolve_one(meet):
-        """Worker: resolve one meet's PDF, return (meet, cache_row) tuple."""
+        """Worker: resolve one meet's PDF, return (meet, cache_row, err) tuple."""
         try:
             cache = _resolve_meet_pdf(member['ct_id'], meet['ct_meet_id'])
-        except Exception:
-            cache = None
-        return meet, cache
+            return meet, cache, None
+        except Exception as e:
+            return meet, None, f"{type(e).__name__}: {e}"
 
     completed = 0
     with ThreadPoolExecutor(max_workers=PDF_CONCURRENCY) as executor:
@@ -454,7 +454,16 @@ def _process_member(member: dict, force_all: bool = False) -> dict:
             completed += 1
             with _lock:
                 _state.current = f'{full_name}: meet {completed}/{total}'
-            meet, cache = fut.result()
+            meet, cache, err = fut.result()
+            if err:
+                # Surface the first few worker errors — silent skips were
+                # masking SQLite "database is locked" failures under load.
+                with _lock:
+                    if len(_state.errors) < 5:
+                        _state.errors.append(
+                            f"{full_name} meet {meet.get('ct_meet_id')}: {err}"
+                        )
+                continue
             if not cache or not cache.get('parsed_at'):
                 continue
             hit = db.lookup_swimmer_age_at_meet(meet['ct_meet_id'], name_key)
