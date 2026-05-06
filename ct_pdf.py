@@ -165,16 +165,25 @@ def find_pdf_for_meet(
 # rank differs. We try Format A first (it has the cleaner anchor of
 # `,\s+First\d`), then Format B for lines that didn't match.
 _PDF_ROW_A_RE = re.compile(
+    # pypdf renders the same PDF differently across environments:
+    # - Locally (Mac): age and last name jammed → "10Destefano"
+    # - Render (Linux): age and last name spaced → "10 Destefano"
+    # - 1-digit rank jammed to first name → "Mackenzie1"
+    # - 2-digit rank spaced from first name → "Trinity 10"
+    # - Tied placings get '*' prefix → "Emma *14"
+    # - Multi-word first names exist → "Ava Rose"
+    # \s* between fields handles both spacings; \*? handles tie markers.
     r"\b([A-Z]{2,6})\s*-CT\s+"                                # team
-    r"(\d{1,2})"                                              # age (jammed)
-    r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*),\s+"       # last
-    r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*)\d"         # first + start of rank
+    r"(\d{1,2})\s*"                                           # age + opt whitespace
+    r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*),\s+"       # last (multi-word)
+    r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*)"           # first (multi-word)
+    r"\s*\*?\d"                                                # opt space + opt '*' + rank digit
 )
-# Format B: time has digits + period or colon, optionally preceded by minutes;
-# also allows DQ/NS/--- markers. Name is at the end with optional initial.
+# Format B: name comes AFTER time (older NCA-style PDFs). Same spacing
+# flexibility as Format A.
 _PDF_ROW_B_RE = re.compile(
     r"\b([A-Z]{2,6})\s*-CT\s+"                                # team
-    r"(\d{1,2})"                                              # age (jammed)
+    r"(\d{1,2})\s*"                                           # age + opt space
     r"\d{1,2}\s+"                                             # rank
     r"(?:\d+:\d+\.\d+|\d+\.\d+|---|DQ|NS|DFS|SCR)\s*"         # time / status
     r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*),\s+"       # last
