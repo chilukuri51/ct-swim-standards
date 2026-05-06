@@ -590,6 +590,58 @@ def api_diagnose_member():
     return jsonify(out)
 
 
+@app.route('/api/admin/diagnose_parser', methods=['GET'])
+@role_required('admin')
+def api_diagnose_parser():
+    """Run pypdf against a known-good PDF and return raw extracted text +
+    versions. If text comes back empty here, pypdf's extract_text is the
+    problem; if text comes back populated but our regex finds 0 matches,
+    the regex is the problem."""
+    import sys as _sys
+    import requests as _req
+    import io as _io
+    import ct_pdf as _ctp
+
+    out = {
+        'python_version': _sys.version,
+    }
+
+    # pypdf version
+    try:
+        import pypdf as _pypdf
+        out['pypdf_version'] = getattr(_pypdf, '__version__', 'unknown')
+    except Exception as e:
+        out['pypdf_version'] = f"import failed: {e}"
+        return jsonify(out)
+
+    # Download known-good PDF (LEHY 2025)
+    pdf_url = ('https://www.ctswim.org/Customer-Content/www/Meets/'
+               'LC2025/Regionals/071925lehy12u_results.pdf')
+    r = _req.get(pdf_url, timeout=30, headers={'User-Agent': _ctp.USER_AGENT})
+    out['pdf_size'] = len(r.content)
+    out['pdf_is_pdf'] = r.content[:8].decode('ascii', errors='replace')
+
+    # Run pypdf directly
+    try:
+        from pypdf import PdfReader
+        reader = PdfReader(_io.BytesIO(r.content))
+        out['pdf_pages'] = len(reader.pages)
+        first_page_text = reader.pages[0].extract_text() or ''
+        out['first_page_text_len'] = len(first_page_text)
+        out['first_page_text_head'] = first_page_text[:1500]
+        # Count regex matches
+        a_matches = _ctp._PDF_ROW_A_RE.findall(first_page_text)
+        b_matches = _ctp._PDF_ROW_B_RE.findall(first_page_text)
+        out['format_a_matches'] = len(a_matches)
+        out['format_b_matches'] = len(b_matches)
+        out['sample_a_match'] = a_matches[0] if a_matches else None
+        out['sample_b_match'] = b_matches[0] if b_matches else None
+    except Exception as e:
+        out['parse_error'] = f"{type(e).__name__}: {e}"
+
+    return jsonify(out)
+
+
 @app.route('/api/admin/diagnose_index', methods=['GET'])
 @role_required('admin')
 def api_diagnose_index():
