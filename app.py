@@ -614,9 +614,28 @@ def api_diagnose_parser():
         out['pypdf_version'] = f"import failed: {e}"
         return jsonify(out)
 
-    # Download known-good PDF (LEHY 2025)
-    pdf_url = ('https://www.ctswim.org/Customer-Content/www/Meets/'
-               'LC2025/Regionals/071925lehy12u_results.pdf')
+    # Either ?meet_id=NNNN to use the cached meet's PDF, or ?url=... to
+    # test any arbitrary URL, or fall back to the LEHY 2025 known-good.
+    meet_id = (request.args.get('meet_id') or '').strip()
+    custom_url = (request.args.get('url') or '').strip()
+    if meet_id:
+        cache_row = db.get_meet_cache(meet_id)
+        if not cache_row or not cache_row.get('pdf_url'):
+            return jsonify({**out, 'error':
+                f'meet_id {meet_id} not in meet_pdf_cache or has no pdf_url'})
+        pdf_url = cache_row['pdf_url']
+        if not pdf_url.startswith('http'):
+            pdf_url = 'https://www.ctswim.org' + pdf_url
+        out['source'] = f'meet_id {meet_id}'
+    elif custom_url:
+        pdf_url = custom_url
+        out['source'] = 'custom url'
+    else:
+        pdf_url = ('https://www.ctswim.org/Customer-Content/www/Meets/'
+                   'LC2025/Regionals/071925lehy12u_results.pdf')
+        out['source'] = 'LEHY 2025 (default)'
+    out['pdf_url'] = pdf_url
+
     r = _req.get(pdf_url, timeout=30, headers={'User-Agent': _ctp.USER_AGENT})
     out['pdf_size'] = len(r.content)
     out['pdf_is_pdf'] = r.content[:8].decode('ascii', errors='replace')
@@ -626,16 +645,30 @@ def api_diagnose_parser():
         from pypdf import PdfReader
         reader = PdfReader(_io.BytesIO(r.content))
         out['pdf_pages'] = len(reader.pages)
-        first_page_text = reader.pages[0].extract_text() or ''
-        out['first_page_text_len'] = len(first_page_text)
-        out['first_page_text_head'] = first_page_text[:1500]
-        # Count regex matches
-        a_matches = _ctp._PDF_ROW_A_RE.findall(first_page_text)
-        b_matches = _ctp._PDF_ROW_B_RE.findall(first_page_text)
+        # Extract all pages so we can find specific names anywhere in the doc
+        all_text = '\n'.join((p.extract_text() or '') for p in reader.pages)
+        out['total_text_len'] = len(all_text)
+        out['first_page_head'] = (reader.pages[0].extract_text() or '')[:1500]
+
+        # If a name= filter is given, dump every line that contains it
+        name = (request.args.get('name') or '').strip()
+        if name:
+            lines = [ln for ln in all_text.split('\n') if name.lower() in ln.lower()]
+            out['lines_matching_name'] = lines[:20]
+
+        # Count regex matches across the whole doc
+        a_matches = _ctp._PDF_ROW_A_RE.findall(all_text)
+        b_matches = _ctp._PDF_ROW_B_RE.findall(all_text)
         out['format_a_matches'] = len(a_matches)
         out['format_b_matches'] = len(b_matches)
+        # Show a sample to verify the regex shape
         out['sample_a_match'] = a_matches[0] if a_matches else None
         out['sample_b_match'] = b_matches[0] if b_matches else None
+
+        # Run the actual parser to confirm what it produces
+        rows = _ctp.parse_results_pdf(r.content)
+        out['parsed_total'] = len(rows)
+        out['parsed_ivy'] = sum(1 for x in rows if x['team'] == 'IVY')
     except Exception as e:
         out['parse_error'] = f"{type(e).__name__}: {e}"
 

@@ -282,17 +282,32 @@ def _extract_name_only(full_label):
 # ===== Event history =====
 
 def get_event_history(history_url):
+    """Return event history rows. The 'meet' field is the actual meet
+    name (from meet_pdf_cache.meet_name) when we've parsed that meet's
+    PDF; otherwise falls back to swim_type ('Finals'/'Prelims') so the
+    UI never shows nothing."""
     with get_conn() as conn:
-        rows = conn.execute(
-            "SELECT time, swim_type, date, ct_meet_id FROM event_history "
-            "WHERE history_url = ? ORDER BY id",
-            (history_url,)
-        ).fetchall()
+        rows = conn.execute("""
+            SELECT eh.time, eh.swim_type, eh.date, eh.ct_meet_id,
+                   m.meet_name
+            FROM event_history eh
+            LEFT JOIN meet_pdf_cache m ON m.ct_meet_id = eh.ct_meet_id
+            WHERE eh.history_url = ?
+            ORDER BY eh.id
+        """, (history_url,)).fetchall()
     if not rows:
         return None
-    return [{'time': r['time'], 'meet': r['swim_type'] or '',
-             'date': r['date'] or '',
-             'ct_meet_id': r['ct_meet_id'] or ''} for r in rows]
+    out = []
+    for r in rows:
+        meet_name = (r['meet_name'] or '').strip() or (r['swim_type'] or '')
+        out.append({
+            'time': r['time'],
+            'meet': meet_name,
+            'swim_type': r['swim_type'] or '',
+            'date': r['date'] or '',
+            'ct_meet_id': r['ct_meet_id'] or '',
+        })
+    return out
 
 
 def get_member_meet_history(member_id: int):
@@ -460,26 +475,40 @@ def _safe_get(row, key):
 
 
 def _compute_age(row):
-    """Compute age using (in priority order):
-      1. birth_year + birth_month  — coach-entered, exact
-      2. age_observed + age_observed_at — scraped from CT Swim, drift-corrected
+    """Compute age in priority order:
+      1. birth_year + birth_month — full info, exact computation
+      2. age_observed + age_observed_at — most recent championship-age
+         observation, drift-corrected by elapsed time. Used when birth_month
+         is unknown because the July-midpoint fallback gives wrong answers
+         for swimmers with birthdays in early-spring or late-fall.
+      3. birth_year only — last-resort July midpoint
     Returns int or None.
     """
     today = _date.today()
     by = _safe_get(row, 'birth_year')
     bm = _safe_get(row, 'birth_month')
-    if by:
-        bm = int(bm) if bm else 7  # midpoint of year if month unknown
-        return max(0, today.year - int(by) - (today.month < bm))
     obs = _safe_get(row, 'age_observed')
     obs_at = _safe_get(row, 'age_observed_at')
+
+    # Priority 1: full birth info
+    if by and bm:
+        return max(0, today.year - int(by) - (today.month < int(bm)))
+
+    # Priority 2: recent observed age (preferred over year-only guess
+    # because a fresh observation already encodes the championship-age
+    # rule from a real meet)
     if obs is not None and obs_at:
         try:
             d = _date.fromisoformat(str(obs_at)[:10])
             years_since = today.year - d.year - ((today.month, today.day) < (d.month, d.day))
             return max(0, int(obs) + max(0, years_since))
         except (ValueError, TypeError):
-            return None
+            pass
+
+    # Priority 3: birth_year only — last-resort July midpoint
+    if by:
+        return max(0, today.year - int(by) - (today.month < 7))
+
     return None
 
 
