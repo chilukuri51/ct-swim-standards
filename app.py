@@ -507,6 +507,52 @@ def api_autofill_ages_start():
     return jsonify({'ok': True, 'status': age_filler.get_status()})
 
 
+@app.route('/api/admin/register_meet_pdf', methods=['POST'])
+@role_required('admin')
+def api_register_meet_pdf():
+    """Manually link a CT Swim meet to its result PDF when it isn't on
+    Results.aspx (e.g. championship meets that get filed under a separate
+    /CT_Age_Groups/ subdirectory).
+
+    POST JSON: {"meet_id": "7102", "pdf_url": "/Customer-Content/..."}
+
+    Side effects: writes the URL to meet_pdf_cache, downloads + parses
+    the PDF, populates meet_pdf_swimmers, and clears note='no_pdf' so the
+    next age-fill run picks it up.
+    """
+    import ct_pdf as _ctp
+    from datetime import datetime, timezone
+    body = request.json or {}
+    meet_id = (body.get('meet_id') or '').strip()
+    pdf_url = (body.get('pdf_url') or '').strip()
+    if not meet_id or not pdf_url:
+        return jsonify({'error': 'meet_id and pdf_url required'}), 400
+
+    pdf_bytes = _ctp.download_pdf(pdf_url)
+    if not pdf_bytes:
+        return jsonify({'error': 'PDF download failed', 'pdf_url': pdf_url}), 502
+
+    try:
+        rows = _ctp.parse_results_pdf(pdf_bytes)
+    except Exception as e:
+        return jsonify({'error': f'parse failed: {type(e).__name__}: {e}'}), 500
+
+    # Save to cache + swimmers
+    db.save_meet_cache(
+        meet_id, pdf_url=pdf_url,
+        parsed_at=datetime.now(timezone.utc).isoformat(),
+        note=None,
+    )
+    db.save_meet_pdf_swimmers(meet_id, rows)
+    return jsonify({
+        'ok': True,
+        'meet_id': meet_id,
+        'pdf_url': pdf_url,
+        'pdf_size': len(pdf_bytes),
+        'parsed_rows': len(rows),
+    })
+
+
 @app.route('/api/admin/diagnose_member', methods=['GET'])
 @role_required('admin')
 def api_diagnose_member():
