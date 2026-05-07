@@ -1655,8 +1655,17 @@ if (hasPerm('batch')) {
                     btn.disabled = false;
                     return;
                 }
-                result.innerHTML = `<span style="color:#16a34a">✓ Parsed ${data.parsed_rows} swimmers from ${(data.pdf_size/1024).toFixed(0)} KB. Run auto-fill to apply.</span>`;
-                btn.textContent = 'Done';
+                const sizeKb = (data.pdf_size/1024).toFixed(0);
+                const n = data.parsed_rows || 0;
+                if (n === 0) {
+                    result.innerHTML = `<span style="color:#d97706">⚠ Downloaded ${sizeKb} KB but parsed 0 swimmers — this PDF's layout isn't recognized. Fall back to entering birth year/month manually in the swimmer's roster row.</span>`;
+                } else if (n < 30) {
+                    result.innerHTML = `<span style="color:#d97706">⚠ Parsed only ${n} swimmers from ${sizeKb} KB. May be a partial / different format. Verify by running auto-fill — if your team's data is missing, enter birth year/month manually.</span>`;
+                    btn.textContent = 'Done';
+                } else {
+                    result.innerHTML = `<span style="color:#16a34a">✓ Parsed ${n} swimmers from ${sizeKb} KB. Run auto-fill to apply.</span>`;
+                    btn.textContent = 'Done';
+                }
             } catch (e) {
                 result.innerHTML = `<span style="color:#dc2626">${escapeUmm(e.message)}</span>`;
                 btn.disabled = false;
