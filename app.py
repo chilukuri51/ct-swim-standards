@@ -507,6 +507,21 @@ def api_autofill_ages_start():
     return jsonify({'ok': True, 'status': age_filler.get_status()})
 
 
+@app.route('/api/admin/unmatched_meets', methods=['GET'])
+@role_required('admin')
+def api_unmatched_meets():
+    """List meets that the auto-discovery couldn't match a PDF for.
+    Coach uses this to find which meets need a manual URL entry."""
+    with db.get_conn() as conn:
+        rows = conn.execute("""
+            SELECT ct_meet_id, meet_name, start_date, end_date
+            FROM meet_pdf_cache
+            WHERE note IN ('no_pdf', 'no_meta', 'download_failed')
+            ORDER BY start_date DESC, ct_meet_id
+        """).fetchall()
+    return jsonify({'meets': [dict(r) for r in rows]})
+
+
 @app.route('/api/admin/register_meet_pdf', methods=['POST'])
 @role_required('admin')
 def api_register_meet_pdf():

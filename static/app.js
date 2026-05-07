@@ -1585,6 +1585,87 @@ if (hasPerm('batch')) {
 }
 
 
+// ===== UNMATCHED MEETS PANEL (admin) =====
+if (hasPerm('batch')) {
+    const ummList = document.getElementById('ummList');
+    const ummRefresh = document.getElementById('ummRefreshBtn');
+    if (ummList && ummRefresh) {
+        function escapeUmm(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({
+                '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+            }[c]));
+        }
+
+        async function loadUnmatched() {
+            ummList.innerHTML = '<div class="umm-empty">Loading…</div>';
+            try {
+                const r = await fetch('/api/admin/unmatched_meets');
+                const data = await r.json();
+                const meets = data.meets || [];
+                if (meets.length === 0) {
+                    ummList.innerHTML = '<div class="umm-empty" style="color:#16a34a">All meets have a matched PDF — nothing to register.</div>';
+                    return;
+                }
+                ummList.innerHTML = meets.map(m => {
+                    const name = escapeUmm(m.meet_name || '(no name)');
+                    const date = escapeUmm(m.start_date || '?');
+                    return `
+                    <div class="umm-row" data-meet-id="${escapeUmm(m.ct_meet_id)}">
+                        <div class="umm-meta">
+                            <div class="umm-name">${name}</div>
+                            <div class="umm-date">${date} <span class="umm-mid">• meet ${escapeUmm(m.ct_meet_id)}</span></div>
+                        </div>
+                        <div class="umm-form">
+                            <input type="text" class="umm-url" placeholder="https://www.ctswim.org/Customer-Content/...pdf">
+                            <button type="button" class="btn-primary umm-register" style="padding:0.4rem 0.8rem">Register</button>
+                        </div>
+                        <div class="umm-result"></div>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                ummList.innerHTML = `<div class="umm-empty" style="color:#dc2626">Error: ${escapeUmm(e.message)}</div>`;
+            }
+        }
+
+        ummRefresh.addEventListener('click', loadUnmatched);
+
+        ummList.addEventListener('click', async (ev) => {
+            const btn = ev.target.closest('.umm-register');
+            if (!btn) return;
+            const row = btn.closest('.umm-row');
+            const meetId = row.dataset.meetId;
+            const urlInput = row.querySelector('.umm-url');
+            const result = row.querySelector('.umm-result');
+            const url = (urlInput.value || '').trim();
+            if (!url) {
+                result.innerHTML = '<span style="color:#dc2626">Paste a PDF URL first.</span>';
+                return;
+            }
+            btn.disabled = true;
+            result.innerHTML = '<span style="color:#64748b">Downloading + parsing…</span>';
+            try {
+                const r = await fetch('/api/admin/register_meet_pdf', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({meet_id: meetId, pdf_url: url}),
+                });
+                const data = await r.json();
+                if (!r.ok) {
+                    result.innerHTML = `<span style="color:#dc2626">${escapeUmm(data.error || 'failed')}</span>`;
+                    btn.disabled = false;
+                    return;
+                }
+                result.innerHTML = `<span style="color:#16a34a">✓ Parsed ${data.parsed_rows} swimmers from ${(data.pdf_size/1024).toFixed(0)} KB. Run auto-fill to apply.</span>`;
+                btn.textContent = 'Done';
+            } catch (e) {
+                result.innerHTML = `<span style="color:#dc2626">${escapeUmm(e.message)}</span>`;
+                btn.disabled = false;
+            }
+        });
+    }
+}
+
+
 // ===== STANDARDS EDITOR =====
 if (hasPerm('standards_edit')) {
     const editorState = {

@@ -444,6 +444,7 @@ def _process_member(member: dict, force_all: bool = False) -> dict:
             return meet, None, f"{type(e).__name__}: {e}"
 
     completed = 0
+    gender_votes = {'F': 0, 'M': 0}
     with ThreadPoolExecutor(max_workers=PDF_CONCURRENCY) as executor:
         futures = {executor.submit(_resolve_one, m): m for m in valid_meets}
         for fut in as_completed(futures):
@@ -456,8 +457,6 @@ def _process_member(member: dict, force_all: bool = False) -> dict:
                 _state.current = f'{full_name}: meet {completed}/{total}'
             meet, cache, err = fut.result()
             if err:
-                # Surface the first few worker errors — silent skips were
-                # masking SQLite "database is locked" failures under load.
                 with _lock:
                     if len(_state.errors) < 5:
                         _state.errors.append(
@@ -471,11 +470,22 @@ def _process_member(member: dict, force_all: bool = False) -> dict:
                 continue
             meet_date = ct_pdf.parse_us_date(meet['date'])
             records.append({'age': hit['age'], 'meet_date': meet_date})
-            # Track most-recent observation for age_observed/gender backfill
+            # Tally gender votes across ALL observations. One mis-attributed
+            # row in a multi-column PDF can't flip a swimmer's gender — only
+            # the majority across all parsed meets does.
+            g = hit.get('gender') or ''
+            if g in gender_votes:
+                gender_votes[g] += 1
+            # Track most-recent observation for age_observed
             most_recent = max((r['meet_date'] for r in records), default=date(1900, 1, 1))
             if meet_date >= most_recent:
                 observed_age = hit['age']
-                observed_gender = hit.get('gender')
+
+    # Resolve gender by majority vote across all observations
+    if gender_votes['F'] > gender_votes['M']:
+        observed_gender = 'F'
+    elif gender_votes['M'] > gender_votes['F']:
+        observed_gender = 'M'
 
     if not records:
         db.save_member_triangulation(member['id'])

@@ -192,6 +192,11 @@ _PDF_ROW_B_RE = re.compile(
 _GENDER_HEADER_RE = re.compile(
     r"\b(Girls|Boys|Women|Men|Mixed)\s+\d", re.IGNORECASE
 )
+# Map Hy-Tek event-section labels to the F/M values team_members.gender
+# uses. 'Men' specifically mapped to M (not the parser stripping it to 'M'
+# was producing 'M' for women swimmers when their row got mis-attributed
+# to a Men's event header, which then overwrote a correct earlier 'F').
+_GENDER_TO_FM = {'GIRLS': 'F', 'WOMEN': 'F', 'BOYS': 'M', 'MEN': 'M'}
 
 
 def parse_results_pdf(path_or_bytes) -> list[dict]:
@@ -217,7 +222,7 @@ def parse_results_pdf(path_or_bytes) -> list[dict]:
         for line in text.split('\n'):
             g = _GENDER_HEADER_RE.search(line)
             if g:
-                current_gender = g.group(1)[0].upper()
+                current_gender = _GENDER_TO_FM.get(g.group(1).upper(), '')
             # Try Format A first
             matched_spans = []
             for m in _PDF_ROW_A_RE.finditer(line):

@@ -460,6 +460,22 @@
                 <div id="afStatus" class="autofill-status hidden"></div>
             </div>
 
+            <!-- Unmatched-meets panel: meets where the auto-fill couldn't
+                 find a PDF on Results.aspx. Admin pastes the actual URL
+                 here to register them on the fly. -->
+            <div class="autofill-panel umm-panel" data-requires="batch">
+                <div class="autofill-head">
+                    <div>
+                        <strong>Meets without a result PDF</strong>
+                        <span class="autofill-sub">Some meets aren't listed on ctswim.org's Results.aspx (championships filed under sub-folders, brand-new meets not yet indexed). Paste the PDF URL and we'll parse it on the spot.</span>
+                    </div>
+                    <button id="ummRefreshBtn" class="btn-secondary" style="padding:0.4rem 0.9rem">Refresh list</button>
+                </div>
+                <div id="ummList" class="umm-list">
+                    <div class="umm-empty">Click "Refresh list" to load.</div>
+                </div>
+            </div>
+
             <div class="table-container" id="rosterTableContainer"></div>
         </section>
 
