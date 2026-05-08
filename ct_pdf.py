@@ -128,29 +128,32 @@ def scrape_results_index(max_pages: int = INDEX_MAX_PAGES) -> list[dict]:
         soup = BeautifulSoup(r.text, 'html.parser')
         page_added = 0
         for tr in soup.find_all('tr'):
-            # Find any results PDF link in this row
-            pdf_anchor = None
-            for a in tr.find_all('a', href=True):
-                if _PDF_LINK_RE.search(a['href']):
-                    pdf_anchor = a
-                    break
-            if not pdf_anchor:
+            # Collect EVERY PDF link in this row. CT publishes sibling PDFs
+            # for one meet (Senior + Age Group + Distance + Relays) as
+            # separate links in the same row — so capturing only the first
+            # would silently drop swimmers whose age group lives in PDF #2/3.
+            pdf_anchors = [
+                a for a in tr.find_all('a', href=True)
+                if _PDF_LINK_RE.search(a['href'])
+            ]
+            if not pdf_anchors:
                 continue
-            url = pdf_anchor['href'].strip()
-            if url in seen_urls:
-                continue
-            seen_urls.add(url)
             text = tr.get_text(' ', strip=True)
             info = _extract_meet_from_tr(text)
-            entry = {
-                'url': url,
-                'label': pdf_anchor.get_text(strip=True),
-                'meet_name': info.get('meet_name', ''),
-                'start_date': info['start_date'].isoformat() if info.get('start_date') else None,
-                'end_date': info['end_date'].isoformat() if info.get('end_date') else None,
-            }
-            out.append(entry)
-            page_added += 1
+            for pdf_anchor in pdf_anchors:
+                url = pdf_anchor['href'].strip()
+                if url in seen_urls:
+                    continue
+                seen_urls.add(url)
+                entry = {
+                    'url': url,
+                    'label': pdf_anchor.get_text(strip=True),
+                    'meet_name': info.get('meet_name', ''),
+                    'start_date': info['start_date'].isoformat() if info.get('start_date') else None,
+                    'end_date': info['end_date'].isoformat() if info.get('end_date') else None,
+                }
+                out.append(entry)
+                page_added += 1
         if page_added == 0:
             break
     return out
@@ -343,11 +346,13 @@ _PDF_ROW_A_RE = re.compile(
     # - 2-digit rank spaced from first name → "Trinity 10"
     # - Tied placings get '*' prefix → "Emma *14"
     # - Multi-word first names exist → "Ava Rose"
+    # - Middle initial appears between first name and rank → "Harper M43"
     # \s* between fields handles both spacings; \*? handles tie markers.
     r"\b([A-Z]{2,6})\s*-CT\s+"                                # team
     r"(\d{1,2})\s*"                                           # age + opt whitespace
     r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*),\s+"       # last (multi-word)
     r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*)"           # first (multi-word)
+    r"(?:\s+[A-Z])?"                                          # optional middle initial
     r"\s*\*?\d"                                                # opt space + opt '*' + rank digit
 )
 # Format B: name comes AFTER time (older NCA-style PDFs). Same spacing
