@@ -687,8 +687,8 @@ def api_diagnose_member():
         placeholders = ','.join('?' * len(ids))
         with db.get_conn() as conn:
             cache_rows = conn.execute(
-                f"SELECT ct_meet_id, parsed_at, note FROM meet_pdf_cache "
-                f"WHERE ct_meet_id IN ({placeholders})", ids
+                f"SELECT ct_meet_id, meet_name, pdf_url, parsed_at, note "
+                f"FROM meet_pdf_cache WHERE ct_meet_id IN ({placeholders})", ids
             ).fetchall()
         cache_dict = {r['ct_meet_id']: dict(r) for r in cache_rows}
         out['cache_summary'] = {
@@ -700,6 +700,17 @@ def api_diagnose_member():
             'other_note': sum(1 for r in cache_rows
                               if r['note'] and r['note'] not in ('no_pdf', 'no_meta')),
         }
+        out['per_meet'] = []
+        for r in cache_rows:
+            urls = (r['pdf_url'] or '').split(',') if r['pdf_url'] else []
+            out['per_meet'].append({
+                'ct_meet_id': r['ct_meet_id'],
+                'meet_name': r['meet_name'],
+                'note': r['note'],
+                'parsed_at': r['parsed_at'],
+                'num_pdfs': len([u for u in urls if u.strip()]),
+                'pdf_urls': [u.strip() for u in urls if u.strip()],
+            })
 
     # 5. swimmer rows in meet_pdf_swimmers (the actual triangulation source)
     with db.get_conn() as conn:
@@ -753,6 +764,9 @@ def api_diagnose_parser():
             return jsonify({**out, 'error':
                 f'meet_id {meet_id} not in meet_pdf_cache or has no pdf_url'})
         pdf_url = cache_row['pdf_url']
+        # pdf_url may be a comma-joined list of sibling PDFs; pick first.
+        if ',' in pdf_url:
+            pdf_url = pdf_url.split(',', 1)[0]
         if not pdf_url.startswith('http'):
             pdf_url = 'https://www.ctswim.org' + pdf_url
         out['source'] = f'meet_id {meet_id}'

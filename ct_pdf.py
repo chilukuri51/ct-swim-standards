@@ -221,31 +221,31 @@ def _club_codes(meet_name: str) -> set:
             if m.group(1) not in _NOT_CLUB_CODE}
 
 
-def find_pdf_for_meet(
+def find_pdfs_for_meet(
     meet_name: str,
     start_date: Optional[date],
     end_date: Optional[date],
     index: list[dict],
     min_score: float = 1.0,
-) -> Optional[dict]:
-    """Resolve a meet to its result PDF using DATE OVERLAP + weighted name match.
+    max_results: int = 6,
+) -> list[dict]:
+    """Resolve a meet to ALL plausible result PDFs (a meet often publishes
+    several — Senior, Age Group, Distance, Relays — each with a different
+    swimmer subset). Returns candidates sorted best-first.
 
     Algorithm:
       1. Filter index entries whose date range overlaps the target's range
          (or, for index rows missing dates, whose URL contains the target
          MMDDYY date string).
-      2. Score each candidate:
-           +3 per host-club code shared (e.g. 'lehy', 'cdog')
-           +1 per other shared name token
-           +2 if club code also appears in the candidate URL path
-      3. Return the highest-scoring candidate above min_score, else None.
-
-    A single date-matched candidate is accepted regardless of name score
-    (overlap on a specific date is already strong evidence). Multi-meet
-    days require ≥1.0 to break ties.
+      2. Score each candidate (host-club code +3/+5, name tokens +1).
+      3. If ≥2 candidates share the date AND any score ≥ min_score, keep
+         every candidate with score ≥ min_score (to capture sibling PDFs
+         for the same meet at different age groups).
+      4. If only one candidate matches the date, accept it regardless of
+         name score (overlap is already strong evidence).
     """
     if not index:
-        return None
+        return []
     target_lo = start_date
     target_hi = end_date or start_date
     target_clubs = _club_codes(meet_name)
@@ -273,15 +273,14 @@ def find_pdf_for_meet(
             candidates.append(p)
 
     if not candidates:
-        return None
+        return []
     if len(candidates) == 1:
-        return candidates[0]
+        return [candidates[0]]
 
-    best, best_score = None, -1.0
+    scored = []
     for p in candidates:
         cand_name = (p.get('meet_name', '') + ' ' + p.get('label', ''))
         cand_clubs = _club_codes(cand_name) | (
-            # Pull club codes from URL path (e.g. 'lehy' in '...lehy_results.pdf')
             {tok for tok in re.findall(r'[a-z]{3,5}', p['url'].lower())
              if tok not in _NAME_STOP}
         )
@@ -289,21 +288,34 @@ def find_pdf_for_meet(
         url_lc = p['url'].lower()
 
         score = 0.0
-        # Host-club code matches (strongest signal)
         for c in target_clubs:
             if c in cand_clubs:
                 score += 3
                 if c in url_lc:
-                    score += 2  # club code in URL path = very confident
-        # Generic name tokens
+                    score += 2
         score += len(target_tokens & cand_tokens)
-        if score > best_score:
-            best_score = score
-            best = p
+        scored.append((score, p))
 
-    if best_score < min_score:
-        return None
-    return best
+    scored.sort(key=lambda t: -t[0])
+    top_score = scored[0][0]
+    if top_score < min_score:
+        return []
+    # Keep every candidate scoring ≥ min_score. They're all sibling PDFs
+    # for the same meet (each covers a different age/event subset).
+    out = [p for s, p in scored if s >= min_score]
+    return out[:max_results]
+
+
+def find_pdf_for_meet(
+    meet_name: str,
+    start_date: Optional[date],
+    end_date: Optional[date],
+    index: list[dict],
+    min_score: float = 1.0,
+) -> Optional[dict]:
+    """Backward-compat wrapper: returns the highest-scoring PDF only."""
+    pdfs = find_pdfs_for_meet(meet_name, start_date, end_date, index, min_score, max_results=1)
+    return pdfs[0] if pdfs else None
 
 
 # ===== PDF parsing =====

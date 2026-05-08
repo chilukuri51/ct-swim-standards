@@ -358,39 +358,53 @@ def _resolve_meet_pdf(swimmer_ct_id: str, ct_meet_id: str) -> Optional[dict]:
         end_date=meta['end_date'].isoformat() if meta.get('end_date') else None,
     )
 
-    # Step 2: find the PDF in the index
+    # Step 2: find ALL plausible PDFs in the index. CT meets often publish
+    # several (Senior + Age Group + Distance + Relays) — each covers a
+    # different swimmer subset, so we have to parse every one to capture
+    # all ages.
     index = _ensure_index_cached()
-    pdf = ct_pdf.find_pdf_for_meet(
+    pdfs = ct_pdf.find_pdfs_for_meet(
         meta.get('meet_name', ''),
         meta.get('start_date'),
         meta.get('end_date'),
         index,
     )
-    if not pdf:
+    if not pdfs:
         db.save_meet_cache(ct_meet_id, note='no_pdf')
         return db.get_meet_cache(ct_meet_id)
 
-    # Step 3: download + parse PDF
-    body = ct_pdf.download_pdf(pdf['url'])
-    if not body:
-        db.save_meet_cache(ct_meet_id, pdf_url=pdf['url'], note='download_failed')
+    # Step 3: download + parse each candidate, accumulate swimmers
+    all_rows = []
+    parsed_urls = []
+    last_err = None
+    for pdf in pdfs:
+        body = ct_pdf.download_pdf(pdf['url'])
+        if not body:
+            continue
+        try:
+            rows = ct_pdf.parse_results_pdf(body)
+        except Exception as e:
+            last_err = f'parse_error:{type(e).__name__}'
+            continue
+        if rows:
+            all_rows.extend(rows)
+            parsed_urls.append(pdf['url'])
+
+    if not parsed_urls:
+        # Nothing downloaded or parsed cleanly
+        db.save_meet_cache(ct_meet_id, pdf_url=pdfs[0]['url'],
+                           note=last_err or 'download_failed')
         return db.get_meet_cache(ct_meet_id)
 
-    try:
-        rows = ct_pdf.parse_results_pdf(body)
-    except Exception as e:
-        db.save_meet_cache(ct_meet_id, pdf_url=pdf['url'],
-                           note=f'parse_error:{type(e).__name__}')
-        return db.get_meet_cache(ct_meet_id)
-
-    # Step 4: save parsed swimmers + mark cache complete
-    db.save_meet_pdf_swimmers(ct_meet_id, rows)
+    # Step 4: save merged swimmers + mark cache complete. Store all
+    # parsed URLs comma-joined in pdf_url for diagnostic visibility.
+    db.save_meet_pdf_swimmers(ct_meet_id, all_rows)
     db.save_meet_cache(ct_meet_id,
-                       pdf_url=pdf['url'],
+                       pdf_url=','.join(parsed_urls),
                        parsed_at=_now_iso(),
                        note=None)
     with _lock:
-        _state.pdfs_parsed += 1
+        _state.pdfs_parsed += len(parsed_urls)
     return db.get_meet_cache(ct_meet_id)
 
 
