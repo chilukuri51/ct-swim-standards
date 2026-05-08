@@ -340,8 +340,17 @@ def _resolve_meet_pdf(swimmer_ct_id: str, ct_meet_id: str) -> Optional[dict]:
     Returns the cache row dict, or None if no PDF available.
     """
     cached = db.get_meet_cache(ct_meet_id)
-    if cached and cached.get('parsed_at'):
+    # Cache is valid only if it was parsed by the CURRENT parser. Older
+    # rows get re-parsed transparently when PARSER_VERSION bumps — this
+    # is what makes parser improvements take effect without an admin
+    # reset. If pdf_url is set, we re-parse that URL directly (no need
+    # to re-discover); otherwise we fall through to full discovery.
+    cur_ver = ct_pdf.PARSER_VERSION
+    if cached and cached.get('parsed_at') and (cached.get('parser_version') or 0) >= cur_ver:
         return cached
+    if cached and cached.get('parsed_at') and cached.get('pdf_url'):
+        # Stale parse + we already know the URL: re-parse in place.
+        return _reparse_cached_pdf(ct_meet_id, cached['pdf_url'])
     if cached and cached.get('note') == 'no_pdf' and not _is_stale_no_pdf(cached):
         return cached  # already determined unfindable (with current code)
 
@@ -402,7 +411,53 @@ def _resolve_meet_pdf(swimmer_ct_id: str, ct_meet_id: str) -> Optional[dict]:
     db.save_meet_cache(ct_meet_id,
                        pdf_url=','.join(parsed_urls),
                        parsed_at=_now_iso(),
-                       note=None)
+                       note=None,
+                       parser_version=ct_pdf.PARSER_VERSION)
+    with _lock:
+        _state.pdfs_parsed += len(parsed_urls)
+    return db.get_meet_cache(ct_meet_id)
+
+
+def _reparse_cached_pdf(ct_meet_id: str, pdf_url: str) -> Optional[dict]:
+    """Re-download and re-parse a PDF whose URL we already know.
+
+    Used when a cache row's parser_version is older than the running
+    code's PARSER_VERSION — the URL is fine (auto-discovered or manually
+    registered), but the parsed swimmer rows came from an older parser
+    that may have missed swimmers (DQ rows, middle initials, championship
+    formats, relay legs). This atomically replaces the swimmer rows and
+    stamps the new parser version.
+    """
+    # pdf_url may be a comma-joined list of sibling PDFs from auto-discovery.
+    urls = [u.strip() for u in pdf_url.split(',') if u.strip()]
+    all_rows = []
+    parsed_urls = []
+    last_err = None
+    for u in urls:
+        body = ct_pdf.download_pdf(u)
+        if not body:
+            continue
+        try:
+            rows = ct_pdf.parse_results_pdf(body)
+        except Exception as e:
+            last_err = f'parse_error:{type(e).__name__}'
+            continue
+        if rows:
+            all_rows.extend(rows)
+            parsed_urls.append(u)
+
+    if not parsed_urls:
+        # All known URLs failed to parse — leave the existing cache row
+        # alone but don't claim it's current. Add a diagnostic note.
+        db.save_meet_cache(ct_meet_id, note=last_err or 'reparse_failed')
+        return db.get_meet_cache(ct_meet_id)
+
+    db.save_meet_pdf_swimmers(ct_meet_id, all_rows)
+    db.save_meet_cache(ct_meet_id,
+                       pdf_url=','.join(parsed_urls),
+                       parsed_at=_now_iso(),
+                       note=None,
+                       parser_version=ct_pdf.PARSER_VERSION)
     with _lock:
         _state.pdfs_parsed += len(parsed_urls)
     return db.get_meet_cache(ct_meet_id)

@@ -24,6 +24,16 @@ CT_SWIM_BASE = 'https://www.ctswim.org'
 RESULTS_INDEX = f'{CT_SWIM_BASE}/Meets/Results.aspx'
 INDEX_MAX_PAGES = 50  # generous upper bound; loop stops on first empty page
 
+# Bump every time parse_results_pdf changes its row-recognition logic so
+# meet_pdf_cache rows produced by older code are auto-invalidated and
+# re-parsed on the next age-fill run. No admin reset needed.
+#   v1: original Format A only (LEHY/Hy-Tek)
+#   v2: + Format B (older NCA-style PDFs)
+#   v3: + spaced-and-jammed handling, gender F/M normalization
+#   v4: + middle initial in Format A (Harper M43)
+#   v5: + DQ/--- anchor, Format C (champs no -CT, First Last), relay legs
+PARSER_VERSION = 5
+
 USER_AGENT = (
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
     'AppleWebKit/537.36 (KHTML, like Gecko) '

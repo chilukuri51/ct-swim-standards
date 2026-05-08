@@ -170,6 +170,12 @@ def init_db():
             conn.execute("ALTER TABLE event_history ADD COLUMN ct_meet_id TEXT")
         except sqlite3.OperationalError:
             pass
+        # parser_version stamps each parsed cache row so a parser code
+        # bump auto-invalidates stale rows without an admin reset.
+        try:
+            conn.execute("ALTER TABLE meet_pdf_cache ADD COLUMN parser_version INTEGER")
+        except sqlite3.OperationalError:
+            pass
         # One-time migration: backfill birth_year/month from any existing dob values.
         conn.execute("""
             UPDATE team_members
@@ -344,7 +350,8 @@ def get_meet_cache(ct_meet_id: str):
     with get_conn() as conn:
         row = conn.execute(
             "SELECT ct_meet_id, meet_name, start_date, end_date, pdf_url, "
-            "parsed_at, note FROM meet_pdf_cache WHERE ct_meet_id = ?",
+            "parsed_at, note, parser_version FROM meet_pdf_cache "
+            "WHERE ct_meet_id = ?",
             (ct_meet_id,)
         ).fetchone()
     return dict(row) if row else None
@@ -353,7 +360,7 @@ def get_meet_cache(ct_meet_id: str):
 def save_meet_cache(ct_meet_id: str, meet_name: str = None,
                     start_date: str = None, end_date: str = None,
                     pdf_url: str = None, parsed_at: str = None,
-                    note: str = None):
+                    note: str = None, parser_version: int = None):
     """Upsert one row of meet_pdf_cache. Only non-None args overwrite existing."""
     with get_conn() as conn:
         existing = conn.execute(
@@ -368,18 +375,19 @@ def save_meet_cache(ct_meet_id: str, meet_name: str = None,
                     end_date = COALESCE(?, end_date),
                     pdf_url = COALESCE(?, pdf_url),
                     parsed_at = COALESCE(?, parsed_at),
-                    note = ?
+                    note = ?,
+                    parser_version = COALESCE(?, parser_version)
                 WHERE ct_meet_id = ?
             """, (meet_name, start_date, end_date, pdf_url,
-                  parsed_at, note, ct_meet_id))
+                  parsed_at, note, parser_version, ct_meet_id))
         else:
             conn.execute("""
                 INSERT INTO meet_pdf_cache
                   (ct_meet_id, meet_name, start_date, end_date, pdf_url,
-                   parsed_at, note)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                   parsed_at, note, parser_version)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (ct_meet_id, meet_name, start_date, end_date, pdf_url,
-                  parsed_at, note))
+                  parsed_at, note, parser_version))
 
 
 def save_meet_pdf_swimmers(ct_meet_id: str, swimmers: list):

@@ -595,11 +595,13 @@ def api_register_meet_pdf():
     except Exception as e:
         return jsonify({'error': f'parse failed: {type(e).__name__}: {e}'}), 500
 
-    # Save to cache + swimmers
+    # Save to cache + swimmers (stamp the current parser version so this
+    # row stays valid until the parser code changes meaningfully).
     db.save_meet_cache(
         meet_id, pdf_url=pdf_url,
         parsed_at=datetime.now(timezone.utc).isoformat(),
         note=None,
+        parser_version=_ctp.PARSER_VERSION,
     )
     db.save_meet_pdf_swimmers(meet_id, rows)
 
@@ -687,8 +689,9 @@ def api_diagnose_member():
         placeholders = ','.join('?' * len(ids))
         with db.get_conn() as conn:
             cache_rows = conn.execute(
-                f"SELECT ct_meet_id, meet_name, pdf_url, parsed_at, note "
-                f"FROM meet_pdf_cache WHERE ct_meet_id IN ({placeholders})", ids
+                f"SELECT ct_meet_id, meet_name, pdf_url, parsed_at, note, "
+                f"parser_version FROM meet_pdf_cache "
+                f"WHERE ct_meet_id IN ({placeholders})", ids
             ).fetchall()
         cache_dict = {r['ct_meet_id']: dict(r) for r in cache_rows}
         out['cache_summary'] = {
@@ -700,6 +703,8 @@ def api_diagnose_member():
             'other_note': sum(1 for r in cache_rows
                               if r['note'] and r['note'] not in ('no_pdf', 'no_meta')),
         }
+        import ct_pdf as _ctp_v
+        out['current_parser_version'] = _ctp_v.PARSER_VERSION
         out['per_meet'] = []
         for r in cache_rows:
             urls = (r['pdf_url'] or '').split(',') if r['pdf_url'] else []
@@ -708,6 +713,7 @@ def api_diagnose_member():
                 'meet_name': r['meet_name'],
                 'note': r['note'],
                 'parsed_at': r['parsed_at'],
+                'parser_version': r['parser_version'],
                 'num_pdfs': len([u for u in urls if u.strip()]),
                 'pdf_urls': [u.strip() for u in urls if u.strip()],
             })
