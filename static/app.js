@@ -1600,6 +1600,14 @@ if (hasPerm('batch')) {
             ummList.innerHTML = '<div class="umm-empty">Loading…</div>';
             try {
                 const r = await fetch('/api/admin/unmatched_meets');
+                if (r.status === 401) {
+                    ummList.innerHTML = `<div class="umm-empty" style="color:#dc2626">Session expired. <a href="/login?next=/" style="color:#003366;text-decoration:underline">Re-login as admin</a> and click Refresh again.</div>`;
+                    return;
+                }
+                if (r.status === 403) {
+                    ummList.innerHTML = `<div class="umm-empty" style="color:#dc2626">This panel requires admin login (you're signed in as coach).</div>`;
+                    return;
+                }
                 const data = await r.json();
                 const meets = data.meets || [];
                 if (meets.length === 0) {
@@ -1651,7 +1659,13 @@ if (hasPerm('batch')) {
                 });
                 const data = await r.json();
                 if (!r.ok) {
-                    result.innerHTML = `<span style="color:#dc2626">${escapeUmm(data.error || 'failed')}</span>`;
+                    if (r.status === 401) {
+                        result.innerHTML = `<span style="color:#dc2626">Session expired. <a href="/login?next=/" style="color:#003366;text-decoration:underline">Re-login as admin</a> and try again.</span>`;
+                    } else if (r.status === 403) {
+                        result.innerHTML = `<span style="color:#dc2626">Forbidden — this action requires the admin account, not coach.</span>`;
+                    } else {
+                        result.innerHTML = `<span style="color:#dc2626">${escapeUmm(data.error || 'failed')}</span>`;
+                    }
                     btn.disabled = false;
                     return;
                 }

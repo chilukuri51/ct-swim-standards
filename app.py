@@ -1,5 +1,6 @@
 import os
 import re
+from datetime import timedelta
 from functools import wraps
 import requests
 from bs4 import BeautifulSoup
@@ -12,6 +13,10 @@ import standards_store
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'change-me-in-production-please-a8f3d9x2')
+# Make admin/coach sessions stick for 30 days so they don't get a sudden
+# 'authentication required' mid-task. Combined with session.permanent=True
+# in the login handler, this is the actual cookie lifetime.
+app.permanent_session_lifetime = timedelta(days=30)
 
 BASE_URL = "https://fast.ctswim.org/CTNet"
 
