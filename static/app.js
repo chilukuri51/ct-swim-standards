@@ -837,10 +837,11 @@ function generatePDF() {
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
     doc.text('Event', 17, y + 1);
-    doc.text('Best Time', 70, y + 1);
-    doc.text('Date', 100, y + 1);
-    doc.text('Level', 130, y + 1);
-    doc.text('Next Target', 155, y + 1);
+    doc.text('Best Time', 65, y + 1);
+    doc.text('Date', 92, y + 1);
+    doc.text('Level', 117, y + 1);
+    doc.text('Next Target', 140, y + 1);
+    doc.text('To Drop', 178, y + 1);
     y += 8;
 
     doc.setFont('helvetica', 'normal');
@@ -868,13 +869,13 @@ function generatePDF() {
 
         doc.setTextColor(50, 50, 50);
         doc.text(cells[0]?.textContent?.trim() || '', 17, y);
-        doc.text(cells[1]?.textContent?.trim() || '', 70, y);
-        doc.text(cells[2]?.textContent?.trim() || '', 100, y);
+        doc.text(cells[1]?.textContent?.trim() || '', 65, y);
+        doc.text(cells[2]?.textContent?.trim() || '', 92, y);
 
         // Level badges (text extraction)
         const badges = cells[3]?.querySelectorAll('.badge');
         if (badges && badges.length > 0) {
-            let bx = 130;
+            let bx = 117;
             badges.forEach(b => {
                 const txt = b.textContent.trim();
                 doc.setTextColor(0, 100, 0);
@@ -884,12 +885,31 @@ function generatePDF() {
         }
         doc.setTextColor(50, 50, 50);
 
-        // Next target
+        // Next target + seconds to drop (with color coding)
         const ntBadge = cells[4]?.querySelector('.badge');
         if (ntBadge) {
-            doc.text(ntBadge.textContent.trim(), 155, y);
+            doc.text(ntBadge.textContent.trim(), 140, y);
             const ntTime = cells[4]?.querySelector('.nt-time');
-            if (ntTime) doc.text(ntTime.textContent.trim(), 168, y);
+            if (ntTime) doc.text(ntTime.textContent.trim(), 153, y);
+        }
+        // Gap text from cells[5] (e.g. "-1.23s"). Color by magnitude.
+        const gapTxt = cells[5]?.textContent?.trim() || '';
+        const gapMatch = gapTxt.match(/-?(\d+(?:\.\d+)?)/);
+        if (gapMatch) {
+            const gapVal = parseFloat(gapMatch[1]);
+            if (gapVal <= 1.0) doc.setTextColor(22, 163, 74);       // green
+            else if (gapVal <= 3.0) doc.setTextColor(234, 88, 12);  // orange
+            else doc.setTextColor(220, 38, 38);                     // red
+            doc.setFont('helvetica', 'bold');
+            doc.text(`${gapVal.toFixed(2)}s`, 178, y);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(50, 50, 50);
+        } else if (gapTxt.toLowerCase().includes('done')) {
+            doc.setTextColor(22, 163, 74);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Done', 178, y);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(50, 50, 50);
         }
 
         y += 6;
@@ -963,10 +983,11 @@ function generatePDFForMember(member) {
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
     doc.text('Event', 17, y + 1);
-    doc.text('Best Time', 70, y + 1);
-    doc.text('Date', 100, y + 1);
-    doc.text('Level', 130, y + 1);
-    doc.text('Next Target', 155, y + 1);
+    doc.text('Best Time', 65, y + 1);
+    doc.text('Date', 92, y + 1);
+    doc.text('Level', 117, y + 1);
+    doc.text('Next Target', 140, y + 1);
+    doc.text('To Drop', 178, y + 1);
     y += 8;
 
     doc.setFont('helvetica', 'normal');
@@ -998,9 +1019,9 @@ function generatePDFForMember(member) {
             if (idx % 2 === 0) { doc.setFillColor(247, 250, 252); doc.rect(15, y - 4, 180, 6, 'F'); }
             doc.setTextColor(50, 50, 50);
             doc.text(ev.event || '', 17, y);
-            doc.text(ev.time || '', 70, y);
-            doc.text(ev.date || '', 100, y);
-            // Level + next target via standards lookup
+            doc.text(ev.time || '', 65, y);
+            doc.text(ev.date || '', 92, y);
+            // Level + next target + seconds-to-drop via standards lookup
             if (hasProfile) {
                 const std = lookupStandards(info, ageGrp, gender);
                 const swSecs = timeToSeconds(ev.time);
@@ -1008,13 +1029,31 @@ function generatePDFForMember(member) {
                 if (cmp.highestUSA) {
                     doc.setTextColor(0, 100, 0);
                     doc.setFont('helvetica', 'bold');
-                    doc.text(cmp.highestUSA.type, 130, y);
+                    doc.text(cmp.highestUSA.type, 117, y);
                     doc.setFont('helvetica', 'normal');
                     doc.setTextColor(50, 50, 50);
                 }
-                if (cmp.usaNext) {
-                    doc.text(cmp.usaNext.type, 155, y);
-                    doc.text(cmp.usaNext.time, 168, y);
+                const next = cmp.usaNext || cmp.champNext;
+                if (next) {
+                    doc.text(next.type, 140, y);
+                    doc.text(next.time, 153, y);
+                    const gap = swSecs - timeToSeconds(next.time);
+                    if (isFinite(gap) && gap > 0) {
+                        if (gap <= 1.0) doc.setTextColor(22, 163, 74);
+                        else if (gap <= 3.0) doc.setTextColor(234, 88, 12);
+                        else doc.setTextColor(220, 38, 38);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text(`${gap.toFixed(2)}s`, 178, y);
+                        doc.setFont('helvetica', 'normal');
+                        doc.setTextColor(50, 50, 50);
+                    }
+                } else if (cmp.highestUSA) {
+                    // All cuts achieved for this event
+                    doc.setTextColor(22, 163, 74);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Done', 178, y);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(50, 50, 50);
                 }
             }
             y += 6;

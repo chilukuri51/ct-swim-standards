@@ -12,7 +12,7 @@ Three responsibilities:
 
 import io
 import re
-from datetime import date
+from datetime import date, timedelta
 from typing import Optional
 
 import requests
@@ -32,6 +32,8 @@ INDEX_MAX_PAGES = 50  # generous upper bound; loop stops on first empty page
 #   v3: + spaced-and-jammed handling, gender F/M normalization
 #   v4: + middle initial in Format A (Harper M43)
 #   v5: + DQ/--- anchor, Format C (champs no -CT, First Last), relay legs
+#   v6: matcher only (no row-shape change); bump kept for clarity, not
+#       strictly required since v6 doesn't alter parse_results_pdf output.
 PARSER_VERSION = 5
 
 USER_AGENT = (
@@ -239,23 +241,30 @@ def find_pdfs_for_meet(
     start_date: Optional[date],
     end_date: Optional[date],
     index: list[dict],
-    min_score: float = 1.0,
+    min_score: float = 0.5,
     max_results: int = 6,
+    date_tolerance_days: int = 2,
 ) -> list[dict]:
     """Resolve a meet to ALL plausible result PDFs (a meet often publishes
     several — Senior, Age Group, Distance, Relays — each with a different
     swimmer subset). Returns candidates sorted best-first.
 
     Algorithm:
-      1. Filter index entries whose date range overlaps the target's range
-         (or, for index rows missing dates, whose URL contains the target
-         MMDDYY date string).
-      2. Score each candidate (host-club code +3/+5, name tokens +1).
-      3. If ≥2 candidates share the date AND any score ≥ min_score, keep
-         every candidate with score ≥ min_score (to capture sibling PDFs
-         for the same meet at different age groups).
-      4. If only one candidate matches the date, accept it regardless of
-         name score (overlap is already strong evidence).
+      1. Filter index entries whose date range overlaps the target ±2 days
+         (fast.ctswim.org and www.ctswim.org/Meets/Results.aspx sometimes
+         disagree by a day for the same meet). URL-embedded MMDDYY dates
+         are also accepted as a date match.
+      2. Score each candidate:
+           - host-club code shared: +3 (and +2 more if club code is in URL)
+           - name token shared (intersection): +1
+           - meet-name token appears as substring of URL filename: +0.5
+             (e.g. fast says "WHAT Wesleyan Winter" and the URL is
+             '...121224what_results.pdf' — 'what' lives in the filename)
+      3. If only one candidate matches the date window, accept it
+         regardless of score.
+      4. If multiple candidates, keep every one scoring ≥ min_score (default
+         0.5 — generous because the date filter is the strong signal). Tied
+         scores keep all; they're sibling PDFs for the same meet.
     """
     if not index:
         return []
@@ -269,13 +278,20 @@ def find_pdfs_for_meet(
     if target_hi and target_hi != target_lo:
         target_dates_str.append(target_hi.strftime('%m%d%y'))
 
+    # Apply ±N day tolerance to absorb fast vs Results.aspx date drift.
+    if target_lo:
+        target_lo_fuzzy = target_lo - timedelta(days=date_tolerance_days)
+        target_hi_fuzzy = target_hi + timedelta(days=date_tolerance_days)
+    else:
+        target_lo_fuzzy = target_hi_fuzzy = None
+
     candidates = []
     for p in index:
         cand_lo = _to_date(p.get('start_date'))
         cand_hi = _to_date(p.get('end_date')) or cand_lo
         date_match = bool(
-            cand_lo and target_lo and
-            _dates_overlap(target_lo, target_hi, cand_lo, cand_hi)
+            cand_lo and target_lo_fuzzy and
+            _dates_overlap(target_lo_fuzzy, target_hi_fuzzy, cand_lo, cand_hi)
         )
         if not date_match:
             for ds in target_dates_str:
@@ -299,6 +315,9 @@ def find_pdfs_for_meet(
         )
         cand_tokens = _name_tokens(cand_name) - cand_clubs
         url_lc = p['url'].lower()
+        # Last segment of URL = filename, often contains the meet abbreviation
+        # even when the Results.aspx label/meet_name is generic.
+        url_filename = url_lc.rsplit('/', 1)[-1]
 
         score = 0.0
         for c in target_clubs:
@@ -306,16 +325,27 @@ def find_pdfs_for_meet(
                 score += 3
                 if c in url_lc:
                     score += 2
+            elif c in url_filename:
+                # Club code missing from index name/label but present in URL
+                # filename — strong signal (e.g. 'lehy' in 'lehy_results.pdf').
+                score += 2
         score += len(target_tokens & cand_tokens)
+        # Fuzzy substring match for any meet-name token in the URL filename.
+        # Discounts: 0.5 each, capped to keep this a tiebreaker not a primary.
+        substr_hits = sum(
+            0.5 for t in target_tokens
+            if len(t) >= 4 and t in url_filename
+        )
+        score += min(substr_hits, 2.0)
         scored.append((score, p))
 
     scored.sort(key=lambda t: -t[0])
     top_score = scored[0][0]
     if top_score < min_score:
         return []
-    # Keep every candidate scoring ≥ min_score. They're all sibling PDFs
-    # for the same meet (each covers a different age/event subset).
-    out = [p for s, p in scored if s >= min_score]
+    # Keep every candidate at top_score (siblings for the same meet); plus
+    # any other candidate with score within 1.5 of top (close sibling PDFs).
+    out = [p for s, p in scored if s >= max(min_score, top_score - 1.5)]
     return out[:max_results]
 
 
