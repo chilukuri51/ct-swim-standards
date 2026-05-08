@@ -43,14 +43,61 @@ def normalize_name(first: str, last: str) -> str:
 # ===== Index scraping =====
 
 _PDF_LINK_RE = re.compile(
-    r'href="([^"]*_results\.pdf)"[^>]*>([^<]*)<', re.IGNORECASE
+    r'_results\.pdf$', re.IGNORECASE
+)
+# Each Results.aspx <tr> follows roughly this shape:
+#   "OAK Sanctioned S25-47 1/3/2026- 1/4/2026 OAK New Year's Splash …venue…"
+# We parse: date range, then meet name = everything between the dates and
+# the "Events Import File" / venue marker.
+_TR_DATE_RANGE_RE = re.compile(
+    r'(\d{1,2}/\d{1,2}/\d{4})\s*-\s*(\d{1,2}/\d{1,2}/\d{4})'
+)
+_TR_SINGLE_DATE_RE = re.compile(r'(\d{1,2}/\d{1,2}/\d{4})')
+# Markers that typically follow the meet name in a tr row
+_TR_TAIL_MARKERS = (
+    'Events Import File',
+    'Meet Announcement',
+    'Updated ',
+    'FULLY SUBSCRIBED',
 )
 
 
-def scrape_results_index(max_pages: int = INDEX_MAX_PAGES) -> list[dict]:
-    """Scrape every page of CT Swim's Results.aspx for `_results.pdf` links.
-    Returns list of {url, label}. Stops early when a page yields zero links.
+def _extract_meet_from_tr(text: str) -> dict:
+    """Parse a Results.aspx tr's full text into structured meet info.
+    Returns {start_date, end_date, meet_name} or empty dict if dates absent.
     """
+    out = {}
+    drm = _TR_DATE_RANGE_RE.search(text)
+    if drm:
+        sd = parse_us_date(drm.group(1))
+        ed = parse_us_date(drm.group(2))
+        after = text[drm.end():].strip()
+    else:
+        sdm = _TR_SINGLE_DATE_RE.search(text)
+        if not sdm:
+            return out
+        sd = parse_us_date(sdm.group(1))
+        ed = sd
+        after = text[sdm.end():].strip()
+    # Trim meet name at first tail marker
+    for marker in _TR_TAIL_MARKERS:
+        idx = after.find(marker)
+        if idx > 0:
+            after = after[:idx].strip()
+    # Strip trailing dash/comma fragments
+    after = re.sub(r'[-,;:]\s*$', '', after).strip()
+    out = {'start_date': sd, 'end_date': ed, 'meet_name': after}
+    return out
+
+
+def scrape_results_index(max_pages: int = INDEX_MAX_PAGES) -> list[dict]:
+    """Scrape every page of CT Swim's Results.aspx, walking each <tr> to
+    capture the meet name + date range alongside the result PDF URL.
+    Returns list of {url, label, meet_name, start_date, end_date} where
+    dates are ISO strings (or None) — the richer data lets find_pdf_for_meet
+    fuzzy-match by name when our SwimmerAtMeet meet_name differs slightly
+    from the Results.aspx wording but the dates align.
+    Stops early when a page yields zero PDFs (we've walked off the end)."""
     out = []
     seen_urls = set()
     for p in range(1, max_pages + 1):
@@ -64,13 +111,32 @@ def scrape_results_index(max_pages: int = INDEX_MAX_PAGES) -> list[dict]:
                 break
         except Exception:
             break
+
+        soup = BeautifulSoup(r.text, 'html.parser')
         page_added = 0
-        for m in _PDF_LINK_RE.finditer(r.text):
-            url = m.group(1).strip()
+        for tr in soup.find_all('tr'):
+            # Find any results PDF link in this row
+            pdf_anchor = None
+            for a in tr.find_all('a', href=True):
+                if _PDF_LINK_RE.search(a['href']):
+                    pdf_anchor = a
+                    break
+            if not pdf_anchor:
+                continue
+            url = pdf_anchor['href'].strip()
             if url in seen_urls:
                 continue
             seen_urls.add(url)
-            out.append({'url': url, 'label': m.group(2).strip()})
+            text = tr.get_text(' ', strip=True)
+            info = _extract_meet_from_tr(text)
+            entry = {
+                'url': url,
+                'label': pdf_anchor.get_text(strip=True),
+                'meet_name': info.get('meet_name', ''),
+                'start_date': info['start_date'].isoformat() if info.get('start_date') else None,
+                'end_date': info['end_date'].isoformat() if info.get('end_date') else None,
+            }
+            out.append(entry)
             page_added += 1
         if page_added == 0:
             break
@@ -94,15 +160,52 @@ def parse_us_date(s: str) -> Optional[date]:
         return None
 
 
-def _name_keys(meet_name: str) -> set:
-    """Extract distinctive lowercase keywords from a meet name. Drops dates,
-    common stop-words ('regional', 'champs', etc. STAY since they're useful)
-    and weekday abbreviations."""
-    drop = {'and', 'the', 'for', 'sat', 'sun', 'sat-sun', 'sat-s',
-            'fri-sun', 'fri', 'tues', 'wed', 'thur', 'mon', 'open',
-            'invitational', 'meet', 'swim', 'swimming', 'ct'}
-    words = re.findall(r'[A-Za-z]{3,}', (meet_name or '').lower())
-    return {w for w in words if w not in drop}
+_NAME_STOP = {
+    'and', 'the', 'for', 'sat', 'sun', 'fri', 'tues', 'wed', 'thur', 'mon',
+    'sat-sun', 'sat-s', 'fri-sun', 'fri-sat', 'open', 'meet', 'swim',
+    'swimming', 'ct', 'champ', 'champs', 'championship', 'championships',
+    'champions', 'invitational', 'sanctioned', 'updated', 'event', 'events',
+    'import', 'file', 'pool', 'natatorium', 'aquatic', 'center',
+}
+
+
+def _name_tokens(meet_name: str) -> set:
+    """Extract distinctive lowercase keywords from a meet name."""
+    words = re.findall(r"[A-Za-z][A-Za-z'.-]{2,}", (meet_name or '').lower())
+    return {w for w in words if w not in _NAME_STOP}
+
+
+def _dates_overlap(a_lo, a_hi, b_lo, b_hi) -> bool:
+    """True if two inclusive date ranges share at least one day."""
+    if not (a_lo and a_hi and b_lo and b_hi):
+        return False
+    return a_lo <= b_hi and b_lo <= a_hi
+
+
+def _to_date(s):
+    """Parse an ISO 'YYYY-MM-DD' string back to a date (helpers stored in JSON)."""
+    if not s:
+        return None
+    if isinstance(s, date):
+        return s
+    try:
+        return date.fromisoformat(str(s)[:10])
+    except (TypeError, ValueError):
+        return None
+
+
+_CLUB_CODE_RE = re.compile(r'\b([A-Z]{3,5})\b')
+# Two-letter "CT" appears in every meet name — exclude. Other generic codes
+# we don't want to weight as host-club hints.
+_NOT_CLUB_CODE = {'CT', 'USA', 'YMCA', 'AGC', 'AAA', 'AA'}
+
+
+def _club_codes(meet_name: str) -> set:
+    """Pull host-club codes (uppercase 3-5 letter abbreviations) from a
+    meet name. e.g. "2025 CT LEHY 12U Regional" -> {'lehy'}.
+    Excludes generic codes like CT/USA/YMCA."""
+    return {m.group(1).lower() for m in _CLUB_CODE_RE.finditer(meet_name or '')
+            if m.group(1) not in _NOT_CLUB_CODE}
 
 
 def find_pdf_for_meet(
@@ -110,38 +213,81 @@ def find_pdf_for_meet(
     start_date: Optional[date],
     end_date: Optional[date],
     index: list[dict],
-    min_score: int = 8,
+    min_score: float = 1.0,
 ) -> Optional[dict]:
-    """Score each indexed PDF against a known meet and return the best match.
+    """Resolve a meet to its result PDF using DATE OVERLAP + weighted name match.
 
-    Scoring:
-      +10 if URL contains MMDDYY of meet start date
-      +10 if URL contains MMDDYY of meet end date
-       +2 per distinctive name keyword matched in URL or label
-    Returns None if no PDF scores at least `min_score` — better to skip than
-    record a wrong match.
+    Algorithm:
+      1. Filter index entries whose date range overlaps the target's range
+         (or, for index rows missing dates, whose URL contains the target
+         MMDDYY date string).
+      2. Score each candidate:
+           +3 per host-club code shared (e.g. 'lehy', 'cdog')
+           +1 per other shared name token
+           +2 if club code also appears in the candidate URL path
+      3. Return the highest-scoring candidate above min_score, else None.
+
+    A single date-matched candidate is accepted regardless of name score
+    (overlap on a specific date is already strong evidence). Multi-meet
+    days require ≥1.0 to break ties.
     """
     if not index:
         return None
-    keys = _name_keys(meet_name)
-    target_dates = []
-    if start_date:
-        target_dates.append(start_date.strftime('%m%d%y'))
-    if end_date and end_date != start_date:
-        target_dates.append(end_date.strftime('%m%d%y'))
+    target_lo = start_date
+    target_hi = end_date or start_date
+    target_clubs = _club_codes(meet_name)
+    target_tokens = _name_tokens(meet_name) - target_clubs
+    target_dates_str = []
+    if target_lo:
+        target_dates_str.append(target_lo.strftime('%m%d%y'))
+    if target_hi and target_hi != target_lo:
+        target_dates_str.append(target_hi.strftime('%m%d%y'))
 
-    best = None
-    best_score = -1
+    candidates = []
     for p in index:
-        haystack = (p['url'] + ' ' + p['label']).lower()
-        score = 0
-        for d in target_dates:
-            if d in p['url']:
-                score += 10
-        score += sum(2 for k in keys if k in haystack)
+        cand_lo = _to_date(p.get('start_date'))
+        cand_hi = _to_date(p.get('end_date')) or cand_lo
+        date_match = bool(
+            cand_lo and target_lo and
+            _dates_overlap(target_lo, target_hi, cand_lo, cand_hi)
+        )
+        if not date_match:
+            for ds in target_dates_str:
+                if ds in p['url']:
+                    date_match = True
+                    break
+        if date_match:
+            candidates.append(p)
+
+    if not candidates:
+        return None
+    if len(candidates) == 1:
+        return candidates[0]
+
+    best, best_score = None, -1.0
+    for p in candidates:
+        cand_name = (p.get('meet_name', '') + ' ' + p.get('label', ''))
+        cand_clubs = _club_codes(cand_name) | (
+            # Pull club codes from URL path (e.g. 'lehy' in '...lehy_results.pdf')
+            {tok for tok in re.findall(r'[a-z]{3,5}', p['url'].lower())
+             if tok not in _NAME_STOP}
+        )
+        cand_tokens = _name_tokens(cand_name) - cand_clubs
+        url_lc = p['url'].lower()
+
+        score = 0.0
+        # Host-club code matches (strongest signal)
+        for c in target_clubs:
+            if c in cand_clubs:
+                score += 3
+                if c in url_lc:
+                    score += 2  # club code in URL path = very confident
+        # Generic name tokens
+        score += len(target_tokens & cand_tokens)
         if score > best_score:
             best_score = score
             best = p
+
     if best_score < min_score:
         return None
     return best

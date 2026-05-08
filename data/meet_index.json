@@ -1,1414 +1,2463 @@
 {
-  "fetched_at": "2026-05-06T00:29:31.888593+00:00",
-  "count": 352,
+  "fetched_at": "2026-05-08T07:55:06.240687+00:00",
+  "count": 351,
   "rows": [
     {
-      "url": "/Customer-Content/www/Meets/SC2025-26/CT_Age_Groups/2026_age_group_results.pdf",
-      "label": "2026 CT SC Age Group Championships"
-    },
-    {
       "url": "/Customer-Content/www/Meets/SC2025-26/Jan/010326oak_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "OAK New Year's Splash",
+      "start_date": "2026-01-03",
+      "end_date": "2026-01-04"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Jan/010326zeus_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "ZEUS New Year's Open",
+      "start_date": "2026-01-03",
+      "end_date": "2026-01-04"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Jan/010326grit_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRIT New Year's Duals",
+      "start_date": "2026-01-03",
+      "end_date": "2026-01-04"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Dec/121625wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW 200 Day",
+      "start_date": "2025-12-16",
+      "end_date": "2025-12-16"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Dec/121325hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC 12/U-13/O Qualifier",
+      "start_date": "2025-12-13",
+      "end_date": "2025-12-14"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Dec/121225hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC Distance Meet",
+      "start_date": "2025-12-12",
+      "end_date": "2025-12-12"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Dec/121225saq_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "SAQ Holiday Trials/Finals 11.19.25",
+      "start_date": "2025-12-12",
+      "end_date": "2025-12-14"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Dec/121225bull_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "BULL Bruce Hutchinson Invite",
+      "start_date": "2025-12-12",
+      "end_date": "2025-12-14"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Dec/120725cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG 10/U Quadrathon",
+      "start_date": "2025-12-07",
+      "end_date": "2025-12-07"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Dec/120525rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC December Qualifier",
+      "start_date": "2025-12-05",
+      "end_date": "2025-12-07"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Nov/112825gywd_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GYWD Town Champs By invite as defined by CT Swim",
+      "start_date": "2025-11-28",
+      "end_date": "2025-11-29"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Nov/112425cat_meet_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CAT IM Ready Meet",
+      "start_date": "2025-11-23",
+      "end_date": "2025-11-23"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Nov/112125rst_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RST Sprints Qualifier",
+      "start_date": "2025-11-22",
+      "end_date": "2025-11-23"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Nov/112225seal_meet_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "SEAL Autumn Qualifier",
+      "start_date": "2025-11-22",
+      "end_date": "2025-11-23"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Nov/112125what_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT Qualifier",
+      "start_date": "2025-11-21",
+      "end_date": "2025-11-23"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Nov/112125oak_meet_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "OAK Thanksgiving All are Welcome",
+      "start_date": "2025-11-21",
+      "end_date": "2025-11-23"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Nov/112125glas_meet_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GLAS Turkey Trot Distance Meet",
+      "start_date": "2025-11-21",
+      "end_date": "2025-11-21"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Nov/111425grit_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRIT Blue Devil Dual Sprints",
+      "start_date": "2025-11-15",
+      "end_date": "2025-11-16"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Nov/111425wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW YMCA Thanksgiving T/F Meet",
+      "start_date": "2025-11-14",
+      "end_date": "2025-11-16"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Nov/111425wrat_meet_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WRAT November Meet",
+      "start_date": "2025-11-14",
+      "end_date": "2025-11-16"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Nov/110925vsym_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "VSYM November Pentathlon",
+      "start_date": "2025-11-09",
+      "end_date": "2025-11-09"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Nov/110825hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC Red-White & Blue Pentathlon",
+      "start_date": "2025-11-08",
+      "end_date": "2025-11-08"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Nov/110825rst_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RST Splash and Dash Pentathlon",
+      "start_date": "2025-11-08",
+      "end_date": "2025-11-08"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Nov/110725rst_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "Rapids Distance Meet",
+      "start_date": "2025-11-07",
+      "end_date": "2025-11-07"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Nov/110725cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG Distance Meet",
+      "start_date": "2025-11-07",
+      "end_date": "2025-11-07"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Nov/110625rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC 12/U Meet",
+      "start_date": "2025-11-06",
+      "end_date": "2025-11-06"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Nov/110425wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW 12/U Freestyle Frenzy",
+      "start_date": "2025-11-04",
+      "end_date": "2025-11-04"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Oct/102625hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC Halloween Sprint Pentathlon",
+      "start_date": "2025-10-26",
+      "end_date": "2025-10-26"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Oct/102525lehy_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "LEHY Aquafest",
+      "start_date": "2025-10-25",
+      "end_date": "2025-10-26"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Oct/102425cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG Distance",
+      "start_date": "2025-10-24",
+      "end_date": "2025-10-24"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Oct/102425wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW Spooktacular Updates 10.16.25 - 13/O in the AM session and 12/U in the PM session",
+      "start_date": "2025-10-24",
+      "end_date": "2025-10-26"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Oct/102425rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC Candlewood Lake Cup",
+      "start_date": "2025-10-24",
+      "end_date": "2025-10-26"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Oct/102425lehy_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "LEHY Aquafest Distance",
+      "start_date": "2025-10-24",
+      "end_date": "2025-10-24"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Oct/101925rays_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RAYS Meegan Martin Pinkout Invite",
+      "start_date": "2025-10-19",
+      "end_date": "2025-10-19"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Oct/101925oak_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "OAK Pentathlon",
+      "start_date": "2025-10-19",
+      "end_date": "2025-10-19"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Oct/101825cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG IMX Meet",
+      "start_date": "2025-10-18",
+      "end_date": "2025-10-19"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Oct/101825wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW 12/Under Kickoff",
+      "start_date": "2025-10-18",
+      "end_date": "2025-10-18"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Oct/101725cpac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CPAC Qualifier",
+      "start_date": "2025-10-17",
+      "end_date": "2025-10-19"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Oct/101825fvyt_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "FVYT Approved Fun 25's & More Meet NOTE: YMCA registered swimmers only",
+      "start_date": "2025-10-17",
+      "end_date": "2025-10-19"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Oct/101425rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC Spooktacular",
+      "start_date": "2025-10-14",
+      "end_date": "2025-10-14"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Oct/101225nca_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "NCA One Day Meet",
+      "start_date": "2025-10-12",
+      "end_date": "2025-10-12"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Oct/101125rst_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RST Freestyle Meet",
+      "start_date": "2025-10-11",
+      "end_date": "2025-10-11"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Oct/101125what_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT IMX Meet",
+      "start_date": "2025-10-11",
+      "end_date": "2025-10-12"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Oct/100325rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC Qualifier",
+      "start_date": "2025-10-03",
+      "end_date": "2025-10-05"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Sept/092725bull_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "BULL Pentathlon",
+      "start_date": "2025-09-27",
+      "end_date": "2025-09-27"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/Aug/080325nutmeggames_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "Nutmeg State Games",
+      "start_date": "2025-08-03",
+      "end_date": "2025-08-03"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/Age_Groups/072425_age_group_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CT Age Groups",
+      "start_date": "2025-07-24",
+      "end_date": "2025-07-27"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/Regionals/071925cdog13o_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG 13/Over Regional Champs Wesleyan University (LCM) Middletown",
+      "start_date": "2025-07-19",
+      "end_date": "2025-07-20"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/Regionals/071925wyw12u_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW 12/U Regional Champs Wilton YMCA (LCM) Wilton",
+      "start_date": "2025-07-19",
+      "end_date": "2025-07-20"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/Regionals/071925rywc12u_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC 12/Under Regional Champs Youth Development Center, Regionals YMCA  (LCM) Brookfield",
+      "start_date": "2025-07-19",
+      "end_date": "2025-07-20"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/Regionals/071925hhac13o_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC 13/Over Regional Champs Wesleyan University (LCM) Middletown",
+      "start_date": "2025-07-19",
+      "end_date": "2025-07-20"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/Regionals/071925lehy12u_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "LEHY 12/Under Regional Champs",
+      "start_date": "2025-07-19",
+      "end_date": "2025-07-20"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/Regionals/071825cdogdistance_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "Friday Regional Distance Champs",
+      "start_date": "2025-07-18",
+      "end_date": "2025-07-18"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/July/071125what_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT SCY Trials/Finals Meet",
+      "start_date": "2025-07-11",
+      "end_date": "2025-07-13"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/Seniors/071025ctswim-senior_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CT Senior Championships",
+      "start_date": "2025-07-10",
+      "end_date": "2025-07-13"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/July/070225rst_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "8/Under SCY Sparkler",
+      "start_date": "2025-07-01",
+      "end_date": "2025-07-01"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/CT_Open_Water/062825hhac_openwater_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CT Swim Open Water Championships",
+      "start_date": "2025-06-28",
+      "end_date": "2025-06-28"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/062825lehy_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "LEHY Kamana Wanna",
+      "start_date": "2025-06-28",
+      "end_date": "2025-06-29"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/062725what_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT Trials/Finals Meet",
+      "start_date": "2025-06-27",
+      "end_date": "2025-06-29"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/062725rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC Dennis Rodney Middle School Madness",
+      "start_date": "2025-06-27",
+      "end_date": "2025-06-29"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/062425wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW 12/U Last Chance Meet Update 4.25.25",
+      "start_date": "2025-06-24",
+      "end_date": "2025-06-24"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/062225oak_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "OAK SCY Medley Challenge",
+      "start_date": "2025-06-22",
+      "end_date": "2025-06-22"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/062225hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC SCY 10/U Trophy Meet",
+      "start_date": "2025-06-22",
+      "end_date": "2025-06-22"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/062025cac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CAC Destination Athlete Trials/Finals",
+      "start_date": "2025-06-20",
+      "end_date": "2025-06-22"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/062025cpac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CPAC June Trials/Finals Meet",
+      "start_date": "2025-06-20",
+      "end_date": "2025-06-22"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/061925zeus_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "ZEUS Juneteenth Meet",
+      "start_date": "2025-06-19",
+      "end_date": "2025-06-19"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/061725wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW Distance Day Update 4.25.25",
+      "start_date": "2025-06-17",
+      "end_date": "2025-06-18"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/061425hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC SCY Summer Pentathlon",
+      "start_date": "2025-06-14",
+      "end_date": "2025-06-14"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/061425eow_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "EZ Open Water Championships",
+      "start_date": "2025-06-14",
+      "end_date": "2025-06-14"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/061325rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC June Invite",
+      "start_date": "2025-06-13",
+      "end_date": "2025-06-14"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/061325cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG June Distance Meet",
+      "start_date": "2025-06-13",
+      "end_date": "2025-06-13"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/061225grit_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRIT June Trials/Finals Meet",
+      "start_date": "2025-06-12",
+      "end_date": "2025-06-15"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/061025wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW Splash and Dash Update 4.25.25",
+      "start_date": "2025-06-10",
+      "end_date": "2025-06-10"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/060725cat_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CAT SCY Meet Updated5.28.25 - Venue changed to Middletown Rec Pool.",
+      "start_date": "2025-06-07",
+      "end_date": "2025-06-07"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/060625cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG June Invite",
+      "start_date": "2025-06-07",
+      "end_date": "2025-06-08"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/060625grym_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRYM June Invite",
+      "start_date": "2025-06-06",
+      "end_date": "2025-06-08"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/060625wac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WAC Invite",
+      "start_date": "2025-06-06",
+      "end_date": "2025-06-08"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/June/060225rst_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RST SCY High School Series #2 This is a by-invite only meet as defined by CT Swimming.",
+      "start_date": "2025-06-03",
+      "end_date": "2025-06-03"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/May/053025mac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "MAC May/June Invite",
+      "start_date": "2025-05-30",
+      "end_date": "2025-06-01"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/May/052925wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW Trials/Finals Meet",
+      "start_date": "2025-05-29",
+      "end_date": "2025-06-01"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/May/052125rst_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RST SCY 13/O High School Series This is a by-invite only meet as defined by CT Swimming.",
+      "start_date": "2025-05-21",
+      "end_date": "2025-05-21"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/May/052025wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW SCY 12/Under Sizzler",
+      "start_date": "2025-05-20",
+      "end_date": "2025-05-20"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/May/051725cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG May Invite",
+      "start_date": "2025-05-17",
+      "end_date": "2025-05-18"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/051625what_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT May Trials/Finals Meet",
+      "start_date": "2025-05-16",
+      "end_date": "2025-05-18"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/May/051525cpac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CPAC May Qualifier",
+      "start_date": "2025-05-16",
+      "end_date": "2025-05-18"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/May/051625grym_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRYM May Meet",
+      "start_date": "2025-05-16",
+      "end_date": "2025-05-18"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/May/051525rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC Mako May Invite",
+      "start_date": "2025-05-15",
+      "end_date": "2025-05-18"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/May/051025rst_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RST SCY Great Duck Pentathlon",
+      "start_date": "2025-05-10",
+      "end_date": "2025-05-10"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/May/051525hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC SCY Pentathlon",
+      "start_date": "2025-05-10",
+      "end_date": "2025-05-10"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/May/050925wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW May Qualifier",
+      "start_date": "2025-05-09",
+      "end_date": "2025-05-10"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/May/050925cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG May Distance Meet",
+      "start_date": "2025-05-09",
+      "end_date": "2025-05-09"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/May/050925wrat_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WRAT Senior Qualifier Entry is open",
+      "start_date": "2025-05-09",
+      "end_date": "2025-05-11"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/May/050225zeus_meet_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "ZEUS De Mayo Meet",
+      "start_date": "2025-05-02",
+      "end_date": "2025-05-04"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/May/050225cac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CAC Spring Invite",
+      "start_date": "2025-05-02",
+      "end_date": "2025-05-04"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/May/050625rywc_meet_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC Mako May Crazy Invite",
+      "start_date": "2025-05-02",
+      "end_date": "2025-05-04"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2025/April/040825rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC LCM April Qualifier",
+      "start_date": "2025-04-08",
+      "end_date": "2025-04-10"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Mar/032125rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC YMCA Northeast Region Open Meet",
+      "start_date": "2025-03-21",
+      "end_date": "2025-03-23"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Championships/031325agc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CT 11-14 Age Group Champs",
+      "start_date": "2025-03-13",
+      "end_date": "2025-03-16"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Championships/03092510u_champs_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "10/Under CT Age Groups",
+      "start_date": "2025-03-07",
+      "end_date": "2025-03-09"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Mar/031225what_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT Trials/Finals Meet Update 2.3.25 - event file updated.",
+      "start_date": "2025-03-06",
+      "end_date": "2025-03-09"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Championships/030125grym_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRYM Regional Champs Greenwich YMCA (SCY) Greenwich",
+      "start_date": "2025-03-01",
+      "end_date": "2025-03-01"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Championships/030125bull_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "BULL Regional Champs Hutchinson Natatorium - SCSU (SCY) New Haven",
+      "start_date": "2025-03-01",
+      "end_date": "2025-03-02"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Championships/030125lehy_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "LEHY Regional Champs East Hartford High School (SCY) East Hartford",
+      "start_date": "2025-03-01",
+      "end_date": "2025-03-01"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Championships/030125cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG Regional Champs Cheshire Community Pool (SCY) Cheshire",
+      "start_date": "2025-03-01",
+      "end_date": "2025-03-02"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Championships/030125hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC Regional Champs Beckerman Athletic Complex (SCY) Hamden",
+      "start_date": "2025-03-01",
+      "end_date": "2025-03-01"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Championships/022825cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG Friday Regionals Cheshire Community Pool (SCY) Cheshire",
+      "start_date": "2025-02-28",
+      "end_date": "2025-02-28"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Championships/022825bull_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "BULL Friday Regional Champs Hutchinson Natatorium - SCSU (SCY) New Haven",
+      "start_date": "2025-02-28",
+      "end_date": "2025-02-28"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Championships/022825grym_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRYM Friday Regionals Greenwich YMCA (SCY) Greenwich",
+      "start_date": "2025-02-28",
+      "end_date": "2025-02-28"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Feb/022225rst_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RST 10/U Winter Carnival",
+      "start_date": "2025-02-22",
+      "end_date": "2025-02-22"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Feb/021725wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW Last Chance Meet This meet was originally scheduled for Oct, but due to facility flooding it was moved",
+      "start_date": "2025-02-15",
+      "end_date": "2025-02-16"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Feb/021425bull_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "BULL Swim Meet",
+      "start_date": "2025-02-14",
+      "end_date": "2025-02-16"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Feb/020825vsym_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "VSYM Superbowl Pentathlon",
+      "start_date": "2025-02-09",
+      "end_date": "2025-02-09"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Feb/020825grit_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRIT Last Chance Qualifier Update 2.3.35 Session combined into one AM session. 7:20a WU-8:30a Start",
+      "start_date": "2025-02-08",
+      "end_date": "2025-02-09"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Feb/020825rst_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RST Trials/Finals Meet Update 2.3.25 - Prelims combined Sat & Sun 745a WU, 930a Start Sat finals 4P WU, 5P Start Sun finals 2p WU, 3p Start",
+      "start_date": "2025-02-08",
+      "end_date": "2025-02-09"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Feb/020725wac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WAC Everyone is Invite Meet",
+      "start_date": "2025-02-07",
+      "end_date": "2025-02-09"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Feb/020725wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW Distance Day Meet",
+      "start_date": "2025-02-07",
+      "end_date": "2025-02-07"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Feb/020725cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG February Distance Meet",
+      "start_date": "2025-02-07",
+      "end_date": "2025-02-07"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Feb/020125hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC Trials/Finals Meet",
+      "start_date": "2025-02-01",
+      "end_date": "2025-02-02"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Feb/020125grym_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GYRM 8/U Off Calendar Meet",
+      "start_date": "2025-02-01",
+      "end_date": "2025-02-01"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Jan/013125hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC Winter Distance Meet",
+      "start_date": "2025-01-31",
+      "end_date": "2025-01-31"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Jan/012825gywd_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GYWD One Stop Meet #1",
+      "start_date": "2025-01-28",
+      "end_date": "2025-01-28"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Jan/012525arac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "ARAC Winter Invite",
+      "start_date": "2025-01-25",
+      "end_date": "2025-01-26"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Jan/012525seal_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "SEAL-WFYD Swim Meet",
+      "start_date": "2025-01-25",
+      "end_date": "2025-01-26"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Jan/012425arac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "ARAC January Distance Meet",
+      "start_date": "2025-01-24",
+      "end_date": "2025-01-24"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Jan/012425cpac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CPAC January Invite",
+      "start_date": "2025-01-24",
+      "end_date": "2025-01-26"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Jan/011725sys_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "SYS Trials/Finals Meet",
+      "start_date": "2025-01-17",
+      "end_date": "2025-01-19"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Jan/011725grym_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRYM Trials/Final Meet",
+      "start_date": "2025-01-17",
+      "end_date": "2025-01-19"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Jan/011725wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW January Trials/Finals Meet",
+      "start_date": "2025-01-17",
+      "end_date": "2025-01-19"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Jan/011025rst_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RST Winter Distance Meet",
+      "start_date": "2025-01-10",
+      "end_date": "2025-01-10"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Jan/010725wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW 12/U Pentathlon",
+      "start_date": "2025-01-07",
+      "end_date": "2025-01-07"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Jan/010425grit_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRIT New Year's Qualifier",
+      "start_date": "2025-01-03",
+      "end_date": "2025-01-03"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Jan/010325cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG January Distance Meet",
+      "start_date": "2025-01-03",
+      "end_date": "2025-01-03"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Dec/122124rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC 10/U Santa Claus Classic",
+      "start_date": "2024-12-21",
+      "end_date": "2024-12-21"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Dec/121424hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC Meet",
+      "start_date": "2024-12-14",
+      "end_date": "2024-12-15"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Dec/121324hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC Distance Meet",
+      "start_date": "2024-12-13",
+      "end_date": "2024-12-13"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Dec/121324bull_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "BULL December Trials/Finals Meet",
+      "start_date": "2024-12-13",
+      "end_date": "2024-12-15"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Dec/121224what_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT December Trials/Finals Meet",
+      "start_date": "2024-12-12",
+      "end_date": "2024-12-15"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Dec/120824cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG 10/Under Quadrathon",
+      "start_date": "2024-12-08",
+      "end_date": "2024-12-08"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Dec/120624rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC Age Group Qualifier",
+      "start_date": "2024-12-06",
+      "end_date": "2024-12-08"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Dec/120624cpac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CPAC Trials/Finals Meet",
+      "start_date": "2024-12-06",
+      "end_date": "2024-12-08"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Dec/120124mac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "MAC Pilgrim Plunge",
+      "start_date": "2024-12-01",
+      "end_date": "2024-12-01"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Nov/112324rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC 12/U Gobble Wobble",
+      "start_date": "2024-11-23",
+      "end_date": "2024-11-23"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Nov/112324rst_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RST Fall Sprints",
+      "start_date": "2024-11-23",
+      "end_date": "2024-11-24"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Nov/112224rst_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RST Fall Distance Meet",
+      "start_date": "2024-11-22",
+      "end_date": "2024-11-22"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Nov/112224what_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT Age Group Meet 11.7.24",
+      "start_date": "2024-11-22",
+      "end_date": "2024-11-24"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Nov/112224oak_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "OAK Sophie Ringquist Memorial Invite",
+      "start_date": "2024-11-22",
+      "end_date": "2024-11-24"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Nov/112224glas_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GLAS Turkey Trot Distance Meet",
+      "start_date": "2024-11-22",
+      "end_date": "2024-11-22"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Nov/112624seal_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "SEAL-NWYL Swim Meet",
+      "start_date": "2024-11-16",
+      "end_date": "2024-11-17"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Nov/111524wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW YMCA Thanksgiving T/F Meet",
+      "start_date": "2024-11-15",
+      "end_date": "2024-11-17"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Nov/111524wrat_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WRAT Age Group Qualifier",
+      "start_date": "2024-11-15",
+      "end_date": "2024-11-17"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Nov/111024vsym_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "VSYM November Pentathlon",
+      "start_date": "2024-11-10",
+      "end_date": "2024-11-10"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Nov/110924rst_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RST Pentathlon",
+      "start_date": "2024-11-09",
+      "end_date": "2024-11-09"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Nov/110924hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC Red, White, Blue Pentathlon",
+      "start_date": "2024-11-09",
+      "end_date": "2024-11-09"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Nov/110824nca_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "NCA November Invite",
+      "start_date": "2024-11-08",
+      "end_date": "2024-11-10"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Nov/110224grym_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRYM 10/Under Meet",
+      "start_date": "2024-11-02",
+      "end_date": "2024-11-02"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Nov/110124cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG November Distance Meet",
+      "start_date": "2024-11-01",
+      "end_date": "2024-11-01"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Oct/102724what_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT Spooktathon 12/U Pentathlon",
+      "start_date": "2024-10-27",
+      "end_date": "2024-10-27"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Oct/102724hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC Halloween Pentathlon",
+      "start_date": "2024-10-27",
+      "end_date": "2024-10-27"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Oct/102624lehy_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "LEHY Aquafest Meet",
+      "start_date": "2024-10-26",
+      "end_date": "2024-10-27"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Oct/102624rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC 12/U Spooktacular",
+      "start_date": "2024-10-26",
+      "end_date": "2024-10-26"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Oct/102524lehy_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "LEHY Aquafest Distance Meet",
+      "start_date": "2024-10-25",
+      "end_date": "2024-10-25"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Oct/1025cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG October Distance Meet",
+      "start_date": "2024-10-25",
+      "end_date": "2024-10-25"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Oct/102024rays_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RAYS Meegan Martin Pinkout Invite",
+      "start_date": "2024-10-20",
+      "end_date": "2024-10-20"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Oct/102024mac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "MAC Fall Sprint Spooktacular",
+      "start_date": "2024-10-20",
+      "end_date": "2024-10-20"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Oct/101924cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG IMX Meet",
+      "start_date": "2024-10-19",
+      "end_date": "2024-10-20"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Oct/101824grym_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRYM October Meet",
+      "start_date": "2024-10-18",
+      "end_date": "2024-10-20"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Oct/101224fvyt_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "FVYT Fun 25's & More Meet",
+      "start_date": "2024-10-12",
+      "end_date": "2024-10-13"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Oct/101224rst_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RST Fall into Freestyle Meet",
+      "start_date": "2024-10-12",
+      "end_date": "2024-10-12"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Oct/100924rysc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC SC Kickoff Meet (moved from 9/25)",
+      "start_date": "2024-10-09",
+      "end_date": "2024-10-09"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2425/Oct/100624bull_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "BULL Season Opener Pentathlon",
+      "start_date": "2024-10-06",
+      "end_date": "2024-10-06"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/Aug/080424nutmeg_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "Nutmeg Games Swim Meet A proper meet announcement and hy-tek file will be posted shortly",
+      "start_date": "2024-08-04",
+      "end_date": "2024-08-04"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/Regionals/13-O/072024cdog_13o_reg_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG 13/O Regionals",
+      "start_date": "2024-07-20",
+      "end_date": "2024-07-21"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/Regionals/13-O/072024saqq_13o_reg_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "SAQ 13/Over Regionals",
+      "start_date": "2024-07-20",
+      "end_date": "2024-07-21"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/Regionals/12-U/072024wyw_12u_reg_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW 12/U Regionals",
+      "start_date": "2024-07-20",
+      "end_date": "2024-07-21"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/Regionals/12-U/072024lehy_12u_reg_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "LEHY 12/U Regionals",
+      "start_date": "2024-07-20",
+      "end_date": "2024-07-21"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/Regionals/Friday/071924cdog_fri_reg_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "LC Friday Regional Distance Championship",
+      "start_date": "2024-07-19",
+      "end_date": "2024-07-19"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/July/071224what_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT SCY Trials/Finals Meet",
+      "start_date": "2024-07-12",
+      "end_date": "2024-07-14"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/Seniors/071124ctswim_senior_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CT LC Senior Champs",
+      "start_date": "2024-07-11",
+      "end_date": "2024-07-14"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/July/070224rst_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RST SCY Red, White and Blue",
+      "start_date": "2024-07-02",
+      "end_date": "2024-07-02"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/June/062924lehy_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "LEHY Kamana Wanna Update 6.17.24 - Session times moved to 7:35a WU, 8:45a Start",
+      "start_date": "2024-06-29",
+      "end_date": "2024-06-30"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/June/062824rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC 10/U-15/O Sizzler Update 5.22.24",
+      "start_date": "2024-06-29",
+      "end_date": "2024-06-30"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/June/062824WHAT_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT Trials/Finals Meet",
+      "start_date": "2024-06-28",
+      "end_date": "2024-06-30"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/June/062524wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW 12/U LC Last Chance",
+      "start_date": "2024-06-25",
+      "end_date": "2024-06-25"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/June/062324hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC SCY 10/U Trophy Finale",
+      "start_date": "2024-06-23",
+      "end_date": "2024-06-23"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/June/062124nc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "NCA/CAC June Invite Update 6/17/24 - Friday PM - NO CHANGE Sat/Sun AM - WU 730a, Start 835a Sat.Sun PM - WU 1130a, Start 1235p",
+      "start_date": "2024-06-21",
+      "end_date": "2024-06-23"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/June/051824wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW Distance Day",
+      "start_date": "2024-06-18",
+      "end_date": "2024-06-18"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/June/061524mac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "MAC SCY Summer Sprintacular",
+      "start_date": "2024-06-16",
+      "end_date": "2024-06-16"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/June/061424grit_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRIT LC Trials/Finals Meet",
+      "start_date": "2024-06-14",
+      "end_date": "2024-06-16"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/June/061424cpac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CPAC Father's Day Trials/Finals Meet",
+      "start_date": "2024-06-14",
+      "end_date": "2024-06-16"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/June/051424rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC School's Out for the Summer Meet",
+      "start_date": "2024-06-14",
+      "end_date": "2024-06-15"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/June/061124wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW SCY 12/Under Meet",
+      "start_date": "2024-06-11",
+      "end_date": "2024-06-11"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/June/060924fa_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "FA/WEST SCM Meet Update 4.24.24 - meet moved to Sunday",
+      "start_date": "2024-06-09",
+      "end_date": "2024-06-09"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/June/060824saq_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "SAQ/NSSC Early June Qualifier",
+      "start_date": "2024-06-08",
+      "end_date": "2024-06-09"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/June/060724wac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WAC \"All events are found here\" meet",
+      "start_date": "2024-06-07",
+      "end_date": "2024-06-09"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/June/060724grym_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRYM June Meet",
+      "start_date": "2024-06-07",
+      "end_date": "2024-06-09"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/June/060724cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG June Distance Meet",
+      "start_date": "2024-06-07",
+      "end_date": "2024-06-07"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/June/060124cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG June Invite",
+      "start_date": "2024-06-01",
+      "end_date": "2024-06-02"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/June/060124hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC SCY Summer Pentathlon",
+      "start_date": "2024-06-01",
+      "end_date": "2024-06-01"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/May/053124cpac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CPAC May Maelstrom",
+      "start_date": "2024-05-31",
+      "end_date": "2024-06-02"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/May/053124mac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "MAC May Meter Meet",
+      "start_date": "2024-05-31",
+      "end_date": "2024-06-02"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/May/053124wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW Trials/Finals Meet",
+      "start_date": "2024-05-31",
+      "end_date": "2024-06-02"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/May/052124wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW SCY 12/U Meet",
+      "start_date": "2024-05-21",
+      "end_date": "2024-05-21"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/May/051824saq_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "SAQ May Qualifier",
+      "start_date": "2024-05-18",
+      "end_date": "2024-05-19"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/May/051724grym_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRYM May Meet",
+      "start_date": "2024-05-17",
+      "end_date": "2024-05-19"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/May/051724what_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT Trials/Finals Meet",
+      "start_date": "2024-05-17",
+      "end_date": "2024-05-19"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/May/051624rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC May Invite",
+      "start_date": "2024-05-16",
+      "end_date": "2024-05-19"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/May/051024cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG May Distance Meet",
+      "start_date": "2024-05-10",
+      "end_date": "2024-05-10"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/May/051324wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW May Qualifier",
+      "start_date": "2024-05-10",
+      "end_date": "2024-05-11"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/May/050924rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC 12/Under Freestyle Frenzy",
+      "start_date": "2024-05-09",
+      "end_date": "2024-05-09"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/May/050424cpac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CPAC May the 4th be with you meet",
+      "start_date": "2024-05-04",
+      "end_date": "2024-05-05"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/May/050324oak_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "OAK/CAC Spring Invite",
+      "start_date": "2024-05-03",
+      "end_date": "2024-05-05"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/May/050324rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC May Invite",
+      "start_date": "2024-05-03",
+      "end_date": "2024-05-05"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/042724saq_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "SAQ LCM One Day Meet",
+      "start_date": "2024-04-27",
+      "end_date": "2024-04-27"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2024/040924rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC LC Meet",
+      "start_date": "2024-04-09",
+      "end_date": "2024-04-11"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/March/032224rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC YMCA Open",
+      "start_date": "2024-03-22",
+      "end_date": "2024-03-24"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Age_Groups/031424age_group_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CT Age Group Champs",
+      "start_date": "2024-03-14",
+      "end_date": "2024-03-17"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/March/030924cpac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CPAC 11/Under Meet",
+      "start_date": "2024-03-09",
+      "end_date": "2024-03-09"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/March/030724what_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT Northeast Showcase",
+      "start_date": "2024-03-07",
+      "end_date": "2024-03-10"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Regionals/030124lehyregional_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "LEHY Regional Champs East Hartford High School (SCY) East Hartford",
+      "start_date": "2024-03-02",
+      "end_date": "2024-03-03"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Regionals/030124rstregional_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RST Regional Champs Masuk High School (SCY) Monroe",
+      "start_date": "2024-03-02",
+      "end_date": "2024-03-03"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Regionals/030224hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC Regioanal Champs Beckerman Athletic Center (SCY) Hamden",
+      "start_date": "2024-03-02",
+      "end_date": "2024-03-03"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Regionals/030124grymregional_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRYM Regional Champs Greenwich YMCA (SCY) Gree",
+      "start_date": "2024-03-02",
+      "end_date": "2024-03-03"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Regionals/030124cdogregional_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG Regional Champs Cheshire Community Pool (SCY) Cheshire",
+      "start_date": "2024-03-02",
+      "end_date": "2024-03-03"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Regionals/030124bull_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "BULL Friday Regional Champs Hutchinson Natatorium (SCY) New Haven",
+      "start_date": "2024-03-01",
+      "end_date": "2024-03-01"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Regionals/030124grymfriday_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRYM Friday Regional Champs Greenwich YMCA (SCY) Greenwich",
+      "start_date": "2024-03-01",
+      "end_date": "2024-03-01"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Regionals/030124cdogfridayregionals_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG Friday Regional Champs Cheshire Community Pool (SCY) Cheshire",
+      "start_date": "2024-03-01",
+      "end_date": "2024-03-01"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Feb/022524hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC 10/Under Finale",
+      "start_date": "2024-02-25",
+      "end_date": "2024-02-25"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Feb/021824what_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT 10/Under Showcase",
+      "start_date": "2024-02-18",
+      "end_date": "2024-02-18"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Feb/021724mac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "MAC February Meet",
+      "start_date": "2024-02-18",
+      "end_date": "2024-02-18"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Feb/021724bull_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "BULL February Meet",
+      "start_date": "2024-02-17",
+      "end_date": "2024-02-18"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Feb/021324wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW 12/U Valentine Meet",
+      "start_date": "2024-02-13",
+      "end_date": "2024-02-13"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Feb/021624vsym_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "VSYM Superbowl Meet",
+      "start_date": "2024-02-11",
+      "end_date": "2024-02-11"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Feb/021024what_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT Feb Trials/Finals Meet",
+      "start_date": "2024-02-10",
+      "end_date": "2024-02-10"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Feb/020924what_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT Feb Distance Meet",
+      "start_date": "2024-02-09",
+      "end_date": "2024-02-09"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Feb/020224cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG February Invite Meet",
+      "start_date": "2024-02-02",
+      "end_date": "2024-02-04"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Feb/020224oak_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "OAK February Age Group Meet",
+      "start_date": "2024-02-02",
+      "end_date": "2024-02-04"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Jan/013024wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW Distance Day",
+      "start_date": "2024-01-27",
+      "end_date": "2024-01-27"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Jan/012724arac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "ARAC Winter Trials/Finals Meet",
+      "start_date": "2024-01-27",
+      "end_date": "2024-01-28"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Jan/012724hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC Trials/Finals Meet",
+      "start_date": "2024-01-27",
+      "end_date": "2024-01-28"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Jan/012624hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC January Distance Meet",
+      "start_date": "2024-01-26",
+      "end_date": "2024-01-26"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Jan/012624arac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "ARAC January Distance Meet",
+      "start_date": "2024-01-26",
+      "end_date": "2024-01-26"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Jan/012324wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW IM Ready Meet",
+      "start_date": "2024-01-23",
+      "end_date": "2024-01-23"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Jan/012324gywd_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GYWD One Stop Meet #1",
+      "start_date": "2024-01-23",
+      "end_date": "2024-01-23"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Jan/012024nca_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "NCA Invite Meet",
+      "start_date": "2024-01-20",
+      "end_date": "2024-01-21"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Jan/011924wrat_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WRAT YMCA State Championships",
+      "start_date": "2024-01-19",
+      "end_date": "2024-01-21"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Jan/011924nca_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "NCA Distance Meet",
+      "start_date": "2024-01-19",
+      "end_date": "2024-01-19"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Jan/011224sys_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "SYS Winter Classic Trials/Finals Meet",
+      "start_date": "2024-01-12",
+      "end_date": "2024-01-14"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Jan/011224cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG January Distance Meet II",
+      "start_date": "2024-01-12",
+      "end_date": "2024-01-12"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Jan/011224cpac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CPAC January Trials/Finals Meet",
+      "start_date": "2024-01-12",
+      "end_date": "2024-01-15"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Jan/010624rst_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RST Snowflake Classic",
+      "start_date": "2024-01-06",
+      "end_date": "2024-01-07"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Jan/010924rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC Distance Carnival",
+      "start_date": "2024-01-06",
+      "end_date": "2024-01-06"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Jan/010624grit_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRIT New Years Qualifier",
+      "start_date": "2024-01-06",
+      "end_date": "2024-01-07"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Jan/010524seal_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "SEAL/IVY 10/Under Pentathlon",
+      "start_date": "2024-01-06",
+      "end_date": "2024-01-06"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Jan/010524seal_Dist_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "SEAL/IVY Distance Meet",
+      "start_date": "2024-01-05",
+      "end_date": "2024-01-05"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Jan/010524cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG January Distance Meet",
+      "start_date": "2024-01-05",
+      "end_date": "2024-01-05"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Dec/121623hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC Age Group Meet",
+      "start_date": "2023-12-16",
+      "end_date": "2023-12-17"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Dec/121623rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC 10/U Santa Claus Classic",
+      "start_date": "2023-12-16",
+      "end_date": "2023-12-16"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Dec/121623what_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT Trials/Final Snowball Classic",
+      "start_date": "2023-12-16",
+      "end_date": "2023-12-17"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Dec/121523what_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT Snowball Distance Meet",
+      "start_date": "2023-12-15",
+      "end_date": "2023-12-15"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Dec/121523hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC December Distance Meet",
+      "start_date": "2023-12-15",
+      "end_date": "2023-12-15"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Dec/121623fvyt_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "FVYT Aproved Christmas Invite",
+      "start_date": "2023-12-15",
+      "end_date": "2023-12-17"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Dec/121523bull_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "BULL December Trials/Finals Meet Update 12.6.23 - 12/U session combined with am 13/ov session",
+      "start_date": "2023-12-15",
+      "end_date": "2023-12-17"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Dec/121523wrat_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WRAT December 8/Under Meet",
+      "start_date": "2023-12-15",
+      "end_date": "2023-12-15"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Dec/121223wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW 200 Day Meet",
+      "start_date": "2023-12-12",
+      "end_date": "2023-12-12"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Dec/120823grit_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRIT Holiday Trials/Finals Meet",
+      "start_date": "2023-12-08",
+      "end_date": "2023-12-10"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Dec/120323grym_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRYM 8/Under Meet",
+      "start_date": "2023-12-03",
+      "end_date": "2023-12-03"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Dec/120123cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG 10/Under Quadrathon",
+      "start_date": "2023-12-03",
+      "end_date": "2023-12-03"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Dec/120123cpac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CPAC December Trials/Finals Meet",
+      "start_date": "2023-12-01",
+      "end_date": "2023-12-03"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Dec/120123rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC Invite",
+      "start_date": "2023-12-01",
+      "end_date": "2023-12-03"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Nov/112623mac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "MAC Pilgrim Plunge",
+      "start_date": "2023-11-26",
+      "end_date": "2023-11-26"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Nov/112423gywd_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GYWD Town Champs",
+      "start_date": "2023-11-24",
+      "end_date": "2023-11-25"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Nov/111823rst_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RST Turkey Splash and Dash",
+      "start_date": "2023-11-18",
+      "end_date": "2023-11-19"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Nov/111823what_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT Age Group Meet",
+      "start_date": "2023-11-18",
+      "end_date": "2023-11-19"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Nov/111723what_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT November Distance Meet",
+      "start_date": "2023-11-17",
+      "end_date": "2023-11-17"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Nov/111723glas_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GLAS Turkey Trot Distance Meet",
+      "start_date": "2023-11-17",
+      "end_date": "2023-11-17"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Nov/111723oak_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "OAK November Age Group Qualifier",
+      "start_date": "2023-11-17",
+      "end_date": "2023-11-19"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Nov/111223vsym_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "VSYM Pentathlon",
+      "start_date": "2023-11-12",
+      "end_date": "2023-11-12"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Nov/111223rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC 10/U Gobble Wobble Pentathlon",
+      "start_date": "2023-11-12",
+      "end_date": "2023-11-12"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Nov/110923hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC Red, White and Blue Pentathlon",
+      "start_date": "2023-11-11",
+      "end_date": "2023-11-11"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Dec/111023ncy_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "NCY PLQ",
+      "start_date": "2023-11-11",
+      "end_date": "2023-11-12"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Nov/110923ncy_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "NCY PLQ Distance Meet Update 9.7.23 - Session numbering corrected",
+      "start_date": "2023-11-10",
+      "end_date": "2023-11-10"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Nov/110923cpac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CPAC November Meet",
+      "start_date": "2023-11-10",
+      "end_date": "2023-11-12"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Nov/110923wrat_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WRAT November Age Group Meet",
+      "start_date": "2023-11-10",
+      "end_date": "2023-11-12"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Nov/110923wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW 10/Under Freestyle Frenzy",
+      "start_date": "2023-11-09",
+      "end_date": "2023-11-09"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Nov/110323seal_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "SEAL/IVY 8/Under Meet",
+      "start_date": "2023-11-04",
+      "end_date": "2023-11-04"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Nov/110323cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG Nov Distance Meet",
+      "start_date": "2023-11-03",
+      "end_date": "2023-11-03"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Oct/102823rst_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RST Fall into Freestyle",
+      "start_date": "2023-10-29",
+      "end_date": "2023-10-29"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Oct/102923hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC Halloween Pentathlon",
+      "start_date": "2023-10-29",
+      "end_date": "2023-10-29"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Oct/102823sys_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "SYS Qualifier and 50 Free Shootout",
+      "start_date": "2023-10-28",
+      "end_date": "2023-10-29"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Oct/102723wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW Spooktacular",
+      "start_date": "2023-10-27",
+      "end_date": "2023-10-29"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Oct/102723lehy_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "LEHY Aquafest Distance Meet",
+      "start_date": "2023-10-27",
+      "end_date": "2023-10-27"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Oct/102723cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG Distance Meet",
+      "start_date": "2023-10-27",
+      "end_date": "2023-10-27"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Oct/102123mac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "MAC Sprint Spooktacular",
+      "start_date": "2023-10-21",
+      "end_date": "2023-10-21"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Oct/102123cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG IMX Meet",
+      "start_date": "2023-10-21",
+      "end_date": "2023-10-22"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Oct/102123nca_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "NCA Fall Invite",
+      "start_date": "2023-10-21",
+      "end_date": "2023-10-22"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Oct/102123wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW 12/Under Fall Kickoff",
+      "start_date": "2023-10-21",
+      "end_date": "2023-10-21"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Oct/102023rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC Candlewood Cup",
+      "start_date": "2023-10-20",
+      "end_date": "2023-10-22"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Oct/102023nca_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "NCA Distance Meet",
+      "start_date": "2023-10-20",
+      "end_date": "2023-10-20"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Oct/101523rays_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RAYS Meegan Martin Pinkout Invite",
+      "start_date": "2023-10-15",
+      "end_date": "2023-10-15"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Oct/101423oak_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "OAK Age Group Qualifier",
+      "start_date": "2023-10-14",
+      "end_date": "2023-10-15"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Oct/101423cpac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CPAC Rocktober Meet",
+      "start_date": "2023-10-14",
+      "end_date": "2023-10-15"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Oct/101323GRYM_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRYM October Invite Update 10.9.23 - sessions updated. Saturday-11:30 WU/12:30 Start Sunday-11:00WU/12:00 Start",
+      "start_date": "2023-10-13",
+      "end_date": "2023-10-15"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Oct/100823bull_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "BULL Season Opener",
+      "start_date": "2023-10-08",
+      "end_date": "2023-10-08"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2324/Oct/100823wrat_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WRAT 8/Under Meet",
+      "start_date": "2023-10-08",
+      "end_date": "2023-10-08"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/July/2023_nutmeg_state_games_meet_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "Nutmeg State Games",
+      "start_date": "2023-07-30",
+      "end_date": "2023-07-30"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/July/072923nca_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "NCA 10/Under Finale This meet is the 29th.  The meet announcement is incorrect.  Will updated when new announcement is received.",
+      "start_date": "2023-07-29",
+      "end_date": "2023-07-29"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/July/070123lehy_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "LEHY Kamana Wanna",
+      "start_date": "2023-07-01",
+      "end_date": "2023-07-02"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/063023what_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WHAT LCM Trials-Finals Meet",
+      "start_date": "2023-06-30",
+      "end_date": "2023-07-02"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/062323rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC LCM 15/O-10/U Qualifier",
+      "start_date": "2023-06-24",
+      "end_date": "2023-06-25"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/062723nca-cac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "NCA-CAC LCM June Invite",
+      "start_date": "2023-06-23",
+      "end_date": "2023-06-25"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/062323rywc_Rodney_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC LCM Dennis Rodney Middle School Madness Invite",
+      "start_date": "2023-06-23",
+      "end_date": "2023-06-25"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/062323cpac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CPAC LCM Trials & Finals Meet",
+      "start_date": "2023-06-23",
+      "end_date": "2023-06-25"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/062223wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW SCY 10/Under Meet",
+      "start_date": "2023-06-22",
+      "end_date": "2023-06-22"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/061723hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC SCY 10/Under Finale",
+      "start_date": "2023-06-17",
+      "end_date": "2023-06-17"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/062623grit_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRIT LCM Trials/Finals Meet",
+      "start_date": "2023-06-15",
+      "end_date": "2023-06-18"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/061523wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW SCY 10/Under Sizzler",
+      "start_date": "2023-06-15",
+      "end_date": "2023-06-15"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/061023saq_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "SAQ LCM June Qualifier",
+      "start_date": "2023-06-10",
+      "end_date": "2023-06-11"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/060923wac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WAC LCM June Meet",
+      "start_date": "2023-06-09",
+      "end_date": "2023-06-11"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/060923cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG LCM June Distance Meet",
+      "start_date": "2023-06-09",
+      "end_date": "2023-06-09"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/060923wrat_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WRAT SCY 10/Under Meet",
+      "start_date": "2023-06-09",
+      "end_date": "2023-06-09"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/060923grym_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRYM LCM June Qualifier",
+      "start_date": "2023-06-09",
+      "end_date": "2023-06-11"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/060323bull_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "BULL LCM June Meet",
+      "start_date": "2023-06-03",
+      "end_date": "2023-06-04"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/060323rst_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RST SCY Swimpalooza",
+      "start_date": "2023-06-03",
+      "end_date": "2023-06-03"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/060323cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG LCM June Invite",
+      "start_date": "2023-06-03",
+      "end_date": "2023-06-04"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/060323hhac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "HHAC SCY Summer Pentathlon",
+      "start_date": "2023-06-03",
+      "end_date": "2023-06-03"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/060223rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC LCM June Qualifier",
+      "start_date": "2023-06-02",
+      "end_date": "2023-06-04"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/060223mac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "MAC LCM Spring Invite",
+      "start_date": "2023-06-02",
+      "end_date": "2023-06-04"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/June/060123wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW LCM June Trials/Finals Meet",
+      "start_date": "2023-06-01",
+      "end_date": "2023-06-04"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/May/052023saq_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "SAQ LCM May Meet 5.1.23",
+      "start_date": "2023-05-20",
+      "end_date": "2023-05-21"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/May/051923zeus_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "ZEUS LCM Distance Meet",
+      "start_date": "2023-05-19",
+      "end_date": "2023-05-19"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/May/051923cpac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CPAC LCM May Qualifier",
+      "start_date": "2023-05-19",
+      "end_date": "2023-05-21"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/May/052423rywc_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RYWC LCM Mako Invite Update 5.9.23 - Meet is now outdoors",
+      "start_date": "2023-05-18",
+      "end_date": "2023-05-21"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/May/051223wrat_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WRAT LCM Spring Sr Invite",
+      "start_date": "2023-05-12",
+      "end_date": "2023-05-14"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/May/051223nca_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "NCA SCY Summer Invite",
+      "start_date": "2023-05-12",
+      "end_date": "2023-05-14"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/May/050623cdog_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG LCM May Meet",
+      "start_date": "2023-05-06",
+      "end_date": "2023-05-07"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/May/050523wyw_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "WYW LCM May Meet",
+      "start_date": "2023-05-05",
+      "end_date": "2023-05-07"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/April/042923cpac_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CPAC LCM Open Qualifier",
+      "start_date": "2023-04-29",
+      "end_date": "2023-04-30"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/April/041523bull_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "BULL LCM April Opener",
+      "start_date": "2023-04-15",
+      "end_date": "2023-04-16"
     },
     {
       "url": "/Customer-Content/www/Meets/LC2023/April/041423bull_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "BULL LCM Distance Meet",
+      "start_date": "2023-04-14",
+      "end_date": "2023-04-14"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2223/SC_Sr_Invite_Champs/030223ctswimsrivnite_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CSI Senior Invite",
+      "start_date": "2023-03-02",
+      "end_date": "2023-03-05"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2223/SC_Regionals/022523bull_sat-sun_reg_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "BULL Sat-Sun Regional Champs",
+      "start_date": "2023-02-25",
+      "end_date": "2023-02-26"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2223/SC_Regionals/022523hhac_regional_results.pdf",
-      "label": "HHAC Sat-Sun Regional Champs"
+      "label": "HHAC Sat-Sun Regional Champs",
+      "meet_name": "HHAC Sat-Sun Regional Champs",
+      "start_date": "2023-02-25",
+      "end_date": "2023-02-26"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2223/SC_Regionals/022523lehy_regional_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "LEHY Sat-Sun Regional Champs",
+      "start_date": "2023-02-25",
+      "end_date": "2023-02-26"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2223/SC_Regionals/022523cdog_regional_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG Sat-Sun Regional Champs",
+      "start_date": "2023-02-25",
+      "end_date": "2023-02-26"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2223/SC_Regionals/022523rst_regional_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "RST Sat-Sun Regional Champs",
+      "start_date": "2023-02-25",
+      "end_date": "2023-02-26"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2223/SC_Regionals/022423bull_fri_regional_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "BULL Friday Regional Champs",
+      "start_date": "2023-02-24",
+      "end_date": "2023-02-24"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2223/SC_Regionals/022423cdog_fri_regional_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CDOG Friday Regional Champs",
+      "start_date": "2023-02-24",
+      "end_date": "2023-02-24"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2223/SC_Regionals/022423grym_fri_regional_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "GRYM Friday Regional Champs",
+      "start_date": "2023-02-24",
+      "end_date": "2023-02-24"
     },
     {
       "url": "/Customer-Content/www/Meets/SC2223/Oct_Meets/100222bull_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "BULL Pentathlon Update 9.27.22 - Event file updated",
+      "start_date": "2022-10-02",
+      "end_date": "2022-10-02"
     },
     {
       "url": "/Customer-Content/www/Meets/LC22/July_Meets/nutmeg_state_games_2022_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "Nutmeg State Games Middletown High School (SCY) Middletown",
+      "start_date": "2022-07-31",
+      "end_date": "2022-07-31"
     },
     {
       "url": "/Customer-Content/www/Meets/LC22/Championship_Meets/Age_Groups/2022_ct_lcag_full_results.pdf",
-      "label": ""
+      "label": "",
+      "meet_name": "CT LC Age Group Championships",
+      "start_date": "2022-07-21",
+      "end_date": "2022-07-24"
     }
   ]
 }
