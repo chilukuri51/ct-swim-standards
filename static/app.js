@@ -1744,6 +1744,43 @@ if (hasPerm('batch')) {
 }
 
 
+// ===== RESET ALL AGE DATA (admin escape hatch) =====
+if (hasPerm('batch')) {
+    const resetBtn = document.getElementById('resetAgeBtn');
+    const resetKeep = document.getElementById('resetKeepUploaded');
+    const resetStatus = document.getElementById('resetAgeStatus');
+    if (resetBtn && resetStatus) {
+        resetBtn.addEventListener('click', async () => {
+            const keep = !!(resetKeep && resetKeep.checked);
+            const desc = keep ? 'auto-discovered PDFs and all derived ages'
+                              : 'every parsed PDF + every derived age';
+            if (!confirm(`This will clear ${desc}, then re-run auto-fill from scratch.\n\nManual birth-year overrides in the roster modal will also be cleared. Continue?`)) {
+                return;
+            }
+            resetBtn.disabled = true;
+            resetStatus.innerHTML = '<span style="color:#64748b">Clearing data and starting auto-fill…</span>';
+            try {
+                const r = await fetch('/api/admin/reset_age_data', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({keep_uploaded: keep}),
+                });
+                const data = await r.json();
+                if (!r.ok) {
+                    resetStatus.innerHTML = `<span style="color:#dc2626">${data.error || 'Failed.'}</span>`;
+                    resetBtn.disabled = false;
+                    return;
+                }
+                resetStatus.innerHTML = `<span style="color:#16a34a">✓ Reset complete. Auto-fill ${data.auto_fill_started ? 'running now' : 'queued'}. Watch the Auto-fill panel for progress.</span>`;
+            } catch (e) {
+                resetStatus.innerHTML = `<span style="color:#dc2626">${e.message}</span>`;
+                resetBtn.disabled = false;
+            }
+        });
+    }
+}
+
+
 // ===== UNMATCHED MEETS PANEL (admin) =====
 if (hasPerm('batch')) {
     const ummList = document.getElementById('ummList');

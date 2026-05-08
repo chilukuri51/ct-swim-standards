@@ -460,6 +460,23 @@
                 <div id="afStatus" class="autofill-status hidden"></div>
             </div>
 
+            <!-- Reset triangulation: clear all parsed-PDF caches +
+                 derived fields, then re-run from scratch. The escape
+                 hatch when stale data is stuck. -->
+            <div class="autofill-panel" data-requires="batch">
+                <div class="autofill-head">
+                    <div>
+                        <strong>Reset & re-process all ages</strong>
+                        <span class="autofill-sub">Wipes all parsed-PDF data and cleared triangulation fields, then re-runs auto-fill from scratch. Use when ages/genders are stuck on wrong values from earlier buggy parses. Keep manually-uploaded PDFs to skip re-uploading them.</span>
+                    </div>
+                    <div class="autofill-actions">
+                        <label class="mc-toggle" style="margin-right:0.6rem"><input type="checkbox" id="resetKeepUploaded" checked> Keep uploaded PDFs</label>
+                        <button id="resetAgeBtn" class="btn-pdf" style="padding:0.4rem 0.9rem">Reset & re-run</button>
+                    </div>
+                </div>
+                <div id="resetAgeStatus" style="font-size:0.85rem;margin-top:0.5rem"></div>
+            </div>
+
             <!-- Unmatched-meets panel: meets where the auto-fill couldn't
                  find a PDF on Results.aspx. Admin pastes the actual URL
                  here to register them on the fly. -->

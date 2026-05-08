@@ -33,9 +33,22 @@ USER_AGENT = (
 
 def normalize_name(first: str, last: str) -> str:
     """Canonical key for matching across CT Swim and PDF formats.
-    'Saanvi' + 'Chilukuri' → 'chilukuri_saanvi'.
-    Strips punctuation, lowercases, removes whitespace within names."""
-    f = re.sub(r"[^a-z]", "", (first or '').lower())
+
+    Takes only the FIRST WORD of `first` so middle names don't break the
+    match — CT Swim sometimes registers swimmers as 'Harper Grace' but
+    coaches type just 'Harper' in the roster. PDF parser may extract
+    'Harper Grace' as a multi-word first; normalizing both sides to
+    'harper' makes them match.
+
+    Last name keeps the full form (hyphenated names like 'Mejia-Arroyo'
+    should match exactly).
+
+    'Harper Grace' + 'Wetmore' → 'wetmore_harper'
+    'Saanvi' + 'Chilukuri' → 'chilukuri_saanvi'
+    'Ava Rose' + 'Finefrock' → 'finefrock_ava'
+    """
+    first_word = (first or '').strip().split()[0] if (first or '').strip() else ''
+    f = re.sub(r"[^a-z]", "", first_word.lower())
     l = re.sub(r"[^a-z]", "", (last or '').lower())
     return f"{l}_{f}"
 

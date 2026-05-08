@@ -512,6 +512,44 @@ def api_autofill_ages_start():
     return jsonify({'ok': True, 'status': age_filler.get_status()})
 
 
+@app.route('/api/admin/reset_age_data', methods=['POST'])
+@role_required('admin')
+def api_reset_age_data():
+    """Nuclear option: clear ALL parsed-PDF data and triangulation fields,
+    then re-run auto-fill from scratch. Use when stale data from earlier
+    buggy parsers is stuck on team_members and Force-all alone won't
+    re-derive (because cached parsed_at rows look 'done').
+
+    Body (optional): {"keep_uploaded": true} to preserve manually-uploaded
+    PDFs (rows in meet_pdf_cache that have a non-empty pdf_url AND were
+    not from auto-discovery). Default false = wipe everything.
+    """
+    body = request.json or {}
+    keep_uploaded = bool(body.get('keep_uploaded'))
+    if keep_uploaded:
+        # Keep cache rows that have a pdf_url (manually registered) and
+        # their parsed swimmer rows. Drop the rest.
+        with db.get_conn() as conn:
+            conn.execute("""
+                DELETE FROM meet_pdf_swimmers
+                WHERE ct_meet_id IN (
+                    SELECT ct_meet_id FROM meet_pdf_cache
+                    WHERE pdf_url IS NULL OR pdf_url = ''
+                )
+            """)
+            conn.execute("""
+                DELETE FROM meet_pdf_cache
+                WHERE pdf_url IS NULL OR pdf_url = ''
+            """)
+    else:
+        db.reset_pdf_caches()
+    db.reset_member_triangulation()
+
+    started = age_filler.start_autofill(force_all=True)
+    return jsonify({'ok': True, 'auto_fill_started': started,
+                    'kept_uploaded_pdfs': keep_uploaded})
+
+
 @app.route('/api/admin/unmatched_meets', methods=['GET'])
 @role_required('admin')
 def api_unmatched_meets():

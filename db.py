@@ -400,14 +400,42 @@ def save_meet_pdf_swimmers(ct_meet_id: str, swimmers: list):
                 continue
 
 
+def reset_pdf_caches():
+    """Clear all parsed-PDF data. Use when the underlying parser/data has
+    been improved and we want fresh re-parsing on the next age-fill run."""
+    with get_conn() as conn:
+        conn.execute("DELETE FROM meet_pdf_swimmers")
+        conn.execute("DELETE FROM meet_pdf_cache")
+
+
+def reset_member_triangulation():
+    """Clear all triangulation-derived fields on every team_member.
+    Manually-entered birth_year/birth_month from the roster modal are
+    preserved if they match the priority order in _compute_age (we don't
+    distinguish coach-entered from auto-derived, so both get cleared).
+    Coach should re-enter manual overrides after resetting if needed."""
+    with get_conn() as conn:
+        conn.execute("""
+            UPDATE team_members
+            SET birth_year = NULL, birth_month = NULL,
+                age_observed = NULL, age_observed_at = NULL,
+                age_synced_at = NULL, age_window_days = NULL
+        """)
+
+
 def lookup_swimmer_age_at_meet(ct_meet_id: str, name_key: str,
                                 prefer_team: str = None):
     """Return {age, gender, team} for our swimmer at this meet, or None.
 
-    If prefer_team is provided, prefer rows where team matches (handles
-    namesakes — e.g. one Emma Baker on IVY and another on SMST). Falls
-    back to first name match when the preferred team has no match (so
-    swimmers who changed teams still match historical records)."""
+    Lookup priority:
+      1. Exact name_key + prefer_team (best signal, no ambiguity)
+      2. Exact name_key, any team (handles team-changers)
+      3. Prefix name_key + prefer_team (handles middle names — old data
+         stored 'wetmore_harpergrace' from a multi-word first capture;
+         lookup 'wetmore_harper%' still finds her)
+      4. Prefix name_key, any team
+    """
+    prefix_key = name_key + '%'
     with get_conn() as conn:
         if prefer_team:
             row = conn.execute(
@@ -421,6 +449,21 @@ def lookup_swimmer_age_at_meet(ct_meet_id: str, name_key: str,
             "SELECT age, gender, team FROM meet_pdf_swimmers "
             "WHERE ct_meet_id = ? AND name_key = ? LIMIT 1",
             (ct_meet_id, name_key)
+        ).fetchone()
+        if row:
+            return dict(row)
+        if prefer_team:
+            row = conn.execute(
+                "SELECT age, gender, team FROM meet_pdf_swimmers "
+                "WHERE ct_meet_id = ? AND name_key LIKE ? AND team = ? LIMIT 1",
+                (ct_meet_id, prefix_key, prefer_team)
+            ).fetchone()
+            if row:
+                return dict(row)
+        row = conn.execute(
+            "SELECT age, gender, team FROM meet_pdf_swimmers "
+            "WHERE ct_meet_id = ? AND name_key LIKE ? LIMIT 1",
+            (ct_meet_id, prefix_key)
         ).fetchone()
     return dict(row) if row else None
 
