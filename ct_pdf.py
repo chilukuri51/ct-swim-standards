@@ -347,13 +347,14 @@ _PDF_ROW_A_RE = re.compile(
     # - Tied placings get '*' prefix → "Emma *14"
     # - Multi-word first names exist → "Ava Rose"
     # - Middle initial appears between first name and rank → "Harper M43"
+    # - DQ rows have '---' or 'DQ' in place of a numeric rank
     # \s* between fields handles both spacings; \*? handles tie markers.
     r"\b([A-Z]{2,6})\s*-CT\s+"                                # team
     r"(\d{1,2})\s*"                                           # age + opt whitespace
     r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*),\s+"       # last (multi-word)
     r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*)"           # first (multi-word)
     r"(?:\s+[A-Z])?"                                          # optional middle initial
-    r"\s*\*?\d"                                                # opt space + opt '*' + rank digit
+    r"(?:\s*\*?\d|\s*---|\s+(?:DQ|NS|DFS|SCR)\b)"             # rank-digit OR DQ-style anchor
 )
 # Format B: name comes AFTER time (older NCA-style PDFs). Same spacing
 # flexibility as Format A.
@@ -364,6 +365,28 @@ _PDF_ROW_B_RE = re.compile(
     r"(?:\d+:\d+\.\d+|\d+\.\d+|---|DQ|NS|DFS|SCR)\s*"         # time / status
     r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*),\s+"       # last
     r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z](?:\s|$))?)"               # first + opt initial
+)
+# Format C: championship layout (no -CT, name is "First Last" with NO
+# comma, fields jammed). E.g. "SSAC  9Cassidy Schatz1 2:38.68 AGC".
+# Anchored at line start to avoid matching mid-paragraph text.
+_PDF_ROW_C_RE = re.compile(
+    r"^([A-Z]{2,6})"                                          # team (no -CT suffix)
+    r"\s+(\d{1,2})\s*"                                        # age, then jammed-or-spaced
+    r"([A-Z][A-Za-z'.-]+)"                                    # first (one word)
+    r"\s+"                                                     # required space
+    r"([A-Z][A-Za-z'.-]+(?:[A-Za-z'.-]*))"                    # last (single word, may be hyphenated)
+    r"\s*\*?\d+\s+"                                           # rank
+    r"(?:\d+:\d+\.\d+|\d+\.\d+|---|DQ|NS|DFS|SCR)"            # time / status
+)
+# Format D (relay leg): "1) Last, First [MidInit] Age". Each relay row
+# lists 4 swimmers; finditer captures all of them. Gender comes from the
+# event header above (Boys/Girls relay).
+_PDF_RELAY_RE = re.compile(
+    r"\d+\)\s+"                                                # leg number
+    r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*),\s+"       # last
+    r"([A-Z][A-Za-z'.-]+)"                                    # first
+    r"(?:\s+[A-Z])?"                                          # opt middle initial
+    r"\s+(\d{1,2})\b"                                         # age
 )
 _GENDER_HEADER_RE = re.compile(
     r"\b(Girls|Boys|Women|Men|Mixed)\s+\d", re.IGNORECASE
@@ -425,6 +448,38 @@ def parse_results_pdf(path_or_bytes) -> list[dict]:
                     'name_key': normalize_name(first_clean, last.strip()),
                     'age': int(age),
                     'team': team,
+                    'gender': current_gender,
+                })
+                matched_spans.append(m.span())
+            # Format C: championship "TEAM AGE First Last Rank Time" with
+            # NO -CT marker and NO comma between names. Only match if A/B
+            # didn't already claim this line.
+            if not matched_spans:
+                m = _PDF_ROW_C_RE.match(line)
+                if m:
+                    team, age, first, last = m.groups()
+                    out.append({
+                        'first': first.strip(),
+                        'last': last.strip(),
+                        'name_key': normalize_name(first.strip(), last.strip()),
+                        'age': int(age),
+                        'team': team,
+                        'gender': current_gender,
+                    })
+                    matched_spans.append(m.span())
+            # Format D: relay legs "1) Last, First [Mid] Age" — finditer
+            # captures all 4 legs in one row. These provide additional age
+            # observations for triangulation.
+            for m in _PDF_RELAY_RE.finditer(line):
+                if any(s <= m.start() < e for s, e in matched_spans):
+                    continue
+                last, first, age = m.groups()
+                out.append({
+                    'first': first.strip(),
+                    'last': last.strip(),
+                    'name_key': normalize_name(first.strip(), last.strip()),
+                    'age': int(age),
+                    'team': '',  # team not present on relay leg lines
                     'gender': current_gender,
                 })
     return out
