@@ -400,9 +400,23 @@ def save_meet_pdf_swimmers(ct_meet_id: str, swimmers: list):
                 continue
 
 
-def lookup_swimmer_age_at_meet(ct_meet_id: str, name_key: str):
-    """Return {age, gender, team} for our swimmer at this meet, or None."""
+def lookup_swimmer_age_at_meet(ct_meet_id: str, name_key: str,
+                                prefer_team: str = None):
+    """Return {age, gender, team} for our swimmer at this meet, or None.
+
+    If prefer_team is provided, prefer rows where team matches (handles
+    namesakes — e.g. one Emma Baker on IVY and another on SMST). Falls
+    back to first name match when the preferred team has no match (so
+    swimmers who changed teams still match historical records)."""
     with get_conn() as conn:
+        if prefer_team:
+            row = conn.execute(
+                "SELECT age, gender, team FROM meet_pdf_swimmers "
+                "WHERE ct_meet_id = ? AND name_key = ? AND team = ? LIMIT 1",
+                (ct_meet_id, name_key, prefer_team)
+            ).fetchone()
+            if row:
+                return dict(row)
         row = conn.execute(
             "SELECT age, gender, team FROM meet_pdf_swimmers "
             "WHERE ct_meet_id = ? AND name_key = ? LIMIT 1",
@@ -664,26 +678,34 @@ def update_team_member(member_id, **fields):
     args = []
     for col in ('first_name', 'last_name', 'roster', 'gender',
                 'birth_year', 'birth_month', 'parent_email', 'ct_id', 'notes'):
-        if col in fields and fields[col] not in (None, ''):
-            v = fields[col]
-            if col in ('first_name', 'last_name', 'roster'):
-                v = v.strip()
-            elif col == 'gender':
-                v = v.strip().upper()[:1] if v else None
-            elif col == 'birth_year':
-                v = _coerce_year(v)
-                if v is None:
-                    continue
-            elif col == 'birth_month':
-                v = _coerce_month(v)
-                if v is None:
-                    continue
-            elif col == 'parent_email':
-                v = _coerce_email(v)
-                if v is None:
-                    continue
-            sets.append(f"{col} = ?")
-            args.append(v)
+        if col not in fields:
+            continue
+        v = fields[col]
+        # 'notes' is allowed to be cleared (empty string saves NULL/empty),
+        # but other fields keep prior value when blank.
+        if col != 'notes' and v in (None, ''):
+            continue
+        if col in ('first_name', 'last_name', 'roster'):
+            v = v.strip()
+        elif col == 'gender':
+            v = v.strip().upper()[:1] if v else None
+        elif col == 'birth_year':
+            v = _coerce_year(v)
+            if v is None:
+                continue
+        elif col == 'birth_month':
+            v = _coerce_month(v)
+            if v is None:
+                continue
+        elif col == 'parent_email':
+            v = _coerce_email(v)
+            if v is None:
+                continue
+        elif col == 'notes':
+            # keep raw text; just trim trailing whitespace
+            v = (v or '').rstrip()
+        sets.append(f"{col} = ?")
+        args.append(v)
     if not sets:
         return False
     sets.append("updated_at = ?")
@@ -817,19 +839,22 @@ def link_team_member_to_swimmer(member_id, ct_id):
         )
 
 
+CLUB_TEAM_CODE = os.environ.get('CLUB_TEAM_CODE', 'IVY')
+
+
 def auto_link_team_members():
-    """Walk team_members with no ct_id; match against cached swimmers by normalized name.
+    """Walk team_members with no ct_id; match against cached swimmers by
+    normalized name. When two swimmers share a name (e.g. there's an
+    'Emma Baker' on both IVY and SMST), prefer the one whose team_code
+    matches CLUB_TEAM_CODE so we link to the correct person.
     Returns dict with linked count, conflicts, and unmatched names.
-    Pure DB operation - no CT Swim calls.
     """
     import re
     def norm(s):
         return re.sub(r'[^a-z0-9]', '', (s or '').lower())
 
     with get_conn() as conn:
-        # All cached swimmers
         all_swimmers = conn.execute("SELECT ct_id, name, team_code FROM swimmers").fetchall()
-        # Index by normalized name
         by_name = {}
         for s in all_swimmers:
             key = norm(s['name'])
@@ -849,10 +874,17 @@ def auto_link_team_members():
             if not matches:
                 unmatched.append(full)
                 continue
+            # Prefer match whose team_code is our club's. Falls back to
+            # first match only when no club-team option exists (so a
+            # swimmer who switched teams still gets linked).
+            club_matches = [m for m in matches if (m.get('team_code') or '').upper() == CLUB_TEAM_CODE]
+            chosen = club_matches[0] if club_matches else matches[0]
             if len(matches) > 1:
-                # Pick first but flag the conflict
-                conflicts.append({'member': full, 'options': [m['team_code'] for m in matches]})
-            chosen = matches[0]
+                conflicts.append({
+                    'member': full,
+                    'options': [m['team_code'] for m in matches],
+                    'chose': chosen['team_code'],
+                })
             conn.execute(
                 "UPDATE team_members SET ct_id = ?, updated_at = ? WHERE id = ?",
                 (chosen['ct_id'], _utcnow_iso(), tm['id'])

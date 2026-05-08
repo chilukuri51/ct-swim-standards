@@ -409,6 +409,18 @@ def _process_member(member: dict, force_all: bool = False) -> dict:
     )
     full_name = f"{member.get('first_name','')} {member.get('last_name','')}".strip()
 
+    # Resolve member's club team so we prefer in-team matches when looking
+    # up rows in PDFs that contain namesakes (Emma Baker on IVY and SMST).
+    prefer_team = None
+    if member.get('ct_id'):
+        with db.get_conn() as conn:
+            row = conn.execute(
+                "SELECT team_code FROM swimmers WHERE ct_id = ?",
+                (member['ct_id'],)
+            ).fetchone()
+        if row and row['team_code']:
+            prefer_team = row['team_code'].upper()
+
     with _lock:
         _state.current = f'{full_name}: collecting meet history…'
 
@@ -465,7 +477,9 @@ def _process_member(member: dict, force_all: bool = False) -> dict:
                 continue
             if not cache or not cache.get('parsed_at'):
                 continue
-            hit = db.lookup_swimmer_age_at_meet(meet['ct_meet_id'], name_key)
+            hit = db.lookup_swimmer_age_at_meet(
+                meet['ct_meet_id'], name_key, prefer_team=prefer_team
+            )
             if not hit:
                 continue
             meet_date = ct_pdf.parse_us_date(meet['date'])

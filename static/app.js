@@ -904,6 +904,161 @@ function generatePDF() {
 }
 
 
+// Profile-modal version: generates the same report shape from cached
+// member data (best_times + standards lookups) instead of the search-view
+// DOM. Adds Coach Notes section. Reuses compareToStandards + lookupStandards
+// + normalizeEvent which are defined globally elsewhere in this file.
+function generatePDFForMember(member) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim()
+                     || member.name || 'Swimmer';
+
+    function ageGroupOf(age) {
+        if (age == null) return null;
+        if (age <= 10) return '10/Under';
+        if (age <= 12) return '11/12';
+        if (age <= 14) return '13/14';
+        if (age <= 16) return '15/16';
+        return '17/18';
+    }
+
+    const age = member.age;
+    const gender = member.gender;
+    const ageGrp = ageGroupOf(age);
+    const hasProfile = !!(ageGrp && gender);
+
+    // Header band
+    doc.setFillColor(0, 51, 102);
+    doc.rect(0, 0, 210, 30, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SwimProgression Report Card', 105, 13, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(new Date().toLocaleDateString(), 105, 22, { align: 'center' });
+
+    // Swimmer info
+    doc.setTextColor(0, 51, 102);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(fullName, 15, 42);
+    const metaParts = [];
+    if (age != null) metaParts.push(`Age: ${age}`);
+    if (ageGrp) metaParts.push(`Age Group: ${ageGrp}`);
+    if (gender === 'F') metaParts.push('Female');
+    else if (gender === 'M') metaParts.push('Male');
+    if (member.roster) metaParts.push(member.roster);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(metaParts.join(' | '), 15, 49);
+
+    // Best times table
+    let y = 58;
+    doc.setFillColor(0, 51, 102);
+    doc.rect(15, y - 4, 180, 8, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Event', 17, y + 1);
+    doc.text('Best Time', 70, y + 1);
+    doc.text('Date', 100, y + 1);
+    doc.text('Level', 130, y + 1);
+    doc.text('Next Target', 155, y + 1);
+    y += 8;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+
+    // Group by course
+    const events = (member.best_times || []).map(ev => ({
+        ev,
+        info: normalizeEvent(ev.event),
+    })).filter(x => x.info);
+    const scy = events.filter(x => x.info.course === 'SCY');
+    const lcm = events.filter(x => x.info.course === 'LCM');
+
+    function renderCourse(label, group) {
+        if (!group.length) return;
+        if (y > 270) { doc.addPage(); y = 20; }
+        // Course separator
+        doc.setFillColor(0, 51, 102);
+        doc.rect(15, y - 4, 180, 7, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.text(label, 17, y);
+        doc.setFont('helvetica', 'normal');
+        y += 7;
+        group.forEach((x, idx) => {
+            if (y > 275) { doc.addPage(); y = 20; }
+            const ev = x.ev, info = x.info;
+            // Alt row bg
+            if (idx % 2 === 0) { doc.setFillColor(247, 250, 252); doc.rect(15, y - 4, 180, 6, 'F'); }
+            doc.setTextColor(50, 50, 50);
+            doc.text(ev.event || '', 17, y);
+            doc.text(ev.time || '', 70, y);
+            doc.text(ev.date || '', 100, y);
+            // Level + next target via standards lookup
+            if (hasProfile) {
+                const std = lookupStandards(info, ageGrp, gender);
+                const swSecs = timeToSeconds(ev.time);
+                const cmp = compareToStandards(swSecs, std);
+                if (cmp.highestUSA) {
+                    doc.setTextColor(0, 100, 0);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(cmp.highestUSA.type, 130, y);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(50, 50, 50);
+                }
+                if (cmp.usaNext) {
+                    doc.text(cmp.usaNext.type, 155, y);
+                    doc.text(cmp.usaNext.time, 168, y);
+                }
+            }
+            y += 6;
+        });
+    }
+    renderCourse('Short Course Yards', scy);
+    renderCourse('Long Course Meters', lcm);
+
+    // Coach notes
+    const notes = (member.notes || '').trim();
+    if (notes) {
+        if (y > 240) { doc.addPage(); y = 20; }
+        y += 6;
+        doc.setFillColor(0, 51, 102);
+        doc.rect(15, y - 4, 180, 7, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Coach Notes', 17, y);
+        y += 9;
+        doc.setTextColor(50, 50, 50);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        // Wrap long lines to 175mm width
+        const wrapped = doc.splitTextToSize(notes, 175);
+        wrapped.forEach(line => {
+            if (y > 280) { doc.addPage(); y = 20; }
+            doc.text(line, 17, y);
+            y += 5;
+        });
+    }
+
+    // Footer on all pages
+    const pages = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= pages; p++) {
+        doc.setPage(p);
+        doc.setFontSize(7);
+        doc.setTextColor(150, 150, 150);
+        doc.text('Generated by SwimProgression — for coaching use', 105, 290, { align: 'center' });
+    }
+
+    doc.save(`${fullName.replace(/[^a-zA-Z0-9]/g, '_')}_Report.pdf`);
+}
+
+
 // ===== WHAT IF GOAL PLANNER =====
 const wiAgeGroup = document.getElementById('wiAgeGroup');
 const wiEvent = document.getElementById('wiEvent');
@@ -1246,6 +1401,7 @@ if (hasPerm('roster')) {
     const fGender = document.getElementById('rmGender');
     const fBirthMonth = document.getElementById('rmBirthMonth');
     const fParentEmail = document.getElementById('rmParentEmail');
+    const fNotes = document.getElementById('rmNotes');
     const fDobHint = document.getElementById('rmDobHint');
     const deleteBtn = document.getElementById('rosterDeleteBtn');
 
@@ -1365,6 +1521,7 @@ if (hasPerm('roster')) {
         deleteBtn.classList.add('hidden');
         fFirst.value = ''; fLast.value = ''; fRoster.value = '';
         fGender.value = ''; fBirthMonth.value = ''; fParentEmail.value = '';
+        if (fNotes) fNotes.value = '';
         fDobHint.textContent = 'Year + month only. Or leave blank — age will auto-fill from CT Swim once linked.';
         errorBox.classList.add('hidden');
         modal.classList.remove('hidden');
@@ -1383,6 +1540,7 @@ if (hasPerm('roster')) {
         fGender.value = m.gender || '';
         fBirthMonth.value = ''; // never pre-fill — privacy
         fParentEmail.value = m.parent_email || '';
+        if (fNotes) fNotes.value = m.notes || '';
         let hint;
         if (m.age != null && m.age_source === 'observed') {
             hint = `Age ${m.age} pulled from CT Swim. Enter year/month to override; leave blank to keep auto-updates.`;
@@ -1409,6 +1567,7 @@ if (hasPerm('roster')) {
             gender: fGender.value,
             birth_month_str: fBirthMonth.value, // 'YYYY-MM' or '' = don't change
             parent_email: fParentEmail.value.trim(),
+            notes: fNotes ? fNotes.value : '',
         };
         if (!body.first_name || !body.last_name) {
             showModalError('First and last name are required.');
@@ -3513,6 +3672,10 @@ function wireProfileLinks(container, lookup) {
 
     document.getElementById('spClose').addEventListener('click', closeProfile);
     document.getElementById('spDone').addEventListener('click', closeProfile);
+    const spPdfBtn = document.getElementById('spDownloadPdf');
+    if (spPdfBtn) spPdfBtn.addEventListener('click', () => {
+        if (currentMember) generatePDFForMember(currentMember);
+    });
     modal.addEventListener('click', e => { if (e.target === modal) closeProfile(); });
     document.querySelectorAll('.sp-course-pill').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -3784,11 +3947,15 @@ function wireProfileLinks(container, lookup) {
             elBest.innerHTML = html;
         }
 
-        // Radar
+        // Radar — always render, even when every stroke is below B. Center
+        // ring is labeled '<B' so a swimmer just starting out still gets a
+        // shape (a flat circle near the inner ring) instead of an empty
+        // canvas with a 'no times' message.
         const peakRanks = highestPerStroke(m);
-        const hasAny = STROKES.some(s => peakRanks[s] > 0);
+        const hasTimes = (m.best_times || []).length > 0;
         if (radarChart) { radarChart.destroy(); radarChart = null; }
-        if (!hasAny) {
+        if (!hasTimes) {
+            // Truly nothing to show — no swims at all
             radarCanvas.style.display = 'none';
             radarEmpty.classList.remove('hidden');
             return;
@@ -3818,7 +3985,7 @@ function wireProfileLinks(container, lookup) {
                         callbacks: {
                             label: ctx => {
                                 const v = ctx.raw;
-                                return v > 0 ? `${LEVEL_NAMES[v] || v}` : 'no cut yet';
+                                return v > 0 ? `${LEVEL_NAMES[v] || v}` : '< B standard';
                             },
                         },
                     },
@@ -3828,7 +3995,7 @@ function wireProfileLinks(container, lookup) {
                         suggestedMin: 0, suggestedMax: 6,
                         ticks: {
                             stepSize: 1,
-                            callback: v => LEVEL_NAMES[v] || (v === 0 ? '' : v),
+                            callback: v => v === 0 ? '<B' : (LEVEL_NAMES[v] || ''),
                         },
                         pointLabels: { font: { size: 13, weight: '700' }, color: '#003366' },
                     },

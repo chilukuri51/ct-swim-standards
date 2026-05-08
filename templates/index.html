@@ -532,6 +532,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <button class="btn-pdf" id="spDownloadPdf" type="button">Download PDF Report</button>
                     <button class="btn-secondary" id="spDone" type="button">Close</button>
                 </div>
             </div>
@@ -594,6 +595,14 @@
                     <p class="dob-hint" style="margin-top:-0.25rem">
                         Lets the parent log in with this email to see their kid's profile.
                         Multiple kids can share the same email.
+                    </p>
+                    <div class="form-row" style="align-items:flex-start">
+                        <label>Coach Notes:</label>
+                        <textarea id="rmNotes" rows="4" placeholder="Strengths, focus areas, recent breakthroughs, anything you want to remember..."
+                                  style="flex:1;min-width:0;padding:0.5rem;border:1px solid #cbd5e0;border-radius:6px;font-family:inherit;font-size:0.9rem;resize:vertical"></textarea>
+                    </div>
+                    <p class="dob-hint" style="margin-top:-0.25rem">
+                        Visible only to coach + admin. Included in the swimmer's PDF report.
                     </p>
                     <div class="modal-error hidden" id="rmError"></div>
                 </form>
