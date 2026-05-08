@@ -564,12 +564,37 @@ def api_register_meet_pdf():
         note=None,
     )
     db.save_meet_pdf_swimmers(meet_id, rows)
+
+    # How many of OUR roster swimmers were found in this PDF? Tells the
+    # admin whether the upload helps anyone.
+    name_keys = set()
+    with db.get_conn() as conn:
+        members = conn.execute(
+            "SELECT first_name, last_name FROM team_members"
+        ).fetchall()
+        for m in members:
+            name_keys.add(_ctp.normalize_name(m['first_name'], m['last_name']))
+    matched_team_members = sum(
+        1 for r in rows if r.get('name_key') in name_keys
+    )
+
+    # Auto-trigger age-fill so the new PDF data flows into team_members
+    # immediately. Use force_all=True so already-resolved swimmers get
+    # re-checked with the new data (their birth window might tighten).
+    auto_fill_started = False
+    try:
+        auto_fill_started = age_filler.start_autofill(force_all=True)
+    except Exception:
+        pass
+
     return jsonify({
         'ok': True,
         'meet_id': meet_id,
         'pdf_url': pdf_url,
         'pdf_size': len(pdf_bytes),
         'parsed_rows': len(rows),
+        'matched_team_members': matched_team_members,
+        'auto_fill_started': auto_fill_started,
     })
 
 

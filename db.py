@@ -843,11 +843,19 @@ CLUB_TEAM_CODE = os.environ.get('CLUB_TEAM_CODE', 'IVY')
 
 
 def auto_link_team_members():
-    """Walk team_members with no ct_id; match against cached swimmers by
-    normalized name. When two swimmers share a name (e.g. there's an
-    'Emma Baker' on both IVY and SMST), prefer the one whose team_code
-    matches CLUB_TEAM_CODE so we link to the correct person.
-    Returns dict with linked count, conflicts, and unmatched names.
+    """Walk team_members and link/re-link to cached swimmers by name.
+
+    Two passes:
+    1. Link unlinked members (ct_id IS NULL) to a matching swimmer.
+    2. RE-EVALUATE already-linked members whose current swimmer's
+       team_code is NOT CLUB_TEAM_CODE — if a club-team alternative
+       with the same name now exists in the swimmers cache, switch.
+       This corrects mis-links from earlier scrapes (e.g. Emma Baker
+       was linked to SMST before IVY's Emma Baker got cached).
+
+    Both passes prefer CLUB_TEAM_CODE swimmers when multiple namesakes
+    exist, falling back to first match (preserves linkage for swimmers
+    who legitimately changed teams like Simon Allegra FVYT→IVY).
     """
     import re
     def norm(s):
@@ -860,25 +868,24 @@ def auto_link_team_members():
             key = norm(s['name'])
             by_name.setdefault(key, []).append(dict(s))
 
+        def _pick(matches):
+            club = [m for m in matches if (m.get('team_code') or '').upper() == CLUB_TEAM_CODE]
+            return club[0] if club else matches[0]
+
+        # Pass 1: previously unlinked members
         unlinked = conn.execute(
             "SELECT id, first_name, last_name, roster FROM team_members WHERE ct_id IS NULL"
         ).fetchall()
-
         linked = []
         conflicts = []
         unmatched = []
         for tm in unlinked:
             full = f"{tm['first_name']} {tm['last_name']}"
-            key = norm(full)
-            matches = by_name.get(key, [])
+            matches = by_name.get(norm(full), [])
             if not matches:
                 unmatched.append(full)
                 continue
-            # Prefer match whose team_code is our club's. Falls back to
-            # first match only when no club-team option exists (so a
-            # swimmer who switched teams still gets linked).
-            club_matches = [m for m in matches if (m.get('team_code') or '').upper() == CLUB_TEAM_CODE]
-            chosen = club_matches[0] if club_matches else matches[0]
+            chosen = _pick(matches)
             if len(matches) > 1:
                 conflicts.append({
                     'member': full,
@@ -891,11 +898,39 @@ def auto_link_team_members():
             )
             linked.append({'member': full, 'ct_team': chosen['team_code']})
 
+        # Pass 2: members linked to a non-club-team swimmer — re-evaluate
+        already_linked = conn.execute("""
+            SELECT tm.id, tm.first_name, tm.last_name, tm.ct_id,
+                   s.team_code AS current_team
+            FROM team_members tm
+            JOIN swimmers s ON s.ct_id = tm.ct_id
+            WHERE UPPER(COALESCE(s.team_code, '')) != ?
+        """, (CLUB_TEAM_CODE,)).fetchall()
+        relinked = []
+        for tm in already_linked:
+            full = f"{tm['first_name']} {tm['last_name']}"
+            matches = by_name.get(norm(full), [])
+            club = [m for m in matches if (m.get('team_code') or '').upper() == CLUB_TEAM_CODE]
+            if not club:
+                continue  # no club option exists — leave the historical link alone
+            new = club[0]
+            conn.execute(
+                "UPDATE team_members SET ct_id = ?, updated_at = ? WHERE id = ?",
+                (new['ct_id'], _utcnow_iso(), tm['id'])
+            )
+            relinked.append({
+                'member': full,
+                'from_team': tm['current_team'],
+                'to_team': new['team_code'],
+            })
+
     return {
         'linked': len(linked),
+        'relinked': len(relinked),
         'unmatched': unmatched,
         'conflicts': conflicts,
         'linked_sample': linked[:5],
+        'relinked_sample': relinked[:5],
     }
 
 

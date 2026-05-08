@@ -1830,13 +1830,15 @@ if (hasPerm('batch')) {
                 }
                 const sizeKb = (data.pdf_size/1024).toFixed(0);
                 const n = data.parsed_rows || 0;
+                const teamN = data.matched_team_members || 0;
+                const af = data.auto_fill_started ? ' Auto-fill running now — refresh in 1-2 min.' : '';
                 if (n === 0) {
-                    result.innerHTML = `<span style="color:#d97706">⚠ Downloaded ${sizeKb} KB but parsed 0 swimmers — this PDF's layout isn't recognized. Fall back to entering birth year/month manually in the swimmer's roster row.</span>`;
-                } else if (n < 30) {
-                    result.innerHTML = `<span style="color:#d97706">⚠ Parsed only ${n} swimmers from ${sizeKb} KB. May be a partial / different format. Verify by running auto-fill — if your team's data is missing, enter birth year/month manually.</span>`;
+                    result.innerHTML = `<span style="color:#d97706">⚠ Downloaded ${sizeKb} KB but parsed 0 swimmers — this PDF's layout isn't recognized. Enter birth year/month manually for affected swimmers in the Roster.</span>`;
+                } else if (teamN === 0) {
+                    result.innerHTML = `<span style="color:#d97706">⚠ Parsed ${n} swimmers but none match your roster. Likely the wrong meet's PDF.</span>`;
                     btn.textContent = 'Done';
                 } else {
-                    result.innerHTML = `<span style="color:#16a34a">✓ Parsed ${n} swimmers from ${sizeKb} KB. Run auto-fill to apply.</span>`;
+                    result.innerHTML = `<span style="color:#16a34a">✓ Parsed ${n} swimmers (${teamN} on your roster).${af}</span>`;
                     btn.textContent = 'Done';
                 }
             } catch (e) {
