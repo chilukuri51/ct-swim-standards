@@ -122,13 +122,20 @@ def scrape_results_index(max_pages: int = INDEX_MAX_PAGES) -> list[dict]:
     dates are ISO strings (or None) — the richer data lets find_pdf_for_meet
     fuzzy-match by name when our SwimmerAtMeet meet_name differs slightly
     from the Results.aspx wording but the dates align.
-    Stops early when a page yields zero PDFs (we've walked off the end)."""
+    Stops early when a page yields zero PDFs (we've walked off the end).
+
+    NOTE: the bare URL (no query string) is the implicit "newest meets"
+    page; ?page=1 is actually the SECOND page. Iterating ?page=1..N alone
+    silently skipped the most recent ~50 meets, including any meet
+    published in the last few weeks. The loop below fetches the bare URL
+    first, then ?page=1..max_pages."""
     out = []
     seen_urls = set()
-    for p in range(1, max_pages + 1):
+    page_urls = [RESULTS_INDEX] + [f'{RESULTS_INDEX}?page={p}' for p in range(1, max_pages + 1)]
+    for page_url in page_urls:
         try:
             r = requests.get(
-                f'{RESULTS_INDEX}?page={p}',
+                page_url,
                 timeout=15,
                 headers={'User-Agent': USER_AGENT}
             )

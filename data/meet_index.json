@@ -1,7 +1,273 @@
 {
-  "fetched_at": "2026-05-08T18:56:07.697905+00:00",
-  "count": 351,
+  "fetched_at": "2026-05-08T19:23:11.469795+00:00",
+  "count": 389,
   "rows": [
+    {
+      "url": "/Customer-Content/www/Meets/LC2026/May/050226hhac_results.pdf",
+      "label": "",
+      "meet_name": "HHAC SCY Spring Pentathlon",
+      "start_date": "2026-05-02",
+      "end_date": "2026-05-02"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2026/May/050126cac_results.pdf",
+      "label": "",
+      "meet_name": "CAC Spring Invite",
+      "start_date": "2026-05-01",
+      "end_date": "2026-05-03"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2026/May/050426rywc_results.pdf",
+      "label": "",
+      "meet_name": "RYWC Mako May Crazy",
+      "start_date": "2026-05-01",
+      "end_date": "2026-05-03"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2026/May/050126zeus_results.pdf",
+      "label": "",
+      "meet_name": "ZEUS May Invite",
+      "start_date": "2026-05-01",
+      "end_date": "2026-05-03"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2026/May/050126grym_results.pdf",
+      "label": "",
+      "meet_name": "GRYM May Invite",
+      "start_date": "2026-05-01",
+      "end_date": "2026-05-03"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2026/April/042926arac_results.pdf",
+      "label": "",
+      "meet_name": "ARAC SCY 10/Under Meet",
+      "start_date": "2026-04-29",
+      "end_date": "2026-04-29"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/LC2026/April/040726rywc_results.pdf",
+      "label": "",
+      "meet_name": "RYWC LC Season Opener",
+      "start_date": "2026-04-07",
+      "end_date": "2026-04-09"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/March/032226rywc_results.pdf",
+      "label": "",
+      "meet_name": "RYWC YMCA Open Invite",
+      "start_date": "2026-03-20",
+      "end_date": "2026-03-22"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/CT_Age_Groups/2026_age_group_results.pdf",
+      "label": "",
+      "meet_name": "CT SC Age Group Weekend",
+      "start_date": "2026-03-12",
+      "end_date": "2026-03-15"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/CT_Seniors/2026_senior_results.pdf",
+      "label": "",
+      "meet_name": "CT SC Senior Championships",
+      "start_date": "2026-03-05",
+      "end_date": "2026-03-08"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Sat-Sun_Regionals/022826grym_results.pdf",
+      "label": "",
+      "meet_name": "GRYM Sat-Sun Regionals Greenwich YMCA (SCY) Greenwich",
+      "start_date": "2026-02-28",
+      "end_date": "2026-03-01"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Sat-Sun_Regionals/022726bull_results.pdf",
+      "label": "",
+      "meet_name": "BULL Sat-Sun Regionals Hutchinson Natatorium - SCSU (SCY) New Haven",
+      "start_date": "2026-02-28",
+      "end_date": "2026-03-01"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Sat-Sun_Regionals/022726wyw_results.pdf",
+      "label": "",
+      "meet_name": "WYW Sat-Sun Regionals Wilton YMCA (SCY) Wilton",
+      "start_date": "2026-02-28",
+      "end_date": "2026-03-01"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Sat-Sun_Regionals/022826ehy_results.pdf",
+      "label": "",
+      "meet_name": "LEHY Sat-Sun Regionals East Hartford High School (SCY) East Hartford",
+      "start_date": "2026-02-28",
+      "end_date": "2026-03-01"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Sat-Sun_Regionals/022826rst_results.pdf",
+      "label": "",
+      "meet_name": "RST Sat-Sun Regionals Masuk High School (SCY) Monroe",
+      "start_date": "2026-02-28",
+      "end_date": "2026-03-01"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Sat-Sun_Regionals/022826cdog_results.pdf",
+      "label": "",
+      "meet_name": "CDOG Sat-Sun Regionals Cheshire Community Pool (SCY) Cheshire",
+      "start_date": "2026-02-28",
+      "end_date": "2026-03-01"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Fri-Regionals/012726cdog_results.pdf",
+      "label": "",
+      "meet_name": "CDOG Friday Regionals Cheshire Community Pool (SCY) Cheshire",
+      "start_date": "2026-02-27",
+      "end_date": "2026-02-27"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Feb/021426bull_results.pdf",
+      "label": "",
+      "meet_name": "BULL Last Chance Meet",
+      "start_date": "2026-02-14",
+      "end_date": "2026-02-15"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Feb/021326wyw_results.pdf",
+      "label": "",
+      "meet_name": "WYW Last Chance Distance",
+      "start_date": "2026-02-13",
+      "end_date": "2026-02-13"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Feb/021026wyw_results.pdf",
+      "label": "",
+      "meet_name": "WYW Valentines 12/U Pentathlon 1.30.26",
+      "start_date": "2026-02-10",
+      "end_date": "2026-02-10"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Feb/020926vsym_results.pdf",
+      "label": "",
+      "meet_name": "VSYM Superbowl Pentathlon",
+      "start_date": "2026-02-08",
+      "end_date": "2026-02-08"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Feb/020626rst_results.pdf",
+      "label": "",
+      "meet_name": "RST Pentathlon",
+      "start_date": "2026-02-07",
+      "end_date": "2026-02-07"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Feb/020626wac_results.pdf",
+      "label": "",
+      "meet_name": "WAC Everyone is Invite Meet",
+      "start_date": "2026-02-06",
+      "end_date": "2026-02-08"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Feb/020626cdog_results.pdf",
+      "label": "",
+      "meet_name": "CDOG February Distance Meet",
+      "start_date": "2026-02-06",
+      "end_date": "2026-02-06"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Feb/020326gywd_results.pdf",
+      "label": "",
+      "meet_name": "GYWD One Stop Meet #2",
+      "start_date": "2026-02-03",
+      "end_date": "2026-02-03"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Jan/013126hhac_results.pdf",
+      "label": "",
+      "meet_name": "HHAC Trials/Finals Meet",
+      "start_date": "2026-01-31",
+      "end_date": "2026-02-01"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Jan/013026hhac_results.pdf",
+      "label": "",
+      "meet_name": "HHAC Winter Distance Meet",
+      "start_date": "2026-01-30",
+      "end_date": "2026-01-30"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Jan/013026cdog_results.pdf",
+      "label": "",
+      "meet_name": "CDOG Y State Champs YMCA League meet - YMCA swim by invite ONLY",
+      "start_date": "2026-01-30",
+      "end_date": "2026-02-01"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Jan/013026pac_results.pdf",
+      "label": "",
+      "meet_name": "CPAC January Invite",
+      "start_date": "2026-01-30",
+      "end_date": "2026-02-01"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Jan/012626gywd_results.pdf",
+      "label": "",
+      "meet_name": "GYWD One Stop Meet #1",
+      "start_date": "2026-01-27",
+      "end_date": "2026-01-27"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Jan/012426arac_results.pdf",
+      "label": "",
+      "meet_name": "ARAC Winter Qualifier",
+      "start_date": "2026-01-24",
+      "end_date": "2026-01-25"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Jan/012326arac_results.pdf",
+      "label": "",
+      "meet_name": "ARAC Winter Distance Meet",
+      "start_date": "2026-01-23",
+      "end_date": "2026-01-23"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Jan/011626grym_results.pdf",
+      "label": "",
+      "meet_name": "GRYM Winter Trials/Finals Meet",
+      "start_date": "2026-01-16",
+      "end_date": "2026-01-18"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Jan/011626sys_results.pdf",
+      "label": "",
+      "meet_name": "SYS Winter T/F Classic",
+      "start_date": "2026-01-16",
+      "end_date": "2026-01-18"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Jan/011626wyw_results.pdf",
+      "label": "",
+      "meet_name": "WYW Winter Invite",
+      "start_date": "2026-01-16",
+      "end_date": "2026-01-18"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Jan/011026rywc_results.pdf",
+      "label": "",
+      "meet_name": "RYWC Distance Meet",
+      "start_date": "2026-01-10",
+      "end_date": "2026-01-10"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Jan/011026rst_results.pdf",
+      "label": "",
+      "meet_name": "RST Winter Invite",
+      "start_date": "2026-01-10",
+      "end_date": "2026-01-10"
+    },
+    {
+      "url": "/Customer-Content/www/Meets/SC2025-26/Jan/010926cdog_results.pdf",
+      "label": "",
+      "meet_name": "CDOG January Distance Meet",
+      "start_date": "2026-01-09",
+      "end_date": "2026-01-09"
+    },
     {
       "url": "/Customer-Content/www/Meets/SC2025-26/Jan/010326oak_results.pdf",
       "label": "",
