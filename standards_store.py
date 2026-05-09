@@ -31,12 +31,72 @@ def ensure_seeded():
 
 
 def load() -> dict:
-    """Load the working standards data."""
+    """Load the working standards data, merging in any newer defaults.
+
+    Merge rules (run on every load, idempotent):
+      - Whole programs missing in working: copied from default.
+      - Programs present in both: each program-level field missing in
+        working is copied from default (e.g. meet_info gets added).
+      - Programs whose default has a NEWER effective_date than working:
+        the entire program is replaced with the default. This is how
+        annual standards updates (e.g. 2025 → 2026 EZ cuts) propagate
+        to existing production working copies without an admin reset.
+
+    Anything the user explicitly added in the Standards Editor (new
+    programs, new events, manually-edited times in a program with the
+    same effective_date) is preserved untouched.
+    """
     ensure_seeded()
     if not os.path.exists(WORKING_PATH):
         return {'metadata': {}, 'programs': {}, 'conversion_factors': {}, 'whatif_events': {}}
     with open(WORKING_PATH) as f:
-        return json.load(f)
+        data = json.load(f)
+    # Apply merge from default if the default file exists. Persist any
+    # changes back to disk so future direct reads see them too.
+    if os.path.exists(DEFAULT_PATH):
+        try:
+            with open(DEFAULT_PATH) as f:
+                default = json.load(f)
+            mutated = _merge_from_default(default, data)
+            if mutated:
+                # Write back so editor state stays consistent.
+                with _lock:
+                    tmp_path = WORKING_PATH + '.tmp'
+                    with open(tmp_path, 'w') as f:
+                        json.dump(data, f, indent=2)
+                    os.replace(tmp_path, WORKING_PATH)
+        except (OSError, json.JSONDecodeError):
+            pass
+    return data
+
+
+def _merge_from_default(default: dict, working: dict) -> bool:
+    """Apply default→working merge rules. Returns True if working was
+    mutated, so the caller can persist."""
+    mutated = False
+    src_progs = default.get('programs', {})
+    dst_progs = working.setdefault('programs', {})
+    for pid, sp in src_progs.items():
+        dp = dst_progs.get(pid)
+        if not dp:
+            dst_progs[pid] = sp
+            mutated = True
+            continue
+        sp_date = sp.get('effective_date', '')
+        dp_date = dp.get('effective_date', '')
+        if sp_date and dp_date and sp_date > dp_date:
+            # Replace whole program — default has fresher cuts/metadata.
+            dst_progs[pid] = sp
+            mutated = True
+            continue
+        # Same/older effective_date → only fill missing top-level fields.
+        for k, v in sp.items():
+            if k == 'groups':
+                continue  # never overwrite the cuts table here
+            if k not in dp:
+                dp[k] = v
+                mutated = True
+    return mutated
 
 
 def save(data: dict) -> None:

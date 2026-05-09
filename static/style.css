@@ -868,6 +868,10 @@ td.event-name { font-weight: 600; color: #c0392b; }
 .champ-card.not-qualified { border-left-color: #f59e0b; }
 .champ-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
 .champ-card-title { font-weight: 700; font-size: 1rem; color: #003366; }
+.champ-card-meta {
+    font-size: 0.78rem; color: #475569; margin: -0.4rem 0 0.7rem;
+    line-height: 1.35;
+}
 .champ-status {
     padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem;
     font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;

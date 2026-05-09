@@ -13,6 +13,12 @@
     window.USA_STANDARDS = (programs.usa_motivational && programs.usa_motivational.groups) || {};
     window.CONVERSION_FACTORS = D.conversion_factors || {};
     window.WHATIF_EVENTS = D.whatif_events || {};
+    // Surface program-level meet metadata (date/venue/etc) to the UI.
+    window.PROGRAM_META = {
+        ct_age_group: programs.ct_age_group || {},
+        eastern_zone: programs.eastern_zone || {},
+        usa_motivational: programs.usa_motivational || {},
+    };
 })();
 
 // ===== HELPER FUNCTIONS =====

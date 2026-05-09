@@ -365,9 +365,10 @@ async function loadBestTimes(swimmerId, name) {
 // ===== CHAMPIONSHIP QUALIFICATION SECTION =====
 function buildChampSection(resultsByCourse) {
     const champCards = document.getElementById('champCards');
+    const meta = window.PROGRAM_META || {};
     const champInfo = {
-        'CT AG': { title: 'CT Age Group Champs', color: '#dc2626' },
-        'EZ': { title: 'Eastern Zone Champs', color: '#9333ea' }
+        'CT AG': { title: 'CT Age Group Champs', color: '#dc2626', meet: meta.ct_age_group || {} },
+        'EZ': { title: 'Eastern Zone Champs', color: '#9333ea', meet: meta.eastern_zone || {} }
     };
     const courses = ['SCY', 'LCM'];
     let html = '';
@@ -388,12 +389,26 @@ function buildChampSection(resultsByCourse) {
                     ? `<span class="champ-status partial">Close</span>`
                     : `<span class="champ-status no">Not Yet</span>`;
 
+            // Meet metadata line
+            let metaLine = '';
+            if (info.meet) {
+                const mi = info.meet.meet_info;
+                if (mi) {
+                    const datePart = (mi.dates || '').replace('..', ' – ');
+                    const locPart = [mi.venue, mi.location].filter(Boolean).join(', ');
+                    metaLine = [datePart, locPart].filter(Boolean).join(' · ');
+                } else if (info.meet.subtitle) {
+                    metaLine = info.meet.subtitle;
+                }
+            }
+
             html += `<div class="champ-card ${statusClass}">
                 <div class="champ-card-header">
                     <span class="champ-card-title">${info.title} <span class="course-tag">${course}</span></span>
                     ${statusBadge}
-                </div>
-                <div class="champ-qualified-count">${r.qual.length} of ${total} events qualified</div>
+                </div>`;
+            if (metaLine) html += `<div class="champ-card-meta">${metaLine}</div>`;
+            html += `<div class="champ-qualified-count">${r.qual.length} of ${total} events qualified</div>
                 <div class="champ-events">`;
             r.qual.forEach(e => html += `<span class="champ-event-chip qual">${e.event}</span>`);
             r.close.forEach(e => html += `<span class="champ-event-chip close">${e.event} (-${e.gap.toFixed(1)}s)</span>`);
@@ -3508,15 +3523,18 @@ if (hasPerm('dashboard')) {
 
     function renderChampSpotlight() {
         const els = document.getElementById('dbChampCards');
+        const meta = window.PROGRAM_META || {};
         const champTypes = [
-            { type: 'CT AG', title: 'CT Age Group Champs', cls: 'badge-ct' },
-            { type: 'EZ',    title: 'Eastern Zone Champs', cls: 'badge-ez' },
+            { type: 'CT AG', title: 'CT Age Group Champs', cls: 'badge-ct',
+              meet: meta.ct_age_group || {} },
+            { type: 'EZ',    title: 'Eastern Zone Champs', cls: 'badge-ez',
+              meet: meta.eastern_zone || {} },
         ];
         const course = dbState.filters.course;
         const strokeFilter = dbState.filters.stroke || null;
 
         let html = '';
-        champTypes.forEach(({ type, title, cls }) => {
+        champTypes.forEach(({ type, title, cls, meet }) => {
             const qualified = [];     // [{member, events: [...]}]
             const close = [];
 
@@ -3549,11 +3567,28 @@ if (hasPerm('dashboard')) {
                 : `<span class="champ-status partial">${close.length} Close</span>`;
             const statusClass = qualified.length > 0 ? 'qualified' : 'not-qualified';
 
+            // Build meet-info subline if available (date / venue / location).
+            // Prefer the structured meet_info block; fall back to subtitle.
+            let metaLine = '';
+            if (meet) {
+                const mi = meet.meet_info || null;
+                if (mi) {
+                    const datePart = (mi.dates || '').replace('..', ' – ');
+                    const locPart = [mi.venue, mi.location].filter(Boolean).join(', ');
+                    metaLine = [datePart, locPart].filter(Boolean).join(' · ');
+                } else if (meet.subtitle) {
+                    metaLine = meet.subtitle;
+                }
+            }
+
             html += `<div class="champ-card ${statusClass}">
                 <div class="champ-card-header">
                     <span class="champ-card-title"><span class="badge ${cls}">${type}</span> ${title}</span>
                     ${statusBadge}
                 </div>`;
+            if (metaLine) {
+                html += `<div class="champ-card-meta">${metaLine}</div>`;
+            }
 
             if (qualified.length > 0) {
                 html += '<div class="champ-qualified-count">Qualified Swimmers</div><div class="champ-events">';
