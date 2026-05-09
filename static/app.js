@@ -3754,23 +3754,24 @@ function wireProfileLinks(container, lookup) {
     if (elProgMeet) elProgMeet.addEventListener('change', loadMeetView);
     elProgModeBtns.forEach(b => b.addEventListener('click', () => setProgressMode(b.dataset.mode)));
 
-    // Compute championship-age from birth + swim date (the same age-up
-    // rule the rest of the app applies). When birth_month unknown, fall
-    // back to year-only July midpoint.
-    function ageAt(member, dateStr) {
-        if (!member || !dateStr) return null;
+    // Age preference order:
+    //   1. row.age — pulled from the parsed result PDF (authoritative;
+    //      that's literally the number printed next to the swimmer's
+    //      name on the meet result).
+    //   2. Computed from member.birth_year/month + swim date as a
+    //      fallback ONLY when the PDF for that meet wasn't parsed.
+    function ageForRow(member, row) {
+        if (row && row.age != null) return row.age;
+        if (!member || !row || !row.date) return null;
         const by = member.birth_year, bm = member.birth_month;
-        const m = String(dateStr).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if (!by) return null;
+        const m = String(row.date).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
         if (!m) return null;
-        const swimY = +m[3], swimMo = +m[1], swimD = +m[2];
-        if (by) {
-            const month = bm || 7;
-            const day = bm ? 1 : 1;
-            let age = swimY - by;
-            if (swimMo < month || (swimMo === month && swimD < day)) age -= 1;
-            return age >= 0 && age <= 25 ? age : null;
-        }
-        return null;
+        const swimY = +m[3], swimMo = +m[1];
+        const month = bm || 7;
+        let age = swimY - by;
+        if (swimMo < month) age -= 1;
+        return age >= 0 && age <= 25 ? age : null;
     }
 
     function setProgressMode(mode) {
@@ -3903,7 +3904,7 @@ function wireProfileLinks(container, lookup) {
         swims.sort((a, b) => (a.event || '').localeCompare(b.event || ''));
         let html = '<table><thead><tr><th>Event</th><th>Time</th><th>Age</th><th>Type</th></tr></thead><tbody>';
         swims.forEach(s => {
-            const age = ageAt(currentMember, s.date);
+            const age = ageForRow(currentMember, s);
             html += `<tr>
                 <td>${s.event || '—'}</td>
                 <td>${s.time || '—'}</td>
@@ -4022,7 +4023,7 @@ function wireProfileLinks(container, lookup) {
         // Newest-first reads better
         history.forEach(h => {
             const isBest = timeToSeconds(h.time) === bestSecs;
-            const age = ageAt(currentMember, h.date);
+            const age = ageForRow(currentMember, h);
             html += `<tr>
                 <td>${h.date || '—'}</td>
                 <td>${age != null ? age : '—'}</td>

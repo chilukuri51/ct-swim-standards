@@ -291,16 +291,31 @@ def get_event_history(history_url):
     """Return event history rows. The 'meet' field is the actual meet
     name (from meet_pdf_cache.meet_name) when we've parsed that meet's
     PDF; otherwise falls back to swim_type ('Finals'/'Prelims') so the
-    UI never shows nothing."""
+    UI never shows nothing. 'age' is the parsed PDF age for that meet
+    (NULL when the PDF wasn't parsed)."""
+    import ct_pdf
     with get_conn() as conn:
+        # Resolve the swimmer's name_key for the PDF age join.
+        sw = conn.execute("""
+            SELECT tm.first_name, tm.last_name
+            FROM event_history eh
+            LEFT JOIN team_members tm ON tm.ct_id = eh.swimmer_ct_id
+            WHERE eh.history_url = ? LIMIT 1
+        """, (history_url,)).fetchone()
+        name_key = ct_pdf.normalize_name(
+            sw['first_name'] if sw else '',
+            sw['last_name'] if sw else ''
+        ) if sw else ''
         rows = conn.execute("""
             SELECT eh.time, eh.swim_type, eh.date, eh.ct_meet_id,
-                   m.meet_name
+                   m.meet_name, ps.age AS pdf_age
             FROM event_history eh
             LEFT JOIN meet_pdf_cache m ON m.ct_meet_id = eh.ct_meet_id
+            LEFT JOIN meet_pdf_swimmers ps
+                   ON ps.ct_meet_id = eh.ct_meet_id AND ps.name_key = ?
             WHERE eh.history_url = ?
             ORDER BY eh.id
-        """, (history_url,)).fetchall()
+        """, (name_key, history_url)).fetchall()
     if not rows:
         return None
     out = []
@@ -312,26 +327,46 @@ def get_event_history(history_url):
             'swim_type': r['swim_type'] or '',
             'date': r['date'] or '',
             'ct_meet_id': r['ct_meet_id'] or '',
+            'age': r['pdf_age'],
         })
     return out
 
 
 def get_member_all_swims(swimmer_ct_id: str):
-    """Return every cached swim for a swimmer, flattened across all events.
-    Each row: {event, time, swim_type, date, ct_meet_id, meet_name}.
-    Used by the profile-modal Event Progression block for the 'View by
-    Meet' filter (one row per swim, pivot client-side)."""
+    """Return every cached swim for a swimmer, flattened across events.
+    Each row: {event, time, swim_type, date, ct_meet_id, meet, age}.
+    The age comes from the parsed PDF row (meet_pdf_swimmers) — same
+    source of truth used elsewhere in the app — joined on the swimmer's
+    normalized name. NULL when the meet's PDF wasn't parsed.
+    Used by the profile-modal 'View by Meet' filter."""
     if not swimmer_ct_id:
         return []
+    # Resolve the team_member's name to its name_key for the PDF join.
+    import ct_pdf
+    name_key = None
     with get_conn() as conn:
+        sw = conn.execute(
+            "SELECT first_name, last_name FROM team_members WHERE ct_id = ?",
+            (swimmer_ct_id,)
+        ).fetchone()
+        if sw:
+            name_key = ct_pdf.normalize_name(sw['first_name'], sw['last_name'])
+    with get_conn() as conn:
+        # Outer-join meet_pdf_swimmers via the team_member's name_key.
+        # exact-match first; prefix-match (legacy multi-word first names)
+        # is handled by lookup_swimmer_age_at_meet at runtime if needed,
+        # but here we only need ONE age per (ct_meet_id), so exact key
+        # is the right SQL pivot.
         rows = conn.execute("""
             SELECT eh.event, eh.time, eh.swim_type, eh.date, eh.ct_meet_id,
-                   m.meet_name
+                   m.meet_name, ps.age AS pdf_age
             FROM event_history eh
             LEFT JOIN meet_pdf_cache m ON m.ct_meet_id = eh.ct_meet_id
+            LEFT JOIN meet_pdf_swimmers ps
+                   ON ps.ct_meet_id = eh.ct_meet_id AND ps.name_key = ?
             WHERE eh.swimmer_ct_id = ?
             ORDER BY eh.date DESC, eh.event
-        """, (swimmer_ct_id,)).fetchall()
+        """, (name_key or '', swimmer_ct_id)).fetchall()
     out = []
     for r in rows:
         meet_name = (r['meet_name'] or '').strip() or (r['swim_type'] or '')
@@ -342,6 +377,7 @@ def get_member_all_swims(swimmer_ct_id: str):
             'date': r['date'] or '',
             'ct_meet_id': r['ct_meet_id'] or '',
             'meet': meet_name,
+            'age': r['pdf_age'],
         })
     return out
 
