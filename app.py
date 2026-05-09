@@ -361,6 +361,19 @@ def _load_world_aquatics_points():
         return {'base_times_lcm': {}}
 
 
+def _asset_version() -> str:
+    """Cache-buster: max mtime of static JS files, hex-encoded."""
+    try:
+        import os
+        paths = [
+            os.path.join(app.root_path, 'static', 'app.js'),
+            os.path.join(app.root_path, 'static', 'standards_data.js'),
+        ]
+        return format(int(max(os.path.getmtime(p) for p in paths if os.path.exists(p))), 'x')
+    except Exception:
+        return '0'
+
+
 @app.route('/')
 @login_required
 def index():
@@ -371,7 +384,8 @@ def index():
                            username=session.get('username', ''),
                            permissions=perms,
                            standards=standards_store.load(),
-                           wa_points=_load_world_aquatics_points())
+                           wa_points=_load_world_aquatics_points(),
+                           asset_version=_asset_version())
 
 
 # ===== API: Search swimmers =====

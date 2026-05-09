@@ -545,7 +545,7 @@
                         </div>
                     </div>
                     <div class="sp-block">
-                        <h4>Best Times <span class="sp-block-hint">(time · level · since 6 mo · ETA to next cut)</span></h4>
+                        <h4>Best Times <span class="sp-block-hint">(time · level · since 6 mo)</span></h4>
                         <div id="spBestTimes" class="table-container sp-table"></div>
                     </div>
                     <div class="sp-block sp-upcoming-block" id="spUpcomingBlock">
@@ -869,7 +869,7 @@
 
     <script>window.STANDARDS_DATA = {{ standards | tojson }};</script>
     <script>window.WA_POINTS = {{ wa_points | tojson }};</script>
-    <script src="/static/standards_data.js"></script>
-    <script src="/static/app.js"></script>
+    <script src="/static/standards_data.js?v={{ asset_version }}"></script>
+    <script src="/static/app.js?v={{ asset_version }}"></script>
 </body>
 </html>

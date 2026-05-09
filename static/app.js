@@ -1179,7 +1179,7 @@ function generatePDFForMember(member) {
 // ===== Parent-flavored PDF: celebrates the swimmer's journey =====
 // Leads with achievements + recent personal records; framing is for
 // family / grandparents, not coach goal-setting.
-function generateParentPDFForMember(member, allSwims, peerPercentiles) {
+function generateParentPDFForMember(member, allSwims) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || 'Swimmer';
@@ -1415,8 +1415,6 @@ function generateParentPDFForMember(member, allSwims, peerPercentiles) {
         doc.text('Best time', 70, y + 1);
         doc.text('Date', 105, y + 1);
         doc.text('Level', 130, y + 1);
-        if (course === 'LCM') doc.text('FINA pts', 165, y + 1);
-        else doc.text('Peer rank', 165, y + 1);
         y += 8;
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8);
@@ -1442,15 +1440,6 @@ function generateParentPDFForMember(member, allSwims, peerPercentiles) {
                     doc.text(cmp.highestUSA.type, 130, y);
                     doc.setFont('helvetica', 'normal');
                     doc.setTextColor(50, 50, 50);
-                }
-            }
-            if (course === 'LCM') {
-                const pts = finaPoints(timeToSeconds(bt.time), ei, member.gender);
-                doc.text(pts != null ? String(pts) : '—', 165, y);
-            } else {
-                const pr = peerPercentiles && peerPercentiles[bt.event];
-                if (pr && pr.n_peers > 0) {
-                    doc.text(`${pr.percentile}th pct`, 165, y);
                 }
             }
             y += 6;
@@ -4386,8 +4375,7 @@ function wireProfileLinks(container, lookup) {
         spPdfBtn.addEventListener('click', () => {
             if (!currentMember) return;
             if (APP_ROLE === 'parent') {
-                generateParentPDFForMember(currentMember,
-                    allSwimsCache || [], peerPercentileCache || {});
+                generateParentPDFForMember(currentMember, allSwimsCache || []);
             } else {
                 generatePDFForMember(currentMember);
             }
@@ -4935,7 +4923,7 @@ function wireProfileLinks(container, lookup) {
                 `).join('');
         }
 
-        // ===== Best Times table — augmented with Since 6 mo + ETA =====
+        // ===== Best Times table — augmented with Since 6 mo =====
         const allTimes = (m.best_times || [])
             .map(ev => ({ ev, ei: normalizeEvent(ev.event) }))
             .filter(x => x.ei && x.ei.course === currentCourse);
@@ -4948,13 +4936,9 @@ function wireProfileLinks(container, lookup) {
                 if (so !== 0) return so;
                 return parseInt(a.ei.distance) - parseInt(b.ei.distance);
             });
-            const showFina = currentCourse === 'LCM';
             let html = '<table><thead><tr>'
                 + '<th>Event</th><th>Time</th><th>Date</th><th>Level</th>'
                 + '<th title="Improvement vs best from before 6 months ago">Since 6mo</th>'
-                + '<th title="Months to next USA cut at current improvement pace">ETA</th>'
-                + '<th title="Percentile within roster swimmers of same age group + gender">Peer rank</th>'
-                + (showFina ? '<th title="World Aquatics 2026 points: P = 1000×(B/T)³">FINA Pts</th>' : '')
                 + '</tr></thead><tbody>';
             allTimes.forEach(({ ev, ei }) => {
                 const cat = { dist: ei.distance, stroke: ei.stroke, label: '' };
@@ -4980,45 +4964,12 @@ function wireProfileLinks(container, lookup) {
                 } else if (since && since.current && !since.prev) {
                     sinceCell = '<span class="sp-since-flat" title="No earlier swim to compare against">new</span>';
                 }
-                // ETA to next cut: based on improvement slope and gap
-                let etaCell = '<span class="sp-eta unreachable">—</span>';
-                if (lv && lv.nextCut && lv.gap != null && lv.gap > 0) {
-                    const slope = improvementSlope(swims, ev.event); // s/month, neg = improving
-                    if (slope != null && slope < -0.05) {
-                        const monthsToGoal = lv.gap / -slope;
-                        if (monthsToGoal <= 36) {
-                            const label = monthsToGoal < 1
-                                ? '< 1 mo'
-                                : monthsToGoal < 12
-                                    ? `~${monthsToGoal.toFixed(1)} mo`
-                                    : `~${(monthsToGoal/12).toFixed(1)} yr`;
-                            etaCell = `<span class="sp-eta" title="At current pace ${slope.toFixed(2)}s/mo to ${lv.nextCut.type}">${label} → ${lv.nextCut.type}</span>`;
-                        }
-                    }
-                } else if (lv && !lv.nextCut && lv.level === 'AAAA') {
-                    etaCell = '<span class="sp-eta" style="color:#16a34a">All cuts ✓</span>';
-                }
-                let finaCell = '';
-                if (showFina) {
-                    const pts = finaPoints(timeToSeconds(ev.time), ei, m.gender);
-                    finaCell = `<td>${pts != null ? pts : '<span style="color:#cbd5e0">—</span>'}</td>`;
-                }
-                // Peer rank percentile (same age group + gender on the roster)
-                let rankCell = '<span style="color:#cbd5e0">—</span>';
-                const pr = (peerPercentileCache || {})[ev.event];
-                if (pr && pr.n_peers > 0) {
-                    const tip = `Faster than ${pr.percentile}% of roster ${pr.age_group} swimmers of the same gender (n=${pr.n_peers})`;
-                    rankCell = `<span class="sp-eta" style="color:#0891b2" title="${tip}">${pr.percentile}th pct</span>`;
-                }
                 html += `<tr class="sp-bt-row" data-event="${encodeURIComponent(ev.event)}" title="Click for goal ladder">
                     <td>${ei.distance} ${ei.stroke[0]}${ei.stroke.slice(1).toLowerCase()} <span class="sp-bt-caret">▾</span></td>
                     <td class="lead-time">${ev.time}</td>
                     <td>${ev.date || '—'}</td>
                     <td>${lvlCell}</td>
                     <td>${sinceCell}</td>
-                    <td>${etaCell}</td>
-                    <td>${rankCell}</td>
-                    ${finaCell}
                 </tr>`;
             });
             html += '</tbody></table>';
@@ -5110,36 +5061,17 @@ function wireProfileLinks(container, lookup) {
         if (m.ct_team) bits.push(`CT: ${m.ct_team}`);
         elMeta.textContent = bits.join(' · ');
         modal.classList.remove('hidden');
-        // Reset per-open caches and any stale error banner.
-        peerPercentileCache = null;
         const stale = modal.querySelector('.sp-render-error');
         if (stale) stale.remove();
         renderProfile();
         populateProgressDropdown();
         // Eagerly fetch all swims so the Highlights block can render.
         ensureAllSwimsLoaded().then(() => renderProfile()).catch(() => {});
-        // Roster-wide percentiles + upcoming meets — load in parallel.
-        loadPeerPercentiles().catch(() => {});
         loadUpcomingMeets().catch(() => {});
     };
 
     // Cached upcoming-meets list (fetched once per profile open).
     let upcomingCache = null;
-    let peerPercentileCache = null;  // {event: {percentile, n_peers, age_group}}
-
-    async function loadPeerPercentiles() {
-        if (peerPercentileCache !== null) return;
-        if (!currentMember?.ct_id) { peerPercentileCache = {}; return; }
-        try {
-            const r = await fetch(`/api/peer_percentile?ct_id=${encodeURIComponent(currentMember.ct_id)}`);
-            const d = await r.json();
-            peerPercentileCache = d.percentiles || {};
-        } catch (e) {
-            peerPercentileCache = {};
-        }
-        // Patch any rendered Best-times table cells with the new data.
-        renderProfile();
-    }
 
     async function loadUpcomingMeets() {
         if (upcomingCache !== null) {
@@ -5196,7 +5128,7 @@ function wireProfileLinks(container, lookup) {
 
     // Click an event row in Best Times to reveal a goal-ladder sub-row
     // showing every cut at the swimmer's CURRENT age group with the
-    // target time, seconds-to-go, and a slope-based ETA when possible.
+    // target time and seconds-to-go.
     function wireGoalLadder(member, swims) {
         const tbl = elBest.querySelector('table');
         if (!tbl) return;
@@ -5243,19 +5175,10 @@ function wireProfileLinks(container, lookup) {
             ? '<tr><td colspan="3" style="color:#16a34a;font-weight:600">All cuts achieved at this age group.</td></tr>'
             : future.map(c => {
                 const gap = swSecs - c.secs;
-                let eta = '—';
-                if (slope != null && slope < -0.05) {
-                    const months = gap / -slope;
-                    eta = months < 1 ? '<1 mo'
-                        : months < 12 ? `~${months.toFixed(1)} mo`
-                        : months < 36 ? `~${(months/12).toFixed(1)} yr`
-                        : '> 3 yr';
-                }
                 return `<tr>
                     <td><span class="badge ${c.cssClass}">${c.type}</span></td>
                     <td>${c.time}</td>
                     <td><span class="sp-since-pos">need -${gap.toFixed(2)}s</span></td>
-                    <td><span class="sp-eta">ETA ${eta}</span></td>
                 </tr>`;
             }).join('');
         const earnedHTML = earned.length === 0 ? ''
@@ -5271,7 +5194,7 @@ function wireProfileLinks(container, lookup) {
                 <div class="sp-ladder-wrap">
                     <div class="sp-ladder-title">Goals at ${ag} for ${eventName}</div>
                     <table class="sp-ladder-table">
-                        <thead><tr><th>Level</th><th>Cut</th><th>To Drop</th><th>ETA</th></tr></thead>
+                        <thead><tr><th>Level</th><th>Cut</th><th>To Drop</th></tr></thead>
                         <tbody>${futureRows}</tbody>
                     </table>
                     ${earnedHTML}
