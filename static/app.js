@@ -3,6 +3,27 @@ const PERMS = new Set(window.APP_PERMISSIONS || []);
 const APP_ROLE = window.APP_ROLE || 'coach';
 function hasPerm(p) { return PERMS.has(p); }
 
+// File-scope helpers used by both the dashboard IIFE and the
+// profile-modal IIFE further down. (They were previously local to
+// the dashboard scope, which silently broke renderProfile inside
+// the profile modal — caught for the parent role where the modal
+// auto-opens on landing.)
+function ageToAgeGroup(age) {
+    if (age == null) return null;
+    if (age <= 10) return '10/Under';
+    if (age <= 12) return '11/12';
+    if (age <= 14) return '13/14';
+    if (age <= 16) return '15/16';
+    return '17/18';
+}
+function levelAgeGroupForSwim(member, ev) {
+    if (ev && ev.age_at_swim != null) {
+        const ag = ageToAgeGroup(ev.age_at_swim);
+        if (ag) return ag;
+    }
+    return member && member.age != null ? ageToAgeGroup(member.age) : null;
+}
+
 // Hide elements the user lacks permission for. Parents only have
 // `roster`, so for them every other tab vanishes from the nav rather
 // than showing up as a disabled button.
@@ -1842,10 +1863,18 @@ if (hasPerm('roster')) {
             // profile modal. If there's more than one, just leave the
             // roster list as the landing — they pick.
             if (APP_ROLE === 'parent' && rosterMembers.length === 1
-                    && window.openSwimmerProfile
                     && !window.__parentAutoOpened) {
                 window.__parentAutoOpened = true;
-                setTimeout(() => window.openSwimmerProfile(rosterMembers[0]), 50);
+                // Defer until the rest of the script finished registering
+                // window.openSwimmerProfile + sub-IIFE listeners.
+                const tryOpen = (n) => {
+                    if (typeof window.openSwimmerProfile === 'function') {
+                        window.openSwimmerProfile(rosterMembers[0]);
+                    } else if (n > 0) {
+                        setTimeout(() => tryOpen(n - 1), 100);
+                    }
+                };
+                setTimeout(() => tryOpen(20), 250);
             }
         } catch (e) {
             tableContainer.innerHTML = '<p style="padding:1rem;color:#dc2626">Failed to load roster.</p>';
@@ -2784,27 +2813,10 @@ if (hasPerm('dashboard')) {
     const dbMatrixCompact = document.getElementById('dbMatrixCompact');
     const dbMatrixHideEmpty = document.getElementById('dbMatrixHideEmpty');
 
-    function ageToAgeGroup(age) {
-        if (age == null) return null;
-        if (age <= 10) return '10/Under';
-        if (age <= 12) return '11/12';
-        if (age <= 14) return '13/14';
-        if (age <= 16) return '15/16';
-        return '17/18';
-    }
-
-    // For an event row (typically a best_time), pick the age group to
-    // use when looking up USA-Motivational levels. USA standards are
-    // achievements at the age group of the swim — once earned, they're
-    // permanent. Falling back to the swimmer's current age would
-    // incorrectly downgrade old PRs the moment a swimmer ages up.
-    function levelAgeGroupForSwim(member, ev) {
-        if (ev && ev.age_at_swim != null) {
-            const ag = ageToAgeGroup(ev.age_at_swim);
-            if (ag) return ag;
-        }
-        return member && member.age != null ? ageToAgeGroup(member.age) : null;
-    }
+    // ageToAgeGroup + levelAgeGroupForSwim are also defined at file
+    // scope (window.*) so the profile-modal IIFE further down can use
+    // them. Keeping the local refs here for backward compat — they
+    // resolve to the same function bodies.
 
     async function loadDashboard() {
         try {
@@ -4826,6 +4838,30 @@ function wireProfileLinks(container, lookup) {
     }
 
     function renderProfile() {
+        try {
+            renderProfileInner();
+        } catch (err) {
+            console.error('renderProfile failed:', err);
+            // Surface the failure visibly so the modal isn't silently blank.
+            const body = modal.querySelector('.modal-body');
+            if (body) {
+                const banner = body.querySelector('.sp-render-error') ||
+                               (() => {
+                                   const b = document.createElement('div');
+                                   b.className = 'sp-render-error';
+                                   b.style.cssText = 'background:#fef2f2;border:1px solid #fecaca;'
+                                       + 'color:#991b1b;padding:0.6rem 0.8rem;border-radius:6px;'
+                                       + 'margin-bottom:0.6rem;font-size:0.82rem;';
+                                   body.insertBefore(b, body.firstChild);
+                                   return b;
+                               })();
+                banner.textContent = `Couldn't render this view: ${err.message || err}. `
+                    + `Check the browser console for details.`;
+            }
+        }
+    }
+
+    function renderProfileInner() {
         if (!currentMember) return;
         const m = currentMember;
         const events = SP_EVENTS[currentCourse];
@@ -5074,8 +5110,10 @@ function wireProfileLinks(container, lookup) {
         if (m.ct_team) bits.push(`CT: ${m.ct_team}`);
         elMeta.textContent = bits.join(' · ');
         modal.classList.remove('hidden');
-        // Reset per-open caches.
+        // Reset per-open caches and any stale error banner.
         peerPercentileCache = null;
+        const stale = modal.querySelector('.sp-render-error');
+        if (stale) stale.remove();
         renderProfile();
         populateProgressDropdown();
         // Eagerly fetch all swims so the Highlights block can render.
