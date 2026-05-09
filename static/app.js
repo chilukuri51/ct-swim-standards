@@ -1,14 +1,15 @@
 // ===== ROLE-BASED UI GATING =====
 const PERMS = new Set(window.APP_PERMISSIONS || []);
+const APP_ROLE = window.APP_ROLE || 'coach';
 function hasPerm(p) { return PERMS.has(p); }
 
-// Apply disabled state to elements with data-requires
+// Hide elements the user lacks permission for. Parents only have
+// `roster`, so for them every other tab vanishes from the nav rather
+// than showing up as a disabled button.
 document.querySelectorAll('[data-requires]').forEach(el => {
     const need = el.dataset.requires;
     if (!hasPerm(need)) {
-        el.disabled = true;
-        el.classList.add('perm-disabled');
-        el.title = 'Not available for your role';
+        el.classList.add('perm-hidden');
     }
 });
 
@@ -21,6 +22,16 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
         document.getElementById(btn.dataset.tab).classList.add('active');
     });
 });
+
+// If the default-active tab got hidden by perm-gating, switch to the
+// first visible nav button. For parents this lands them on Roster.
+(function autoSelectVisibleTab() {
+    const activeBtn = document.querySelector('.nav-btn.active');
+    if (activeBtn && !activeBtn.classList.contains('perm-hidden')) return;
+    const firstVisible = Array.from(document.querySelectorAll('.nav-btn'))
+        .find(b => !b.classList.contains('perm-hidden'));
+    if (firstVisible) firstVisible.click();
+})();
 
 // ===== TIME STANDARDS TAB =====
 const standardType = document.getElementById('standardType');
@@ -1144,6 +1155,322 @@ function generatePDFForMember(member) {
 }
 
 
+// ===== Parent-flavored PDF: celebrates the swimmer's journey =====
+// Leads with achievements + recent personal records; framing is for
+// family / grandparents, not coach goal-setting.
+function generateParentPDFForMember(member, allSwims, peerPercentiles) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || 'Swimmer';
+
+    function ageGroupOf(age) {
+        if (age == null) return null;
+        if (age <= 10) return '10/Under';
+        if (age <= 12) return '11/12';
+        if (age <= 14) return '13/14';
+        if (age <= 16) return '15/16';
+        return '17/18';
+    }
+    function parseDate(s) {
+        if (!s) return null;
+        const m = String(s).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        return m ? new Date(+m[3], +m[1] - 1, +m[2]) : null;
+    }
+
+    // Header band (warmer tone)
+    doc.setFillColor(99, 102, 241);
+    doc.rect(0, 0, 210, 32, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${fullName}'s Swim Journey`, 105, 14, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(new Date().toLocaleDateString(), 105, 23, { align: 'center' });
+
+    // Swimmer info
+    doc.setTextColor(99, 102, 241);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    const metaParts = [];
+    if (member.age != null) metaParts.push(`Age ${member.age}`);
+    const ag = ageGroupOf(member.age);
+    if (ag) metaParts.push(`Age Group ${ag}`);
+    if (member.gender === 'F') metaParts.push('Female');
+    else if (member.gender === 'M') metaParts.push('Male');
+    if (member.roster) metaParts.push(member.roster);
+    doc.text(metaParts.join('  ·  '), 15, 44);
+
+    // === Quick stats banner ===
+    let y = 54;
+    const courseBuckets = { SCY: [], LCM: [] };
+    (member.best_times || []).forEach(bt => {
+        const ei = normalizeEvent(bt.event);
+        if (ei) courseBuckets[ei.course].push(bt);
+    });
+    const totalEvents = (member.best_times || []).length;
+    // Count cuts earned (USA + champ) across all events
+    let cutsEarned = 0;
+    (member.best_times || []).forEach(bt => {
+        const ei = normalizeEvent(bt.event);
+        if (!ei || !member.gender) return;
+        // Use age-at-swim's age group when available
+        const swimAg = (bt.age_at_swim != null)
+            ? ageGroupOf(bt.age_at_swim) : ag;
+        if (!swimAg) return;
+        const std = lookupStandards(ei, swimAg, member.gender);
+        const cmp = compareToStandards(timeToSeconds(bt.time), std);
+        if (cmp.highestUSA) cutsEarned++;
+        cutsEarned += (cmp.champAchieved || []).length;
+    });
+
+    doc.setFillColor(238, 242, 255);
+    doc.rect(15, y - 4, 180, 16, 'F');
+    doc.setTextColor(99, 102, 241);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TOTAL EVENTS', 25, y + 1);
+    doc.text('CUTS EARNED', 90, y + 1);
+    doc.text('SCY EVENTS', 145, y + 1);
+    doc.text('LCM EVENTS', 175, y + 1);
+    doc.setTextColor(30, 41, 59);
+    doc.setFontSize(14);
+    doc.text(String(totalEvents), 25, y + 9);
+    doc.text(String(cutsEarned), 90, y + 9);
+    doc.text(String(courseBuckets.SCY.length), 145, y + 9);
+    doc.text(String(courseBuckets.LCM.length), 175, y + 9);
+    y += 22;
+
+    // === Achievements section (cuts crossed, highest tier first) ===
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(99, 102, 241);
+    doc.text('Achievements', 15, y);
+    y += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(50, 50, 50);
+
+    // Walk swims chronologically per event to find first-time crossings.
+    const milestones = [];
+    if (allSwims && allSwims.length && member.gender) {
+        const byEvent = {};
+        const all = [...allSwims]
+            .map(s => ({ ...s, _d: parseDate(s.date), _t: timeToSeconds(s.time) }))
+            .filter(s => s._d && isFinite(s._t))
+            .sort((a, b) => a._d - b._d);
+        const tier = ['B', 'BB', 'A', 'AA', 'AAA', 'AAAA', 'CT AG', 'EZ'];
+        for (const s of all) {
+            const ei = normalizeEvent(s.event);
+            if (!ei) continue;
+            const sAg = s.age != null ? ageGroupOf(s.age) : ag;
+            if (!sAg) continue;
+            const std = lookupStandards(ei, sAg, member.gender);
+            const cuts = [...std.usa.map(c => ({ ...c, kind: 'USA' })),
+                          ...std.champ.map(c => ({ ...c, kind: 'Champ' }))];
+            const prev = byEvent[s.event] || { hits: new Set() };
+            cuts.forEach(c => {
+                const cs = timeToSeconds(c.time);
+                if (!isFinite(cs)) return;
+                const key = `${c.kind}:${c.type}:${sAg}`;
+                if (s._t <= cs && !prev.hits.has(key)) {
+                    prev.hits.add(key);
+                    milestones.push({
+                        event: s.event, date: s.date, ageGroup: sAg,
+                        type: c.type, kind: c.kind,
+                        tier: tier.indexOf(c.type),
+                    });
+                }
+            });
+            byEvent[s.event] = prev;
+        }
+    }
+    // Sort by tier desc, then by date desc
+    milestones.sort((a, b) => b.tier - a.tier || (b.date || '').localeCompare(a.date || ''));
+
+    if (milestones.length === 0) {
+        doc.setTextColor(120, 120, 120);
+        doc.text('No standards earned yet — every swim is progress!', 15, y);
+        doc.setTextColor(50, 50, 50);
+        y += 6;
+    } else {
+        // Top 12 achievements
+        milestones.slice(0, 12).forEach(ms => {
+            if (y > 270) { doc.addPage(); y = 20; }
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(99, 102, 241);
+            doc.text(ms.type, 17, y);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(50, 50, 50);
+            const txt = `${ms.kind === 'USA' ? '' : `${ms.kind} · `}${ms.event} · ${ms.ageGroup} · ${ms.date || ''}`;
+            doc.text(txt, 40, y);
+            y += 5;
+        });
+        y += 2;
+    }
+
+    // === Recent PRs (last 12 from all swims) ===
+    if (allSwims && allSwims.length) {
+        if (y > 240) { doc.addPage(); y = 20; }
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(99, 102, 241);
+        doc.text('Recent personal records', 15, y);
+        y += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(50, 50, 50);
+
+        // Build PR list per event
+        const prs = [];
+        const byEv = {};
+        allSwims.forEach(s => {
+            const t = timeToSeconds(s.time);
+            const d = parseDate(s.date);
+            if (!isFinite(t) || !d) return;
+            (byEv[s.event] = byEv[s.event] || []).push({ ...s, _d: d, _t: t });
+        });
+        for (const ev of Object.keys(byEv)) {
+            const list = byEv[ev].sort((a, b) => a._d - b._d);
+            let prevBest = Infinity;
+            list.forEach(s => {
+                if (s._t < prevBest) {
+                    prs.push({ ...s, drop: isFinite(prevBest) ? prevBest - s._t : null });
+                    prevBest = s._t;
+                }
+            });
+        }
+        prs.sort((a, b) => b._d - a._d);
+        const recent = prs.slice(0, 12);
+        if (recent.length === 0) {
+            doc.setTextColor(120, 120, 120);
+            doc.text('No recorded swims yet.', 15, y);
+            doc.setTextColor(50, 50, 50);
+            y += 6;
+        } else {
+            recent.forEach(p => {
+                if (y > 275) { doc.addPage(); y = 20; }
+                const left = `${p.date || '—'}  ${p.event}`;
+                doc.text(left, 17, y);
+                doc.setFont('helvetica', 'bold');
+                doc.text(p.time || '', 130, y);
+                doc.setFont('helvetica', 'normal');
+                if (p.drop != null) {
+                    doc.setTextColor(22, 163, 74);
+                    doc.text(`-${p.drop.toFixed(2)}s`, 160, y);
+                    doc.setTextColor(50, 50, 50);
+                }
+                y += 5;
+            });
+            y += 2;
+        }
+    }
+
+    // === Best Times tables (one per course, simpler than coach) ===
+    ['SCY', 'LCM'].forEach(course => {
+        const events = (member.best_times || [])
+            .map(bt => ({ bt, ei: normalizeEvent(bt.event) }))
+            .filter(x => x.ei && x.ei.course === course)
+            .sort((a, b) => {
+                const o = ['FREE', 'BACK', 'BREAST', 'FLY', 'IM'];
+                const so = o.indexOf(a.ei.stroke) - o.indexOf(b.ei.stroke);
+                if (so !== 0) return so;
+                return parseInt(a.ei.distance) - parseInt(b.ei.distance);
+            });
+        if (events.length === 0) return;
+        if (y > 250) { doc.addPage(); y = 20; }
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(99, 102, 241);
+        doc.text(course === 'SCY' ? 'Short Course Yards' : 'Long Course Meters',
+                 15, y);
+        y += 5;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(255, 255, 255);
+        doc.setFillColor(99, 102, 241);
+        doc.rect(15, y - 4, 180, 7, 'F');
+        doc.text('Event', 17, y + 1);
+        doc.text('Best time', 70, y + 1);
+        doc.text('Date', 105, y + 1);
+        doc.text('Level', 130, y + 1);
+        if (course === 'LCM') doc.text('FINA pts', 165, y + 1);
+        else doc.text('Peer rank', 165, y + 1);
+        y += 8;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(50, 50, 50);
+        events.forEach(({ bt, ei }, idx) => {
+            if (y > 275) { doc.addPage(); y = 20; }
+            if (idx % 2 === 0) {
+                doc.setFillColor(247, 250, 252);
+                doc.rect(15, y - 4, 180, 6, 'F');
+            }
+            const eventLabel = `${ei.distance} ${ei.stroke[0]}${ei.stroke.slice(1).toLowerCase()}`;
+            doc.text(eventLabel, 17, y);
+            doc.text(bt.time || '', 70, y);
+            doc.text(bt.date || '', 105, y);
+            // Level at age-at-swim's group
+            const sAg = bt.age_at_swim != null ? ageGroupOf(bt.age_at_swim) : ag;
+            if (sAg && member.gender) {
+                const std = lookupStandards(ei, sAg, member.gender);
+                const cmp = compareToStandards(timeToSeconds(bt.time), std);
+                if (cmp.highestUSA) {
+                    doc.setTextColor(99, 102, 241);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(cmp.highestUSA.type, 130, y);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(50, 50, 50);
+                }
+            }
+            if (course === 'LCM') {
+                const pts = finaPoints(timeToSeconds(bt.time), ei, member.gender);
+                doc.text(pts != null ? String(pts) : '—', 165, y);
+            } else {
+                const pr = peerPercentiles && peerPercentiles[bt.event];
+                if (pr && pr.n_peers > 0) {
+                    doc.text(`${pr.percentile}th pct`, 165, y);
+                }
+            }
+            y += 6;
+        });
+        y += 4;
+    });
+
+    // === Coach notes ===
+    const notes = (member.notes || '').trim();
+    if (notes) {
+        if (y > 240) { doc.addPage(); y = 20; }
+        y += 4;
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(99, 102, 241);
+        doc.text('Coach notes', 15, y);
+        y += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(50, 50, 50);
+        doc.splitTextToSize(notes, 180).forEach(line => {
+            if (y > 280) { doc.addPage(); y = 20; }
+            doc.text(line, 17, y);
+            y += 5;
+        });
+    }
+
+    // Footer on all pages
+    const pages = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= pages; p++) {
+        doc.setPage(p);
+        doc.setFontSize(7);
+        doc.setTextColor(150, 150, 150);
+        doc.text(`SwimProgression · ${fullName} · share with family proudly`,
+                 105, 290, { align: 'center' });
+    }
+
+    doc.save(`${fullName.replace(/[^a-zA-Z0-9]/g, '_')}_Swim_Journey.pdf`);
+}
+
+
 // ===== WHAT IF GOAL PLANNER =====
 const wiAgeGroup = document.getElementById('wiAgeGroup');
 const wiEvent = document.getElementById('wiEvent');
@@ -1511,6 +1838,15 @@ if (hasPerm('roster')) {
             rosterMembers = d.members || [];
             updateGroupOptions();
             renderRoster();
+            // Parent role: auto-open the first (and likely only) kid's
+            // profile modal. If there's more than one, just leave the
+            // roster list as the landing — they pick.
+            if (APP_ROLE === 'parent' && rosterMembers.length === 1
+                    && window.openSwimmerProfile
+                    && !window.__parentAutoOpened) {
+                window.__parentAutoOpened = true;
+                setTimeout(() => window.openSwimmerProfile(rosterMembers[0]), 50);
+            }
         } catch (e) {
             tableContainer.innerHTML = '<p style="padding:1rem;color:#dc2626">Failed to load roster.</p>';
         }
@@ -3958,8 +4294,14 @@ function wireProfileLinks(container, lookup) {
     const elStrengths = document.getElementById('spStrengths');
     const elTargets = document.getElementById('spTargets');
     const elBest = document.getElementById('spBestTimes');
+    const elStory = document.getElementById('spStoryBanner');
+    const elPRList = document.getElementById('spPRList');
+    const elMilestoneList = document.getElementById('spMilestoneList');
+    const elUpcoming = document.getElementById('spUpcomingList');
+    const elUpcomingBlock = document.getElementById('spUpcomingBlock');
     const radarCanvas = document.getElementById('spRadar');
     const radarEmpty = document.getElementById('spRadarEmpty');
+    const radarCaption = document.getElementById('spRadarCaption');
     const elProgEvent = document.getElementById('spProgressEvent');
     const elProgMeet = document.getElementById('spProgressMeet');
     const elProgLoading = document.getElementById('spProgressLoading');
@@ -4023,9 +4365,22 @@ function wireProfileLinks(container, lookup) {
     document.getElementById('spClose').addEventListener('click', closeProfile);
     document.getElementById('spDone').addEventListener('click', closeProfile);
     const spPdfBtn = document.getElementById('spDownloadPdf');
-    if (spPdfBtn) spPdfBtn.addEventListener('click', () => {
-        if (currentMember) generatePDFForMember(currentMember);
-    });
+    if (spPdfBtn) {
+        // Parents get a celebratory flavor (Achievements first); coaches
+        // get the goal-sheet flavor (Next Target / To Drop).
+        if (APP_ROLE === 'parent') {
+            spPdfBtn.textContent = 'Download Swim Journey PDF';
+        }
+        spPdfBtn.addEventListener('click', () => {
+            if (!currentMember) return;
+            if (APP_ROLE === 'parent') {
+                generateParentPDFForMember(currentMember,
+                    allSwimsCache || [], peerPercentileCache || {});
+            } else {
+                generatePDFForMember(currentMember);
+            }
+        });
+    }
     modal.addEventListener('click', e => { if (e.target === modal) closeProfile(); });
     document.querySelectorAll('.sp-course-pill').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -4269,6 +4624,154 @@ function wireProfileLinks(container, lookup) {
         return '17/18';
     }
 
+    // Parse "M/D/YYYY" or ISO into a Date or null.
+    function parseSwimDate(s) {
+        if (!s) return null;
+        const m1 = String(s).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if (m1) return new Date(+m1[3], +m1[1] - 1, +m1[2]);
+        const m2 = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (m2) return new Date(+m2[1], +m2[2] - 1, +m2[3]);
+        return null;
+    }
+    const MS_PER_DAY = 86400 * 1000;
+
+    // Walk all swims in chronological order per event; emit a row each
+    // time the running best is beaten. Returns newest-first.
+    function computePRs(swims, course) {
+        if (!swims || !swims.length) return [];
+        const byEvent = {};
+        swims.forEach(s => {
+            const ei = normalizeEvent(s.event);
+            if (!ei || ei.course !== course) return;
+            (byEvent[s.event] = byEvent[s.event] || []).push(s);
+        });
+        const out = [];
+        for (const ev of Object.keys(byEvent)) {
+            const list = byEvent[ev]
+                .map(s => ({ ...s, _d: parseSwimDate(s.date), _t: timeToSeconds(s.time) }))
+                .filter(s => s._d && isFinite(s._t))
+                .sort((a, b) => a._d - b._d);
+            let prevBest = Infinity;
+            list.forEach((s, i) => {
+                if (s._t < prevBest) {
+                    const drop = isFinite(prevBest) ? prevBest - s._t : null;
+                    out.push({
+                        event: s.event, time: s.time, date: s.date, age: s.age,
+                        meet: s.meet, drop, _d: s._d, isFirst: i === 0,
+                    });
+                    prevBest = s._t;
+                }
+            });
+        }
+        return out.sort((a, b) => b._d - a._d);
+    }
+
+    // Detect newly earned USA / Champ cuts via PR walk. Each cut is
+    // emitted only the first time it's crossed at that age group.
+    function computeMilestones(prs, member) {
+        if (!member.gender) return [];
+        const out = [];
+        const byEvent = {};
+        const chrono = [...prs].sort((a, b) => a._d - b._d);
+        for (const s of chrono) {
+            const ei = normalizeEvent(s.event);
+            if (!ei) continue;
+            const ag = (s.age != null) ? ageGroupOf(s.age) : ageGroupOf(member.age);
+            if (!ag) continue;
+            const std = lookupStandards(ei, ag, member.gender);
+            const swSecs = timeToSeconds(s.time);
+            const allCuts = [
+                ...std.usa.map(c => ({ ...c, kind: 'USA' })),
+                ...std.champ.map(c => ({ ...c, kind: 'Champ' })),
+            ];
+            const prev = byEvent[s.event] || { hits: new Set() };
+            allCuts.forEach(c => {
+                const cs = timeToSeconds(c.time);
+                if (!isFinite(cs)) return;
+                const key = `${c.kind}:${c.type}:${ag}`;
+                if (swSecs <= cs && !prev.hits.has(key)) {
+                    prev.hits.add(key);
+                    out.push({
+                        event: s.event, time: s.time, date: s.date, _d: s._d,
+                        type: c.type, kind: c.kind, cssClass: c.cssClass,
+                        cutTime: c.time, ageGroup: ag,
+                    });
+                }
+            });
+            byEvent[s.event] = prev;
+        }
+        return out.sort((a, b) => b._d - a._d);
+    }
+
+    // Best time per event in last N days vs best before that.
+    function computeSinceMap(swims, course, days = 180) {
+        const cutoff = Date.now() - days * MS_PER_DAY;
+        const map = {};
+        (swims || []).forEach(s => {
+            const ei = normalizeEvent(s.event);
+            if (!ei || ei.course !== course) return;
+            const d = parseSwimDate(s.date);
+            const t = timeToSeconds(s.time);
+            if (!d || !isFinite(t)) return;
+            const slot = map[s.event] = map[s.event] || { current: null, prev: null };
+            if (d.getTime() >= cutoff) {
+                if (!slot.current || t < slot.current.t) slot.current = { t, d, time: s.time };
+            } else {
+                if (!slot.prev || t < slot.prev.t) slot.prev = { t, d, time: s.time };
+            }
+        });
+        Object.keys(map).forEach(k => {
+            const m = map[k];
+            if (m.current && m.prev) m.drop = m.prev.t - m.current.t;
+        });
+        return map;
+    }
+
+    // Linear regression slope (s/month) for one event. Negative = improving.
+    function improvementSlope(swims, eventName) {
+        const pts = (swims || [])
+            .filter(s => s.event === eventName)
+            .map(s => ({ d: parseSwimDate(s.date), t: timeToSeconds(s.time) }))
+            .filter(p => p.d && isFinite(p.t))
+            .sort((a, b) => a.d - b.d);
+        if (pts.length < 3) return null;
+        const t0 = pts[0].d.getTime();
+        const xs = pts.map(p => (p.d.getTime() - t0) / (30.44 * MS_PER_DAY));
+        const ys = pts.map(p => p.t);
+        const n = xs.length;
+        const xbar = xs.reduce((a, b) => a + b) / n;
+        const ybar = ys.reduce((a, b) => a + b) / n;
+        let num = 0, den = 0;
+        for (let i = 0; i < n; i++) {
+            num += (xs[i] - xbar) * (ys[i] - ybar);
+            den += (xs[i] - xbar) ** 2;
+        }
+        return den === 0 ? null : num / den;
+    }
+
+    function buildStoryBanner(prs, milestones, sinceMap) {
+        const bits = [];
+        const recentPRs = prs.filter(p => (Date.now() - p._d.getTime()) <= 365 * MS_PER_DAY);
+        if (recentPRs.length > 0) {
+            bits.push(`<strong>${recentPRs.length}</strong> PR${recentPRs.length === 1 ? '' : 's'} in the last 12 months`);
+        }
+        const recentMiles = milestones.filter(m => (Date.now() - m._d.getTime()) <= 365 * MS_PER_DAY);
+        if (recentMiles.length > 0) {
+            const tier = ['B','BB','A','AA','AAA','AAAA','CT AG','EZ'];
+            const top = [...recentMiles].sort(
+                (a, b) => tier.indexOf(b.type) - tier.indexOf(a.type)
+            )[0];
+            bits.push(`hit <strong>${top.type}</strong> in <strong>${top.event}</strong>`);
+        }
+        const totalDrop = Object.values(sinceMap)
+            .map(s => s.drop || 0).reduce((a, b) => a + b, 0);
+        if (totalDrop > 0) {
+            bits.push(`dropped a combined <strong>${totalDrop.toFixed(1)}s</strong> in the last 6 months`);
+        }
+        if (bits.length === 0) return '';
+        return bits.join(' · ');
+    }
+
     function findBest(member, cat) {
         for (const ev of (member.best_times || [])) {
             const ei = normalizeEvent(ev.event);
@@ -4361,7 +4864,42 @@ function wireProfileLinks(container, lookup) {
                     <span class="sp-gap">-${e.info.gap.toFixed(2)}s</span>
                 </div>`).join('');
 
-        // Best Times table
+        // ===== Highlights block (PRs, milestones, story banner) =====
+        const swims = allSwimsCache || [];
+        const prs = computePRs(swims, currentCourse);
+        const milestones = computeMilestones(prs, m);
+        const sinceMap = computeSinceMap(swims, currentCourse, 180);
+        if (elStory) elStory.innerHTML = buildStoryBanner(prs, milestones, sinceMap);
+        if (elPRList) {
+            const recent = prs.slice(0, 6);
+            elPRList.innerHTML = recent.length === 0
+                ? '<div class="sp-card-empty">No PRs detected in this course yet.</div>'
+                : recent.map(p => {
+                    const dropPart = p.drop != null
+                        ? `<span class="sp-pr-drop">-${p.drop.toFixed(2)}s</span>`
+                        : `<span class="sp-pr-drop" style="color:#64748b">first</span>`;
+                    return `<div class="sp-pr-row">
+                        <span class="sp-pr-date">${p.date || '—'}</span>
+                        <span class="sp-pr-event">${p.event}</span>
+                        <span class="sp-pr-time">${p.time}</span>
+                        ${dropPart}
+                    </div>`;
+                }).join('');
+        }
+        if (elMilestoneList) {
+            const recent = milestones.slice(0, 6);
+            elMilestoneList.innerHTML = recent.length === 0
+                ? '<div class="sp-card-empty">No new cuts crossed in this course yet.</div>'
+                : recent.map(ms => `
+                    <div class="sp-mile-row">
+                        <span class="sp-mile-date">${ms.date || '—'}</span>
+                        <span class="sp-mile-event">${ms.event} <span class="ag-tag">at ${ms.ageGroup}</span></span>
+                        <span class="badge ${ms.cssClass}">${ms.type}</span>
+                    </div>
+                `).join('');
+        }
+
+        // ===== Best Times table — augmented with Since 6 mo + ETA =====
         const allTimes = (m.best_times || [])
             .map(ev => ({ ev, ei: normalizeEvent(ev.event) }))
             .filter(x => x.ei && x.ei.course === currentCourse);
@@ -4374,11 +4912,12 @@ function wireProfileLinks(container, lookup) {
                 if (so !== 0) return so;
                 return parseInt(a.ei.distance) - parseInt(b.ei.distance);
             });
-            // Show 'FINA Pts' column only for LCM (World Aquatics doesn't
-            // publish a SCY base-times table).
             const showFina = currentCourse === 'LCM';
             let html = '<table><thead><tr>'
                 + '<th>Event</th><th>Time</th><th>Date</th><th>Level</th>'
+                + '<th title="Improvement vs best from before 6 months ago">Since 6mo</th>'
+                + '<th title="Months to next USA cut at current improvement pace">ETA</th>'
+                + '<th title="Percentile within roster swimmers of same age group + gender">Peer rank</th>'
                 + (showFina ? '<th title="World Aquatics 2026 points: P = 1000×(B/T)³">FINA Pts</th>' : '')
                 + '</tr></thead><tbody>';
             allTimes.forEach(({ ev, ei }) => {
@@ -4391,21 +4930,64 @@ function wireProfileLinks(container, lookup) {
                     lvlCell = `<span class="badge badge-${lv.level.toLowerCase()}"${tip ? ` title="${tip}"` : ''}>${lv.level}</span>`;
                     if (tip) lvlCell += ` <span class="ag-tag">at ${lv.swimAg}</span>`;
                 }
+                // Since 6 mo
+                const since = sinceMap[ev.event];
+                let sinceCell = '<span class="sp-since-flat">—</span>';
+                if (since && since.drop != null) {
+                    if (since.drop > 0.001) {
+                        sinceCell = `<span class="sp-since-pos">-${since.drop.toFixed(2)}s</span>`;
+                    } else if (since.drop < -0.001) {
+                        sinceCell = `<span class="sp-since-neg">+${(-since.drop).toFixed(2)}s</span>`;
+                    } else {
+                        sinceCell = '<span class="sp-since-flat">flat</span>';
+                    }
+                } else if (since && since.current && !since.prev) {
+                    sinceCell = '<span class="sp-since-flat" title="No earlier swim to compare against">new</span>';
+                }
+                // ETA to next cut: based on improvement slope and gap
+                let etaCell = '<span class="sp-eta unreachable">—</span>';
+                if (lv && lv.nextCut && lv.gap != null && lv.gap > 0) {
+                    const slope = improvementSlope(swims, ev.event); // s/month, neg = improving
+                    if (slope != null && slope < -0.05) {
+                        const monthsToGoal = lv.gap / -slope;
+                        if (monthsToGoal <= 36) {
+                            const label = monthsToGoal < 1
+                                ? '< 1 mo'
+                                : monthsToGoal < 12
+                                    ? `~${monthsToGoal.toFixed(1)} mo`
+                                    : `~${(monthsToGoal/12).toFixed(1)} yr`;
+                            etaCell = `<span class="sp-eta" title="At current pace ${slope.toFixed(2)}s/mo to ${lv.nextCut.type}">${label} → ${lv.nextCut.type}</span>`;
+                        }
+                    }
+                } else if (lv && !lv.nextCut && lv.level === 'AAAA') {
+                    etaCell = '<span class="sp-eta" style="color:#16a34a">All cuts ✓</span>';
+                }
                 let finaCell = '';
                 if (showFina) {
                     const pts = finaPoints(timeToSeconds(ev.time), ei, m.gender);
                     finaCell = `<td>${pts != null ? pts : '<span style="color:#cbd5e0">—</span>'}</td>`;
                 }
-                html += `<tr>
-                    <td>${ei.distance} ${ei.stroke[0]}${ei.stroke.slice(1).toLowerCase()}</td>
+                // Peer rank percentile (same age group + gender on the roster)
+                let rankCell = '<span style="color:#cbd5e0">—</span>';
+                const pr = (peerPercentileCache || {})[ev.event];
+                if (pr && pr.n_peers > 0) {
+                    const tip = `Faster than ${pr.percentile}% of roster ${pr.age_group} swimmers of the same gender (n=${pr.n_peers})`;
+                    rankCell = `<span class="sp-eta" style="color:#0891b2" title="${tip}">${pr.percentile}th pct</span>`;
+                }
+                html += `<tr class="sp-bt-row" data-event="${encodeURIComponent(ev.event)}" title="Click for goal ladder">
+                    <td>${ei.distance} ${ei.stroke[0]}${ei.stroke.slice(1).toLowerCase()} <span class="sp-bt-caret">▾</span></td>
                     <td class="lead-time">${ev.time}</td>
                     <td>${ev.date || '—'}</td>
                     <td>${lvlCell}</td>
+                    <td>${sinceCell}</td>
+                    <td>${etaCell}</td>
+                    <td>${rankCell}</td>
                     ${finaCell}
                 </tr>`;
             });
             html += '</tbody></table>';
             elBest.innerHTML = html;
+            wireGoalLadder(m, swims);
         }
 
         // Radar — always render, even when every stroke is below B. Center
@@ -4419,7 +5001,22 @@ function wireProfileLinks(container, lookup) {
             // Truly nothing to show — no swims at all
             radarCanvas.style.display = 'none';
             radarEmpty.classList.remove('hidden');
+            if (radarCaption) radarCaption.textContent = '';
             return;
+        }
+        // One-line plain-English summary of the radar shape
+        if (radarCaption) {
+            const ranked = STROKES.map(s => ({ s, r: peakRanks[s] || 0 }))
+                .sort((a, b) => b.r - a.r);
+            const strongest = ranked[0];
+            const weakest = ranked[ranked.length - 1];
+            const labelize = (s) => s[0] + s.slice(1).toLowerCase();
+            const caption = (strongest.r > 0 && weakest.r < strongest.r)
+                ? `Strongest in <strong>${labelize(strongest.s)}</strong> (${LEVEL_NAMES[strongest.r]}); room to grow in <strong>${labelize(weakest.s)}</strong>.`
+                : (strongest.r > 0
+                    ? `Even across strokes — top level: <strong>${LEVEL_NAMES[strongest.r]}</strong>.`
+                    : 'Building toward first cuts. Every meet is a step.');
+            radarCaption.innerHTML = caption;
         }
         radarCanvas.style.display = '';
         radarEmpty.classList.add('hidden');
@@ -4477,9 +5074,174 @@ function wireProfileLinks(container, lookup) {
         if (m.ct_team) bits.push(`CT: ${m.ct_team}`);
         elMeta.textContent = bits.join(' · ');
         modal.classList.remove('hidden');
+        // Reset per-open caches.
+        peerPercentileCache = null;
         renderProfile();
         populateProgressDropdown();
+        // Eagerly fetch all swims so the Highlights block can render.
+        ensureAllSwimsLoaded().then(() => renderProfile()).catch(() => {});
+        // Roster-wide percentiles + upcoming meets — load in parallel.
+        loadPeerPercentiles().catch(() => {});
+        loadUpcomingMeets().catch(() => {});
     };
+
+    // Cached upcoming-meets list (fetched once per profile open).
+    let upcomingCache = null;
+    let peerPercentileCache = null;  // {event: {percentile, n_peers, age_group}}
+
+    async function loadPeerPercentiles() {
+        if (peerPercentileCache !== null) return;
+        if (!currentMember?.ct_id) { peerPercentileCache = {}; return; }
+        try {
+            const r = await fetch(`/api/peer_percentile?ct_id=${encodeURIComponent(currentMember.ct_id)}`);
+            const d = await r.json();
+            peerPercentileCache = d.percentiles || {};
+        } catch (e) {
+            peerPercentileCache = {};
+        }
+        // Patch any rendered Best-times table cells with the new data.
+        renderProfile();
+    }
+
+    async function loadUpcomingMeets() {
+        if (upcomingCache !== null) {
+            renderUpcomingMeets();
+            return;
+        }
+        try {
+            const r = await fetch('/api/upcoming_meets');
+            const d = await r.json();
+            upcomingCache = d.meets || [];
+        } catch (e) {
+            upcomingCache = [];
+        }
+        renderUpcomingMeets();
+    }
+
+    function renderUpcomingMeets() {
+        if (!elUpcoming || !elUpcomingBlock) return;
+        const meets = upcomingCache || [];
+        if (meets.length === 0) {
+            elUpcomingBlock.classList.add('hidden');
+            return;
+        }
+        elUpcomingBlock.classList.remove('hidden');
+        // Identify which meets the kid's club has historically attended.
+        // We look at the swimmer's distinct meet_ids in allSwimsCache → derive
+        // a set of host-club abbreviations from URLs (already in the cache).
+        const familiarClubs = new Set();
+        (allSwimsCache || []).forEach(s => {
+            const m = (s.meet || '').match(/\b([A-Z]{3,5})\b/);
+            if (m) familiarClubs.add(m[1].toLowerCase());
+        });
+        elUpcoming.innerHTML = meets.slice(0, 10).map(meet => {
+            const dateLabel = meet.start_date && meet.end_date && meet.start_date !== meet.end_date
+                ? `${formatShortDate(meet.start_date)} – ${formatShortDate(meet.end_date)}`
+                : formatShortDate(meet.start_date);
+            const meetClub = (meet.meet_name || '').match(/\b([A-Z]{3,5})\b/);
+            const familiar = meetClub && familiarClubs.has(meetClub[1].toLowerCase());
+            const tag = familiar ? '<span class="sp-upcoming-tag">Likely</span>' : '';
+            return `<div class="sp-upcoming-row">
+                <span class="sp-upcoming-date">${dateLabel}</span>
+                <span class="sp-upcoming-name">${meet.meet_name || meet.label || '—'}</span>
+                ${tag}
+            </div>`;
+        }).join('') || '<div class="sp-upcoming-empty">No upcoming meets.</div>';
+    }
+
+    function formatShortDate(iso) {
+        if (!iso) return '—';
+        const d = new Date(iso + 'T00:00:00');
+        if (isNaN(d.getTime())) return iso;
+        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    }
+
+    // Click an event row in Best Times to reveal a goal-ladder sub-row
+    // showing every cut at the swimmer's CURRENT age group with the
+    // target time, seconds-to-go, and a slope-based ETA when possible.
+    function wireGoalLadder(member, swims) {
+        const tbl = elBest.querySelector('table');
+        if (!tbl) return;
+        tbl.querySelectorAll('tr.sp-bt-row').forEach(tr => {
+            tr.addEventListener('click', () => {
+                const evName = decodeURIComponent(tr.dataset.event);
+                const next = tr.nextElementSibling;
+                if (next && next.classList.contains('sp-bt-detail')) {
+                    next.remove();
+                    tr.classList.remove('expanded');
+                    return;
+                }
+                // Close any other open detail rows
+                tbl.querySelectorAll('tr.sp-bt-detail').forEach(r => r.remove());
+                tbl.querySelectorAll('tr.sp-bt-row.expanded').forEach(r => r.classList.remove('expanded'));
+                tr.classList.add('expanded');
+                tr.insertAdjacentHTML('afterend', renderGoalLadderRow(member, evName, swims, tr.children.length));
+            });
+        });
+    }
+
+    function renderGoalLadderRow(member, eventName, swims, colspan) {
+        const ei = normalizeEvent(eventName);
+        if (!ei || !member.gender || !member.age) {
+            return `<tr class="sp-bt-detail"><td colspan="${colspan}"><em>Missing age or gender — can't show goals.</em></td></tr>`;
+        }
+        const bt = (member.best_times || []).find(b => b.event === eventName);
+        if (!bt) return '';
+        const swSecs = timeToSeconds(bt.time);
+        const ag = ageGroupOf(member.age);
+        const std = lookupStandards(ei, ag, member.gender);
+        const slope = improvementSlope(swims, eventName);  // s/month, neg = improving
+        // Combine USA + champ cuts; sort fastest-to-slowest
+        const allCuts = [
+            ...std.usa.map(c => ({ ...c, kind: 'USA' })),
+            ...std.champ.map(c => ({ ...c, kind: 'Champ' })),
+        ].map(c => ({ ...c, secs: timeToSeconds(c.time) }))
+         .filter(c => isFinite(c.secs))
+         .sort((a, b) => a.secs - b.secs);
+
+        const future = allCuts.filter(c => c.secs < swSecs);
+        const earned = allCuts.filter(c => c.secs >= swSecs);
+        const futureRows = future.length === 0
+            ? '<tr><td colspan="3" style="color:#16a34a;font-weight:600">All cuts achieved at this age group.</td></tr>'
+            : future.map(c => {
+                const gap = swSecs - c.secs;
+                let eta = '—';
+                if (slope != null && slope < -0.05) {
+                    const months = gap / -slope;
+                    eta = months < 1 ? '<1 mo'
+                        : months < 12 ? `~${months.toFixed(1)} mo`
+                        : months < 36 ? `~${(months/12).toFixed(1)} yr`
+                        : '> 3 yr';
+                }
+                return `<tr>
+                    <td><span class="badge ${c.cssClass}">${c.type}</span></td>
+                    <td>${c.time}</td>
+                    <td><span class="sp-since-pos">need -${gap.toFixed(2)}s</span></td>
+                    <td><span class="sp-eta">ETA ${eta}</span></td>
+                </tr>`;
+            }).join('');
+        const earnedHTML = earned.length === 0 ? ''
+            : `<div class="sp-ladder-earned">Already past:
+                ${earned.map(c => `<span class="badge ${c.cssClass}" title="Cut: ${c.time}">${c.type}</span>`).join(' ')}
+               </div>`;
+        const slopeNote = slope != null
+            ? `<div class="sp-ladder-pace">Recent pace: ${slope >= 0 ? '+' : ''}${slope.toFixed(2)} s/month</div>`
+            : '<div class="sp-ladder-pace">Need ≥3 swims for a pace projection.</div>';
+
+        return `<tr class="sp-bt-detail">
+            <td colspan="${colspan}">
+                <div class="sp-ladder-wrap">
+                    <div class="sp-ladder-title">Goals at ${ag} for ${eventName}</div>
+                    <table class="sp-ladder-table">
+                        <thead><tr><th>Level</th><th>Cut</th><th>To Drop</th><th>ETA</th></tr></thead>
+                        <tbody>${futureRows}</tbody>
+                    </table>
+                    ${earnedHTML}
+                    ${slopeNote}
+                </div>
+            </td>
+        </tr>`;
+    }
 })();
 
 

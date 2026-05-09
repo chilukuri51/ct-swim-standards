@@ -26,11 +26,17 @@ USERS = {
     'admin': os.environ.get('ADMIN_PASSWORD', 'ItsNaga!23'),
     'coach': os.environ.get('COACH_PASSWORD', 'ItsEllis!23'),
 }
+# A single shared parent password protects parent-flavored access. The
+# parent's identity (which kids they see) comes from their email, which
+# must already exist as `parent_email` on at least one team_member row.
+PARENT_PASSWORD = os.environ.get('PARENT_PASSWORD', 'IvyParent!23')
 
 # Feature access matrix
 ROLE_PERMISSIONS = {
     'admin': {'search', 'refresh', 'batch', 'club', 'roster', 'roster_edit', 'standards', 'standards_edit', 'dashboard', 'whatif'},
     'coach': {'search', 'club', 'roster', 'roster_edit', 'standards', 'standards_edit', 'dashboard', 'whatif'},
+    # Parent sees only their kids' profile; nothing club-wide, no editing.
+    'parent': {'roster'},
 }
 
 
@@ -303,13 +309,31 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username', '').strip().lower()
         password = request.form.get('password', '')
+        # Coach / admin: fixed username + per-role password.
         if username in USERS and password == USERS[username]:
             session['logged_in'] = True
             session['username'] = username
             session['role'] = username
             session.permanent = True
             return redirect(request.args.get('next') or url_for('index'))
-        error = 'Invalid username or password'
+        # Parent: looks like an email + shared parent password + at least
+        # one team_member must already have parent_email = this email.
+        if '@' in username and password == PARENT_PASSWORD:
+            with db.get_conn() as conn:
+                hit = conn.execute(
+                    "SELECT 1 FROM team_members WHERE LOWER(parent_email) = ? LIMIT 1",
+                    (username,)
+                ).fetchone()
+            if hit:
+                session['logged_in'] = True
+                session['username'] = username
+                session['role'] = 'parent'
+                session['parent_email'] = username
+                session.permanent = True
+                return redirect(request.args.get('next') or url_for('index'))
+            error = 'No swimmers linked to that email yet — ask the coach to add it on your roster entry.'
+        else:
+            error = error or 'Invalid username or password'
     if session.get('logged_in'):
         return redirect(url_for('index'))
     return render_template('login.html', error=error)
@@ -503,11 +527,16 @@ def api_list_team_members():
 @login_required
 def api_my_swimmers():
     """Roster + cached best_times for the logged-in role.
-    Currently coach/admin only — parent role is disabled.
+    - admin / coach: full team
+    - parent: only swimmers whose parent_email matches the session's email
 
     include_birth=True so the profile modal can compute swim-time age
     client-side (championship-age rule applied per meet date)."""
-    members = db.list_team_members_with_times(include_birth=True)
+    role = session.get('role', 'coach')
+    parent_email = session.get('parent_email') if role == 'parent' else None
+    members = db.list_team_members_with_times(
+        include_birth=True, parent_email=parent_email
+    )
     return jsonify({'members': members, 'count': len(members)})
 
 
@@ -520,6 +549,125 @@ def api_swimmer_all_swims():
     if not ct_id:
         return jsonify({'error': 'ct_id required'}), 400
     return jsonify({'swims': db.get_member_all_swims(ct_id)})
+
+
+@app.route('/api/peer_percentile', methods=['GET'])
+@login_required
+def api_peer_percentile():
+    """Anonymized within-roster percentile per event for one swimmer.
+
+    Compares this swimmer's best time against every other roster member
+    of the SAME championship age group + gender + course/event. Returns
+    just stats — no peer names — so it's safe to expose to a parent.
+    """
+    ct_id = (request.args.get('ct_id') or '').strip()
+    if not ct_id:
+        return jsonify({'error': 'ct_id required'}), 400
+    members = db.list_team_members_with_times(include_birth=True)
+    me = next((m for m in members if m.get('ct_id') == ct_id), None)
+    if not me or not me.get('age') or not me.get('gender'):
+        return jsonify({'percentiles': {}})
+
+    def age_group(age):
+        if age is None: return None
+        if age <= 10: return '10/Under'
+        if age <= 12: return '11/12'
+        if age <= 14: return '13/14'
+        if age <= 16: return '15/16'
+        return '17/18'
+
+    def time_to_secs(s):
+        if not s: return None
+        s = s.replace('*', '').strip()
+        try:
+            parts = s.split(':')
+            if len(parts) == 1: return float(parts[0])
+            if len(parts) == 2: return float(parts[0]) * 60 + float(parts[1])
+            if len(parts) == 3: return float(parts[0]) * 3600 + float(parts[1]) * 60 + float(parts[2])
+        except (ValueError, IndexError):
+            return None
+
+    my_age_grp = age_group(me['age'])
+    my_gender = me['gender']
+
+    # Collect peer best times per event (members in same age group + gender)
+    peers_by_event = {}  # event -> [seconds]
+    for peer in members:
+        if peer.get('ct_id') == ct_id:
+            continue
+        if peer.get('gender') != my_gender:
+            continue
+        if age_group(peer.get('age')) != my_age_grp:
+            continue
+        for bt in (peer.get('best_times') or []):
+            secs = time_to_secs(bt.get('time'))
+            if secs is not None:
+                peers_by_event.setdefault(bt['event'], []).append(secs)
+
+    out = {}
+    for bt in (me.get('best_times') or []):
+        my_secs = time_to_secs(bt.get('time'))
+        if my_secs is None:
+            continue
+        peers = peers_by_event.get(bt['event'], [])
+        n = len(peers)
+        if n == 0:
+            continue
+        # Percentile: % of peers we are FASTER than (lower time = better)
+        slower = sum(1 for p in peers if p > my_secs)
+        # Include self in denominator for cleaner labeling
+        pct = round((slower / (n + 1)) * 100)
+        out[bt['event']] = {
+            'percentile': pct,
+            'n_peers': n,
+            'age_group': my_age_grp,
+        }
+    return jsonify({'percentiles': out, 'age_group': my_age_grp, 'gender': my_gender})
+
+
+@app.route('/api/upcoming_meets', methods=['GET'])
+@login_required
+def api_upcoming_meets():
+    """Return the next ~30 meets from the committed Results.aspx index
+    that start on or after today, sorted soonest-first. Used by the
+    profile-modal 'Upcoming meets' block."""
+    import json as _json
+    from datetime import date as _date
+    candidates = [
+        os.path.join(paths.DATA_DIR, 'meet_index.json'),
+        os.path.join(paths.PROJECT_DATA_DIR, 'meet_index.json'),
+    ]
+    rows = []
+    for p in candidates:
+        if not os.path.exists(p):
+            continue
+        try:
+            with open(p) as f:
+                blob = _json.load(f)
+            rows = blob.get('rows', [])
+            break
+        except (OSError, _json.JSONDecodeError):
+            continue
+    today_iso = _date.today().isoformat()
+    upcoming = []
+    seen_meets = set()
+    for r in rows:
+        sd = r.get('start_date') or ''
+        if not sd or sd < today_iso:
+            continue
+        # Dedup multi-PDF meets — keep one row per (start_date, meet_name).
+        key = (sd, (r.get('meet_name') or '').strip())
+        if key in seen_meets:
+            continue
+        seen_meets.add(key)
+        upcoming.append({
+            'start_date': sd,
+            'end_date': r.get('end_date') or sd,
+            'meet_name': r.get('meet_name') or '',
+            'label': r.get('label') or '',
+        })
+    upcoming.sort(key=lambda x: x['start_date'])
+    return jsonify({'meets': upcoming[:30]})
 
 
 @app.route('/api/team_members/auto_link', methods=['POST'])

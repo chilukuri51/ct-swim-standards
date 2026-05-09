@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
-<body>
+<body data-role="{{ role }}">
     <header>
         <div class="header-top">
             <span class="role-badge role-{{ role }}">{{ username }}</span>
@@ -16,9 +16,9 @@
         </div>
         <h1>SwimProgression</h1>
         <nav>
-            <button class="nav-btn active" data-tab="standards">Standards</button>
-            <button class="nav-btn" data-tab="search">Swimmer Search</button>
-            <button class="nav-btn" data-tab="whatif">What If</button>
+            <button class="nav-btn active" data-tab="standards" data-requires="standards">Standards</button>
+            <button class="nav-btn" data-tab="search" data-requires="search">Swimmer Search</button>
+            <button class="nav-btn" data-tab="whatif" data-requires="whatif">What If</button>
             <button class="nav-btn" data-tab="dashboard" data-requires="dashboard">Coach Dashboard</button>
             <button class="nav-btn" data-tab="champqual" data-requires="dashboard">Championship Qual</button>
             <button class="nav-btn" data-tab="roster" data-requires="roster">Roster</button>
@@ -516,6 +516,7 @@
                     <div class="sp-grid">
                         <div class="sp-radar-card">
                             <div class="sp-radar-canvas-wrap"><canvas id="spRadar"></canvas></div>
+                            <div class="sp-radar-caption" id="spRadarCaption"></div>
                             <div class="sp-empty hidden" id="spRadarEmpty">No times in this course yet.</div>
                         </div>
                         <div class="sp-side">
@@ -529,9 +530,27 @@
                             </div>
                         </div>
                     </div>
+                    <div class="sp-block sp-highlights" id="spHighlightsBlock">
+                        <h4>Highlights</h4>
+                        <div class="sp-story" id="spStoryBanner"></div>
+                        <div class="sp-highlights-grid">
+                            <div class="sp-card">
+                                <div class="sp-card-title">Recent personal records</div>
+                                <div id="spPRList" class="sp-card-body"></div>
+                            </div>
+                            <div class="sp-card">
+                                <div class="sp-card-title">Achievements unlocked</div>
+                                <div id="spMilestoneList" class="sp-card-body"></div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="sp-block">
-                        <h4>Best Times</h4>
+                        <h4>Best Times <span class="sp-block-hint">(time · level · since 6 mo · ETA to next cut)</span></h4>
                         <div id="spBestTimes" class="table-container sp-table"></div>
+                    </div>
+                    <div class="sp-block sp-upcoming-block" id="spUpcomingBlock">
+                        <h4>Upcoming meets</h4>
+                        <div id="spUpcomingList" class="sp-upcoming-list"></div>
                     </div>
                     <div class="sp-block">
                         <h4>Event Progression <span class="sp-block-hint">(filter by event or by meet)</span></h4>

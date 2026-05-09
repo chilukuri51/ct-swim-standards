@@ -363,6 +363,116 @@ header {
     box-shadow: 0 3px 8px rgba(0,0,0,0.12);
 }
 
+/* Hide elements the user lacks permission for (parent role) */
+.perm-hidden { display: none !important; }
+
+/* ===== Profile-modal Highlights block ===== */
+.sp-highlights .sp-story {
+    background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+    color: #1e293b; padding: 0.7rem 0.85rem; border-radius: 8px;
+    font-size: 0.88rem; margin-bottom: 0.7rem; line-height: 1.45;
+    border-left: 4px solid #6366f1;
+}
+.sp-highlights .sp-story:empty { display: none; }
+.sp-highlights-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem;
+}
+@media (max-width: 720px) {
+    .sp-highlights-grid { grid-template-columns: 1fr; }
+}
+.sp-card {
+    background: white; border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 0.6rem 0.75rem;
+}
+.sp-card-title {
+    font-size: 0.78rem; font-weight: 700; color: #003366;
+    margin-bottom: 0.45rem; letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+.sp-card-body { font-size: 0.82rem; color: #1e293b; }
+.sp-pr-row, .sp-mile-row {
+    display: flex; gap: 0.5rem; align-items: baseline;
+    padding: 0.3rem 0; border-bottom: 1px dashed #f1f5f9;
+}
+.sp-pr-row:last-child, .sp-mile-row:last-child { border-bottom: none; }
+.sp-pr-date, .sp-mile-date {
+    color: #64748b; font-size: 0.72rem; min-width: 64px;
+}
+.sp-pr-event { font-weight: 600; flex: 1; }
+.sp-pr-time { font-variant-numeric: tabular-nums; font-weight: 700; }
+.sp-pr-drop { color: #16a34a; font-size: 0.78rem; font-weight: 600; }
+.sp-mile-event { flex: 1; }
+.sp-card-empty { color: #94a3b8; font-style: italic; font-size: 0.78rem; }
+
+/* Best-times augment: since-6mo + ETA columns */
+.sp-since-pos { color: #16a34a; font-weight: 600; font-variant-numeric: tabular-nums; }
+.sp-since-neg { color: #dc2626; font-variant-numeric: tabular-nums; }
+.sp-since-flat { color: #94a3b8; }
+.sp-eta {
+    font-size: 0.76rem; color: #2563eb; white-space: nowrap;
+}
+.sp-eta.unreachable { color: #94a3b8; }
+
+/* Upcoming meets */
+.sp-upcoming-list {
+    display: flex; flex-direction: column; gap: 0.4rem;
+}
+.sp-upcoming-row {
+    display: flex; gap: 0.6rem; align-items: baseline;
+    background: white; border: 1px solid #e2e8f0; border-radius: 6px;
+    padding: 0.5rem 0.7rem; font-size: 0.82rem;
+}
+.sp-upcoming-date {
+    color: #003366; font-weight: 700; min-width: 110px;
+    font-variant-numeric: tabular-nums;
+}
+.sp-upcoming-name { flex: 1; color: #1e293b; }
+.sp-upcoming-tag {
+    font-size: 0.7rem; padding: 2px 7px; border-radius: 999px;
+    background: #ecfdf5; color: #047857; font-weight: 600;
+    border: 1px solid #a7f3d0;
+}
+.sp-upcoming-empty { color: #94a3b8; font-style: italic; padding: 0.5rem; }
+
+/* Radar caption */
+.sp-radar-caption {
+    font-size: 0.82rem; color: #475569; padding: 0.4rem 0.55rem 0;
+    text-align: center; line-height: 1.35;
+}
+
+/* Best-times goal-ladder expansion */
+.sp-bt-row { cursor: pointer; transition: background-color 0.1s; }
+.sp-bt-row:hover { background: #f8fafc; }
+.sp-bt-row.expanded { background: #eef2ff; }
+.sp-bt-caret { color: #94a3b8; font-size: 0.7rem; margin-left: 0.2rem; }
+.sp-bt-row.expanded .sp-bt-caret { transform: rotate(180deg); display: inline-block; color: #6366f1; }
+.sp-bt-detail td { background: #fafbfd; padding: 0.4rem 0.55rem; }
+.sp-ladder-wrap {
+    padding: 0.4rem 0.5rem; border-left: 3px solid #6366f1;
+    background: white; border-radius: 4px;
+}
+.sp-ladder-title {
+    font-weight: 700; font-size: 0.82rem; color: #003366;
+    margin-bottom: 0.4rem;
+}
+.sp-ladder-table {
+    width: 100%; font-size: 0.78rem;
+}
+.sp-ladder-table th {
+    text-align: left; color: #64748b; font-weight: 600;
+    padding: 0.2rem 0.4rem; border-bottom: 1px solid #e2e8f0;
+}
+.sp-ladder-table td {
+    padding: 0.25rem 0.4rem; border-bottom: 1px dashed #f1f5f9;
+}
+.sp-ladder-earned {
+    margin-top: 0.4rem; font-size: 0.78rem; color: #475569;
+}
+.sp-ladder-earned .badge { margin-right: 0.2rem; }
+.sp-ladder-pace {
+    margin-top: 0.4rem; font-size: 0.75rem; color: #64748b; font-style: italic;
+}
+
 /* Make chips clickable buttons */
 button.spec-chip {
     border: none; cursor: pointer; font-family: inherit;
