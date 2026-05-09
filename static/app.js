@@ -302,16 +302,35 @@ async function loadBestTimes(swimmerId, name) {
             const eventInfo = normalizeEvent(ev.event);
             let standards = { usa: [], champ: [] };
             let comparison = { usaAchieved: [], usaNext: null, champAchieved: [], champNext: null, highestUSA: null };
+            let achievedHighestUSA = null;
+            let achievedAgeGroup = ageGrp;
 
             if (eventInfo && hasProfile) {
+                // Level achieved: use age-at-swim's age group when known so a
+                // historic AA at 10/Under stays AA after the swimmer ages up.
+                achievedAgeGroup = (ev.age_at_swim != null)
+                    ? (function () {
+                        const a = ev.age_at_swim;
+                        if (a <= 10) return '10/Under';
+                        if (a <= 12) return '11/12';
+                        if (a <= 14) return '13/14';
+                        if (a <= 16) return '15/16';
+                        return '17/18';
+                    })()
+                    : ageGrp;
+                const achievedStds = lookupStandards(eventInfo, achievedAgeGroup, gender);
+                const achievedCmp = compareToStandards(timeToSeconds(ev.time), achievedStds);
+                achievedHighestUSA = achievedCmp.highestUSA;
+
+                // Next-target / champ qualification still use CURRENT age group.
                 standards = lookupStandards(eventInfo, ageGrp, gender);
                 const swimSecs = timeToSeconds(ev.time);
                 comparison = compareToStandards(swimSecs, standards);
                 const course = eventInfo.course; // 'SCY' or 'LCM'
 
                 // Count USA levels - at HIGHEST achieved level, per course
-                if (comparison.highestUSA && usaCountsByCourse[course]) {
-                    usaCountsByCourse[course][comparison.highestUSA.type]++;
+                if (achievedHighestUSA && usaCountsByCourse[course]) {
+                    usaCountsByCourse[course][achievedHighestUSA.type]++;
                 }
 
                 // Championship tracking per course
@@ -339,7 +358,9 @@ async function loadBestTimes(swimmerId, name) {
                 nextTargets.forEach(nt => { if (nt.gap > 0 && nt.gap < 30) closestToCut.push(nt); });
             }
 
-            const processed = { ...ev, eventInfo, standards, comparison };
+            const processed = { ...ev, eventInfo, standards, comparison,
+                                 achievedHighestUSA, achievedAgeGroup,
+                                 currentAgeGroup: ageGrp };
             if (eventInfo?.course === 'LCM') lcmEvents.push(processed);
             else scyEvents.push(processed);
         });
@@ -516,15 +537,25 @@ function buildRow(ev, hasProfile) {
     html += `<td>${ev.date}</td>`;
 
     if (hasProfile) {
-        // Level achieved (show highest USA + champ badges)
+        // Level achieved (USA at age-at-swim's age group + champ badges).
+        // If the swim was at a younger age group than current, append a
+        // small annotation so coaches see it's a historic achievement.
         html += '<td><div class="achieved-badges">';
-        if (c.highestUSA) {
-            html += `<span class="badge ${c.highestUSA.cssClass}" title="Cut: ${c.highestUSA.time}">${c.highestUSA.type}</span>`;
+        const lvl = ev.achievedHighestUSA || c.highestUSA;
+        const swimAg = ev.achievedAgeGroup || ev.currentAgeGroup;
+        const agedUp = ev.achievedAgeGroup && ev.currentAgeGroup &&
+                       ev.achievedAgeGroup !== ev.currentAgeGroup;
+        if (lvl) {
+            const tip = agedUp
+                ? `Cut: ${lvl.time} (achieved at ${swimAg})`
+                : `Cut: ${lvl.time}`;
+            html += `<span class="badge ${lvl.cssClass}" title="${tip}">${lvl.type}</span>`;
+            if (agedUp) html += `<span class="ag-tag">at ${swimAg}</span>`;
         }
         c.champAchieved.forEach(a => {
             html += `<span class="badge ${a.cssClass}" title="Cut: ${a.time}">${a.type}</span>`;
         });
-        if (!c.highestUSA && c.champAchieved.length === 0) {
+        if (!lvl && c.champAchieved.length === 0) {
             html += ev.standards.usa.length > 0 || ev.standards.champ.length > 0
                 ? '<span style="color:#94a3b8;font-size:0.75rem">--</span>'
                 : '<span style="color:#cbd5e0;font-size:0.75rem">N/A</span>';
@@ -2426,6 +2457,19 @@ if (hasPerm('dashboard')) {
         return '17/18';
     }
 
+    // For an event row (typically a best_time), pick the age group to
+    // use when looking up USA-Motivational levels. USA standards are
+    // achievements at the age group of the swim — once earned, they're
+    // permanent. Falling back to the swimmer's current age would
+    // incorrectly downgrade old PRs the moment a swimmer ages up.
+    function levelAgeGroupForSwim(member, ev) {
+        if (ev && ev.age_at_swim != null) {
+            const ag = ageToAgeGroup(ev.age_at_swim);
+            if (ag) return ag;
+        }
+        return member && member.age != null ? ageToAgeGroup(member.age) : null;
+    }
+
     async function loadDashboard() {
         try {
             const r = await fetch('/api/dashboard');
@@ -2486,10 +2530,10 @@ if (hasPerm('dashboard')) {
     const USA_LEVEL_RANK = { B: 1, BB: 2, A: 3, AA: 4, AAA: 5, AAAA: 6 };
 
     // Returns the highest USA level (string, e.g. 'AA') achieved across all events for a swimmer
-    // restricted to optional stroke filter and the selected course
+    // restricted to optional stroke filter and the selected course.
+    // Uses each swim's age-at-swim age group so achievements aren't downgraded after aging up.
     function highestLevelForSwimmer(member, options = {}) {
         if (!member.ct_id || !member.gender || !member.age) return null;
-        const ag = ageToAgeGroup(member.age);
         const course = options.course || dbState.filters.course;
         const strokeFilter = options.stroke || null;
         let bestRank = 0, bestType = null;
@@ -2498,7 +2542,9 @@ if (hasPerm('dashboard')) {
             const ei = normalizeEvent(ev.event);
             if (!ei || ei.course !== course) return;
             if (strokeFilter && ei.stroke !== strokeFilter) return;
-            const std = lookupStandards(ei, ag, member.gender);
+            const swimAg = levelAgeGroupForSwim(member, ev);
+            if (!swimAg) return;
+            const std = lookupStandards(ei, swimAg, member.gender);
             const t = timeToSeconds(ev.time);
             std.usa.forEach(s => {
                 if (t <= timeToSeconds(s.time)) {
@@ -2682,19 +2728,22 @@ if (hasPerm('dashboard')) {
             const ei = normalizeEvent(ev.event);
             if (!ei || ei.course !== course) continue;
             if (ei.distance === catEvent.dist && ei.stroke === catEvent.stroke) {
-                return { time: ev.time, eventInfo: ei, raw: ev.event };
+                return { time: ev.time, eventInfo: ei, raw: ev.event,
+                         age_at_swim: ev.age_at_swim };
             }
         }
         return null;
     }
 
-    // Compute the highest USA level achieved for a swimmer + event
+    // Compute the highest USA level achieved for a swimmer + event.
+    // Uses age-at-swim's age group so historic achievements are preserved.
     function levelForSwimmerEvent(member, catEvent) {
         if (!member.gender || !member.age) return null;
         const found = findBestForCatalog(member, catEvent);
         if (!found) return null;
-        const ag = ageToAgeGroup(member.age);
-        const std = lookupStandards(found.eventInfo, ag, member.gender);
+        const swimAg = levelAgeGroupForSwim(member, found);
+        if (!swimAg) return null;
+        const std = lookupStandards(found.eventInfo, swimAg, member.gender);
         const swSecs = timeToSeconds(found.time);
         let bestType = null, bestRank = 0;
         std.usa.forEach(s => {
@@ -2703,7 +2752,7 @@ if (hasPerm('dashboard')) {
                 if (rank > bestRank) { bestRank = rank; bestType = s.type; }
             }
         });
-        return { time: found.time, level: bestType };
+        return { time: found.time, level: bestType, swimAg };
     }
 
     function renderMatrixDistPills() {
@@ -3316,6 +3365,8 @@ if (hasPerm('dashboard')) {
 
     // ===== Action Items =====
     // Surface concrete recommendations a coach can act on this week.
+    // Each item carries `members: [...]` (and optional per-member context)
+    // so a click drills into the relevant swimmer list.
     function computeActionItems() {
         const items = [];
         const strokes = ['FREE', 'BACK', 'BREAST', 'FLY', 'IM'];
@@ -3342,17 +3393,28 @@ if (hasPerm('dashboard')) {
                 tag: 'FOCUS', tone: 'warn',
                 title: `Weakest stroke: ${weakest}`,
                 detail: `${subBB.length} of ${eligible.length} swimmers below BB level here.${detailEv} Add focused ${weakest.toLowerCase()} sets and drill work.`,
+                members: subBB,
+                drillTitle: `Below BB in ${weakest} (${course})`,
+                rowKind: 'stroke', stroke: weakest,
             });
         }
 
         // 2) Strongest stroke — celebrate + double down
         if (withData.length) {
             const strongest = withData.reduce((a, b) => data[a].avg > data[b].avg ? a : b);
-            if (strongest !== (withData[0] && withData.length > 1 ? null : null) && data[strongest].avg >= 3) {
+            if (data[strongest].avg >= 3) {
+                // Members who actually have a time in this stroke
+                const strongMembers = eligible.filter(m => {
+                    const lvl = highestLevelForSwimmer(m, { stroke: strongest });
+                    return lvl && USA_LEVEL_RANK[lvl] >= 3;  // A or better
+                });
                 items.push({
                     tag: 'STRENGTH', tone: 'good',
                     title: `Strongest stroke: ${strongest}`,
                     detail: `Avg ≈ ${data[strongest].avg.toFixed(1)}. Lean into ${strongest.toLowerCase()} for relays and championship lineups.`,
+                    members: strongMembers,
+                    drillTitle: `A-level or better in ${strongest} (${course})`,
+                    rowKind: 'stroke', stroke: strongest,
                 });
             }
         }
@@ -3361,21 +3423,25 @@ if (hasPerm('dashboard')) {
         const allEvents = EVENT_CATALOG[course] || [];
         let biggestGap = null;
         allEvents.forEach(cat => {
-            const missing = eligible.filter(m => !findBestForCatalog(m, cat)).length;
-            if (!biggestGap || missing > biggestGap.missing) biggestGap = { cat, missing };
+            const miss = eligible.filter(m => !findBestForCatalog(m, cat));
+            if (!biggestGap || miss.length > biggestGap.missing) {
+                biggestGap = { cat, missing: miss.length, members: miss };
+            }
         });
         if (biggestGap && biggestGap.missing >= Math.max(3, Math.floor(eligible.length * 0.4))) {
             items.push({
                 tag: 'GAP', tone: 'info',
                 title: `Coverage gap: ${biggestGap.cat.label}`,
                 detail: `${biggestGap.missing} of ${eligible.length} swimmers have no recorded ${course} time. Run a time trial to set baselines.`,
+                members: biggestGap.members,
+                drillTitle: `No recorded ${biggestGap.cat.label} (${course})`,
+                rowKind: 'missing', cat: biggestGap.cat,
             });
         }
 
         // 4) Quick wins — within 2s of next USA cut
-        let quickWins = 0;
         const winsByEvent = {};
-        const winNames = [];
+        const winRows = [];   // {member, event, time, gap, target}
         eligible.forEach(m => {
             const ag = ageToAgeGroup(m.age);
             (m.best_times || []).forEach(ev => {
@@ -3386,25 +3452,33 @@ if (hasPerm('dashboard')) {
                 if (cmp.usaNext) {
                     const gap = timeToSeconds(ev.time) - timeToSeconds(cmp.usaNext.time);
                     if (gap > 0 && gap <= 2) {
-                        quickWins++;
                         winsByEvent[ev.event] = (winsByEvent[ev.event] || 0) + 1;
-                        winNames.push(`${m.first_name} ${m.last_name}`);
+                        winRows.push({ member: m, event: ev.event, time: ev.time, gap, target: cmp.usaNext });
                     }
                 }
             });
         });
-        if (quickWins > 0) {
+        if (winRows.length > 0) {
             const top = Object.entries(winsByEvent).sort((a, b) => b[1] - a[1])[0];
+            const seen = new Set();
+            const winMembers = winRows.filter(r => {
+                if (seen.has(r.member.id)) return false;
+                seen.add(r.member.id);
+                return true;
+            }).map(r => r.member);
             items.push({
                 tag: 'WIN', tone: 'good',
-                title: `${quickWins} quick win${quickWins === 1 ? '' : 's'} possible`,
+                title: `${winRows.length} quick win${winRows.length === 1 ? '' : 's'} possible`,
                 detail: `Within 2s of next USA cut. Top opportunity: ${top[0]} (${top[1]} swimmer${top[1] === 1 ? '' : 's'}). Taper or race them next meet.`,
+                members: winMembers,
+                drillTitle: `Quick wins — within 2s of next USA cut (${course})`,
+                rowKind: 'quick-wins', winRows,
             });
         }
 
         // 5) Untapped potential — strong in a stroke but missing a key event
         const candidatesByEvent = {};
-        let hiddenCount = 0;
+        const hiddenRows = [];  // {member, missingEvent}
         eligible.forEach(m => {
             strokes.forEach(stroke => {
                 const lvl = highestLevelForSwimmer(m, { stroke });
@@ -3412,61 +3486,177 @@ if (hasPerm('dashboard')) {
                     const strokeEvents = (EVENT_CATALOG[course] || []).filter(e => e.stroke === stroke);
                     strokeEvents.forEach(cat => {
                         if (!findBestForCatalog(m, cat)) {
-                            hiddenCount++;
+                            hiddenRows.push({ member: m, missingEvent: cat.label, stroke });
                             candidatesByEvent[cat.label] = (candidatesByEvent[cat.label] || 0) + 1;
                         }
                     });
                 }
             });
         });
-        if (hiddenCount > 0) {
+        if (hiddenRows.length > 0) {
             const top = Object.entries(candidatesByEvent).sort((a, b) => b[1] - a[1])[0];
+            const seen = new Set();
+            const hiddenMembers = hiddenRows.filter(r => {
+                if (seen.has(r.member.id)) return false;
+                seen.add(r.member.id);
+                return true;
+            }).map(r => r.member);
             items.push({
                 tag: 'TARGET', tone: 'info',
-                title: `${hiddenCount} untapped event entries`,
+                title: `${hiddenRows.length} untapped event entries`,
                 detail: `Swimmers at A-or-above in a stroke who haven't raced every event of it. Top: ${top[0]} (${top[1]} candidates). Try them at the next dual meet.`,
+                members: hiddenMembers,
+                drillTitle: `Untapped events — A-level swimmers missing event entries (${course})`,
+                rowKind: 'untapped', hiddenRows,
             });
         }
 
         // 6) IM development gap — Free strong but IM weak
         if (data.FREE.count > 0 && data.IM.count > 0 && data.FREE.avg - data.IM.avg >= 1.5) {
+            // Members with Free time but weak/no IM
+            const imLagMembers = eligible.filter(m => {
+                const freeLvl = highestLevelForSwimmer(m, { stroke: 'FREE' });
+                const imLvl = highestLevelForSwimmer(m, { stroke: 'IM' });
+                const freeRank = freeLvl ? USA_LEVEL_RANK[freeLvl] : 0;
+                const imRank = imLvl ? USA_LEVEL_RANK[imLvl] : 0;
+                return freeRank >= 2 && imRank < freeRank;
+            });
             items.push({
                 tag: 'IM', tone: 'warn',
                 title: 'IM lags behind Free',
                 detail: `Free avg ${data.FREE.avg.toFixed(1)} vs IM ${data.IM.avg.toFixed(1)}. IM scores reward all-around development — add IM sets and stroke-transition drills.`,
+                members: imLagMembers,
+                drillTitle: 'IM lags behind Free — swimmers to develop',
+                rowKind: 'im-lag',
             });
         }
 
         // 7) Missing data nudge
-        const missingGenderOrAge = dbState.filtered.filter(m => !m.gender || !m.age).length;
-        if (missingGenderOrAge > 0) {
+        const missingMembers = dbState.filtered.filter(m => !m.gender || !m.age);
+        if (missingMembers.length > 0) {
             items.push({
                 tag: 'DATA', tone: 'info',
-                title: `${missingGenderOrAge} swimmer${missingGenderOrAge === 1 ? '' : 's'} missing gender or DOB`,
+                title: `${missingMembers.length} swimmer${missingMembers.length === 1 ? '' : 's'} missing gender or DOB`,
                 detail: 'Levels can\'t be computed without both. Update in the Roster tab to include them in dashboard insights.',
+                members: missingMembers,
+                drillTitle: 'Swimmers missing gender or birth info',
+                rowKind: 'missing-data',
             });
         }
 
         return items;
     }
 
+    // Cache action items so click handlers can resolve their members[] reliably
+    let actionItemsCache = [];
+
     function renderActionItems() {
         const el = document.getElementById('dbActionItems');
         if (!el) return;
         const items = computeActionItems();
+        actionItemsCache = items;
         if (items.length === 0) {
             el.innerHTML = '<div class="action-empty">Add gender + DOB and at least one CT Swim time to see recommendations.</div>';
             return;
         }
-        el.innerHTML = items.map(it => `
-            <div class="action-card action-${it.tone}">
+        el.innerHTML = items.map((it, idx) => {
+            const count = (it.members || []).length;
+            const clickable = count > 0;
+            const hint = clickable
+                ? `<div class="action-hint">${count} swimmer${count === 1 ? '' : 's'} · click to view</div>`
+                : '';
+            return `
+            <div class="action-card action-${it.tone}${clickable ? ' clickable' : ''}" data-idx="${idx}">
                 <div class="action-tag">${it.tag}</div>
                 <div class="action-body">
                     <div class="action-title">${it.title}</div>
                     <div class="action-detail">${it.detail}</div>
+                    ${hint}
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
+        el.querySelectorAll('.action-card.clickable').forEach(card => {
+            card.addEventListener('click', () => {
+                const idx = parseInt(card.dataset.idx, 10);
+                const item = actionItemsCache[idx];
+                if (item) openActionDrillModal(item);
+            });
+        });
+    }
+
+    // Render the action-item drill modal: list the swimmers (with their
+    // event/time/level/gap context relevant to that action) inside the
+    // existing dbDrillModal.
+    function openActionDrillModal(item) {
+        if (!dbDrillModal) return;
+        dbDrillTitle.textContent = item.drillTitle || item.title;
+
+        const course = dbState.filters.course || 'SCY';
+        let html;
+
+        if (item.rowKind === 'quick-wins' && item.winRows) {
+            const rows = [...item.winRows].sort((a, b) => a.gap - b.gap);
+            html = '<table class="drill-table"><thead><tr>'
+                + '<th>Swimmer</th><th>Event</th><th>Time</th><th>Next Cut</th><th>To Drop</th>'
+                + '</tr></thead><tbody>'
+                + rows.map(r => {
+                    const m = r.member;
+                    const tgt = r.target;
+                    return `<tr>
+                        <td><a href="#" class="profile-link" data-mid="${m.id}"><strong>${m.first_name} ${m.last_name}</strong></a></td>
+                        <td>${r.event}</td>
+                        <td>${r.time}</td>
+                        <td><span class="badge ${tgt.cssClass}">${tgt.type}</span> ${tgt.time}</td>
+                        <td class="drill-gap">-${r.gap.toFixed(2)}s</td>
+                    </tr>`;
+                }).join('')
+                + '</tbody></table>';
+        } else if (item.rowKind === 'untapped' && item.hiddenRows) {
+            // Group missing events per swimmer
+            const byMember = new Map();
+            item.hiddenRows.forEach(r => {
+                if (!byMember.has(r.member.id)) byMember.set(r.member.id, { member: r.member, evs: [] });
+                byMember.get(r.member.id).evs.push(r.missingEvent);
+            });
+            html = '<table class="drill-table"><thead><tr>'
+                + '<th>Swimmer</th><th>Group</th><th>Missing Events</th>'
+                + '</tr></thead><tbody>'
+                + [...byMember.values()].map(g => {
+                    const m = g.member;
+                    return `<tr>
+                        <td><a href="#" class="profile-link" data-mid="${m.id}"><strong>${m.first_name} ${m.last_name}</strong></a></td>
+                        <td><span class="roster-tag">${m.roster || '—'}</span></td>
+                        <td>${g.evs.join(', ')}</td>
+                    </tr>`;
+                }).join('')
+                + '</tbody></table>';
+        } else {
+            // Default: simple swimmer list with group + age
+            const rows = (item.members || []).slice().sort((a, b) =>
+                (a.last_name || '').localeCompare(b.last_name || '')
+            );
+            if (rows.length === 0) {
+                html = '<p style="color:#94a3b8">No matching swimmers.</p>';
+            } else {
+                html = '<table class="drill-table"><thead><tr>'
+                    + '<th>Swimmer</th><th>Group</th><th>Age</th><th>Gender</th>'
+                    + '</tr></thead><tbody>'
+                    + rows.map(m => `<tr>
+                        <td><a href="#" class="profile-link" data-mid="${m.id}"><strong>${m.first_name} ${m.last_name}</strong></a></td>
+                        <td><span class="roster-tag">${m.roster || '—'}</span></td>
+                        <td>${m.age != null ? m.age : '—'}</td>
+                        <td>${m.gender || '—'}</td>
+                    </tr>`).join('')
+                    + '</tbody></table>';
+            }
+        }
+
+        const total = (item.members || []).length;
+        html += `<div class="drill-summary">${total} swimmer${total === 1 ? '' : 's'}</div>`;
+        dbDrillBody.innerHTML = html;
+        wireProfileLinks(dbDrillBody, id => dbState.filtered.find(m => m.id === id));
+        dbDrillModal.classList.remove('hidden');
     }
 
     function renderClosestToCut() {
@@ -4084,29 +4274,35 @@ function wireProfileLinks(container, lookup) {
             const ei = normalizeEvent(ev.event);
             if (!ei || ei.course !== currentCourse) continue;
             if (ei.distance === cat.dist && ei.stroke === cat.stroke) {
-                return { time: ev.time, eventInfo: ei };
+                return { time: ev.time, eventInfo: ei, age_at_swim: ev.age_at_swim };
             }
         }
         return null;
     }
 
+    // Level uses age-at-swim's age group (preserves earned achievement);
+    // next-target uses CURRENT age group (the goal going forward).
     function levelForEvent(member, cat) {
         if (!member.gender || !member.age) return null;
         const found = findBest(member, cat);
         if (!found) return null;
-        const ag = ageGroupOf(member.age);
-        const std = lookupStandards(found.eventInfo, ag, member.gender);
+        const swimAg = levelAgeGroupForSwim(member, found) || ageGroupOf(member.age);
+        const currentAg = ageGroupOf(member.age);
+        const swStd = lookupStandards(found.eventInfo, swimAg, member.gender);
         const swSecs = timeToSeconds(found.time);
         let bestRank = 0, bestType = null;
-        std.usa.forEach(s => {
+        swStd.usa.forEach(s => {
             if (swSecs <= timeToSeconds(s.time)) {
                 const r = LEVEL_RANK[s.type] || 0;
                 if (r > bestRank) { bestRank = r; bestType = s.type; }
             }
         });
-        const cmp = compareToStandards(swSecs, std);
+        // Next-target: use CURRENT age group's standards (where they're going)
+        const curStd = lookupStandards(found.eventInfo, currentAg, member.gender);
+        const cmp = compareToStandards(swSecs, curStd);
         return {
             time: found.time, secs: swSecs, level: bestType, rank: bestRank,
+            swimAg, currentAg,
             nextCut: cmp.usaNext,
             gap: cmp.usaNext ? swSecs - timeToSeconds(cmp.usaNext.time) : null,
         };
@@ -4178,16 +4374,34 @@ function wireProfileLinks(container, lookup) {
                 if (so !== 0) return so;
                 return parseInt(a.ei.distance) - parseInt(b.ei.distance);
             });
-            let html = '<table><thead><tr><th>Event</th><th>Time</th><th>Date</th><th>Level</th></tr></thead><tbody>';
+            // Show 'FINA Pts' column only for LCM (World Aquatics doesn't
+            // publish a SCY base-times table).
+            const showFina = currentCourse === 'LCM';
+            let html = '<table><thead><tr>'
+                + '<th>Event</th><th>Time</th><th>Date</th><th>Level</th>'
+                + (showFina ? '<th title="World Aquatics 2026 points: P = 1000×(B/T)³">FINA Pts</th>' : '')
+                + '</tr></thead><tbody>';
             allTimes.forEach(({ ev, ei }) => {
                 const cat = { dist: ei.distance, stroke: ei.stroke, label: '' };
                 const lv = levelForEvent(m, cat);
-                const lvlBadge = lv && lv.level ? `<span class="badge badge-${lv.level.toLowerCase()}">${lv.level}</span>` : '<span style="color:#cbd5e0">—</span>';
+                let lvlCell = '<span style="color:#cbd5e0">—</span>';
+                if (lv && lv.level) {
+                    const tip = (lv.swimAg && lv.currentAg && lv.swimAg !== lv.currentAg)
+                        ? `Achieved at ${lv.swimAg}` : '';
+                    lvlCell = `<span class="badge badge-${lv.level.toLowerCase()}"${tip ? ` title="${tip}"` : ''}>${lv.level}</span>`;
+                    if (tip) lvlCell += ` <span class="ag-tag">at ${lv.swimAg}</span>`;
+                }
+                let finaCell = '';
+                if (showFina) {
+                    const pts = finaPoints(timeToSeconds(ev.time), ei, m.gender);
+                    finaCell = `<td>${pts != null ? pts : '<span style="color:#cbd5e0">—</span>'}</td>`;
+                }
                 html += `<tr>
                     <td>${ei.distance} ${ei.stroke[0]}${ei.stroke.slice(1).toLowerCase()}</td>
                     <td class="lead-time">${ev.time}</td>
                     <td>${ev.date || '—'}</td>
-                    <td>${lvlBadge}</td>
+                    <td>${lvlCell}</td>
+                    ${finaCell}
                 </tr>`;
             });
             html += '</tbody></table>';

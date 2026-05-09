@@ -23,6 +23,28 @@
 
 // ===== HELPER FUNCTIONS =====
 
+// World Aquatics (FINA) point scoring: P = 1000 × (B/T)^3
+// where B = 2026 base time (1000-point reference, published annually
+// by World Aquatics) and T = swimmer's time. Only LCM is supported —
+// World Aquatics doesn't publish a Short Course Yards (SCY) table.
+// Source: data/world_aquatics_points.json (committed, fetched once
+// per page load via window.WA_POINTS).
+function finaPoints(timeSecs, eventInfo, gender) {
+    if (!isFinite(timeSecs) || timeSecs <= 0) return null;
+    if (!eventInfo || eventInfo.course !== 'LCM') return null;
+    if (gender !== 'F' && gender !== 'M') return null;
+    const wa = (window.WA_POINTS && window.WA_POINTS.base_times_lcm) || {};
+    const table = wa[gender] || {};
+    // event key format: "<distance> <stroke>" e.g. "100 FREE"
+    const key = `${eventInfo.distance} ${eventInfo.stroke}`;
+    const base = table[key];
+    if (!base) return null;
+    const baseSecs = timeToSeconds(base);
+    if (!isFinite(baseSecs) || baseSecs <= 0) return null;
+    const pts = Math.round(1000 * Math.pow(baseSecs / timeSecs, 3));
+    return pts >= 0 ? pts : 0;
+}
+
 function timeToSeconds(timeStr) {
     if (!timeStr || timeStr === 'N/A' || timeStr === 'NT') return Infinity;
     timeStr = timeStr.replace('*', '').trim();

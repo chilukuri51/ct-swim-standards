@@ -705,12 +705,21 @@ def parent_email_exists(email):
 
 
 def list_team_members_with_times(include_birth=False, parent_email=None):
-    """For the Coach Dashboard: each member with their cached best_times list."""
+    """For the Coach Dashboard: each member with their cached best_times list.
+
+    Each best_time entry also carries `age_at_swim` — the age the swimmer
+    was when that best time was set, pulled from the parsed result PDF
+    (meet_pdf_swimmers.age). This lets the UI render USA-Motivational
+    levels at the achieved age group, so an 'AA at 10/Under' swim isn't
+    silently downgraded to 'B at 11-12' the moment the swimmer ages up.
+    """
+    import ct_pdf
     members = list_team_members(include_birth=include_birth, parent_email=parent_email)
     if not members:
         return []
     ct_ids = [m['ct_id'] for m in members if m.get('ct_id')]
     times_by_ct = {}
+    age_lookup = {}  # (ct_id, history_url, time) -> age
     if ct_ids:
         placeholders = ','.join('?' * len(ct_ids))
         with get_conn() as conn:
@@ -724,8 +733,61 @@ def list_team_members_with_times(include_birth=False, parent_email=None):
                 'event': r['event'], 'time': r['time'],
                 'date': r['date'], 'history_url': r['history_url'],
             })
+        # Resolve age-at-swim for each best_time. Match by joining
+        # event_history (history_url + time) → ct_meet_id, then
+        # meet_pdf_swimmers (ct_meet_id + name_key) → age.
+        with get_conn() as conn:
+            eh_rows = conn.execute(
+                f"SELECT eh.swimmer_ct_id, eh.history_url, eh.time, eh.ct_meet_id "
+                f"FROM event_history eh "
+                f"WHERE eh.swimmer_ct_id IN ({placeholders}) "
+                f"  AND eh.ct_meet_id IS NOT NULL AND eh.ct_meet_id != ''",
+                ct_ids
+            ).fetchall()
+        eh_by_key = {}  # (ct_id, history_url, time) -> ct_meet_id
+        for r in eh_rows:
+            eh_by_key[(r['swimmer_ct_id'], r['history_url'], r['time'])] = r['ct_meet_id']
+        # Compute name_keys per member
+        name_keys = {}
+        for m in members:
+            if m.get('ct_id'):
+                name_keys[m['ct_id']] = ct_pdf.normalize_name(
+                    m.get('first_name', ''), m.get('last_name', '')
+                )
+        # Bulk-fetch ages for the meet_ids we care about
+        meet_ids = list({mid for mid in eh_by_key.values() if mid})
+        ages_by_meet = {}  # (ct_meet_id, name_key) -> age
+        if meet_ids:
+            mphs = ','.join('?' * len(meet_ids))
+            with get_conn() as conn:
+                pdf_rows = conn.execute(
+                    f"SELECT ct_meet_id, name_key, age FROM meet_pdf_swimmers "
+                    f"WHERE ct_meet_id IN ({mphs})",
+                    meet_ids
+                ).fetchall()
+            for r in pdf_rows:
+                ages_by_meet[(r['ct_meet_id'], r['name_key'])] = r['age']
+        for (ct_id, hu, t), mid in eh_by_key.items():
+            nk = name_keys.get(ct_id, '')
+            if not nk:
+                continue
+            age = ages_by_meet.get((mid, nk))
+            if age is None:
+                # Prefix-match fallback (legacy multi-word first names)
+                for (mmid, nkk), a in ages_by_meet.items():
+                    if mmid == mid and nkk.startswith(nk):
+                        age = a
+                        break
+            if age is not None:
+                age_lookup[(ct_id, hu, t)] = age
     for m in members:
-        m['best_times'] = times_by_ct.get(m.get('ct_id'), [])
+        ct_id = m.get('ct_id')
+        bts = times_by_ct.get(ct_id, [])
+        for bt in bts:
+            a = age_lookup.get((ct_id, bt['history_url'], bt['time']))
+            if a is not None:
+                bt['age_at_swim'] = a
+        m['best_times'] = bts
     return members
 
 

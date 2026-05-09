@@ -1,0 +1,49 @@
+{
+  "_source": "World Aquatics 2026 Point Scoring Tables (formula: P = 1000 × (B/T)^3)",
+  "_validity": "2026-01-01 to 2026-12-31",
+  "_links": {
+    "female_lcm": "https://resources.fina.org/fina/document/2026/03/02/ae522afa-e03f-417e-9169-c39e868af9a6/World-Aquatics-Points-LCM_2026_Female-1-.pdf",
+    "male_lcm":   "https://resources.fina.org/fina/document/2026/03/02/2ff83c61-de9d-4b14-8e66-dafd60974e07/World-Aquatics-Points-LCM_2026_Male-1-.pdf"
+  },
+  "_note": "World Aquatics doesn't publish a Short Course Yards (SCY) table — SCY is US-specific. Only LCM (50m) base times are official. SCM (25m) tables exist but aren't applicable to CT/IVY swimmers. Base times are the 1000-point row from the official 2026 PDF.",
+  "base_times_lcm": {
+    "F": {
+      "50 FREE":     "23.61",
+      "100 FREE":    "51.71",
+      "200 FREE":    "1:52.23",
+      "400 FREE":    "3:54.18",
+      "800 FREE":    "8:04.12",
+      "1500 FREE":   "15:20.48",
+      "50 BACK":     "26.86",
+      "100 BACK":    "57.13",
+      "200 BACK":    "2:03.14",
+      "50 BREAST":   "29.16",
+      "100 BREAST":  "1:04.13",
+      "200 BREAST":  "2:17.55",
+      "50 FLY":      "24.43",
+      "100 FLY":     "54.60",
+      "200 FLY":     "2:01.81",
+      "200 IM":      "2:05.70",
+      "400 IM":      "4:23.65"
+    },
+    "M": {
+      "50 FREE":     "20.91",
+      "100 FREE":    "46.40",
+      "200 FREE":    "1:42.00",
+      "400 FREE":    "3:39.96",
+      "800 FREE":    "7:32.12",
+      "1500 FREE":   "14:30.67",
+      "50 BACK":     "23.55",
+      "100 BACK":    "51.60",
+      "200 BACK":    "1:51.92",
+      "50 BREAST":   "25.95",
+      "100 BREAST":  "56.88",
+      "200 BREAST":  "2:05.48",
+      "50 FLY":      "22.27",
+      "100 FLY":     "49.45",
+      "200 FLY":     "1:50.34",
+      "200 IM":      "1:52.69",
+      "400 IM":      "4:02.50"
+    }
+  }
+}

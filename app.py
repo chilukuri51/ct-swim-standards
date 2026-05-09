@@ -323,6 +323,20 @@ def logout():
 
 # ===== Main app =====
 
+def _load_world_aquatics_points():
+    """Read the committed 2026 World Aquatics base-times JSON. Returns a
+    minimal dict with just the data the client needs (the metadata fields
+    are useful for documentation; not shipped)."""
+    import json as _json
+    p = os.path.join(paths.PROJECT_DATA_DIR, 'world_aquatics_points.json')
+    try:
+        with open(p) as f:
+            blob = _json.load(f)
+        return {'base_times_lcm': blob.get('base_times_lcm', {})}
+    except (OSError, _json.JSONDecodeError):
+        return {'base_times_lcm': {}}
+
+
 @app.route('/')
 @login_required
 def index():
@@ -332,7 +346,8 @@ def index():
                            role=role,
                            username=session.get('username', ''),
                            permissions=perms,
-                           standards=standards_store.load())
+                           standards=standards_store.load(),
+                           wa_points=_load_world_aquatics_points())
 
 
 # ===== API: Search swimmers =====
