@@ -534,10 +534,17 @@
                         <div id="spBestTimes" class="table-container sp-table"></div>
                     </div>
                     <div class="sp-block">
-                        <h4>Event Progression <span class="sp-block-hint">(history per event)</span></h4>
+                        <h4>Event Progression <span class="sp-block-hint">(filter by event or by meet)</span></h4>
                         <div class="sp-progress-controls">
+                            <div class="sp-mode-toggle" role="tablist">
+                                <button class="sp-mode-btn on" data-mode="event" type="button">By Event</button>
+                                <button class="sp-mode-btn" data-mode="meet" type="button">By Meet</button>
+                            </div>
                             <select id="spProgressEvent">
                                 <option value="">— Select an event —</option>
+                            </select>
+                            <select id="spProgressMeet" class="hidden">
+                                <option value="">— Select a meet —</option>
                             </select>
                             <span id="spProgressLoading" class="sp-progress-loading hidden">Loading…</span>
                         </div>

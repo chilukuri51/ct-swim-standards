@@ -556,6 +556,18 @@ a.profile-link:hover {
     padding: 0.35rem 0.6rem; border: 1px solid #cbd5e0; border-radius: 6px;
     font-size: 0.85rem; min-width: 180px;
 }
+.sp-mode-toggle {
+    display: inline-flex; border: 1px solid #cbd5e0; border-radius: 6px;
+    overflow: hidden; background: white;
+}
+.sp-mode-btn {
+    border: 0; background: transparent; padding: 0.35rem 0.75rem;
+    font-size: 0.8rem; cursor: pointer; color: #475569;
+    border-right: 1px solid #cbd5e0;
+}
+.sp-mode-btn:last-child { border-right: 0; }
+.sp-mode-btn.on { background: #0055a4; color: white; font-weight: 600; }
+.sp-mode-btn:hover:not(.on) { background: #f1f5f9; }
 .sp-progress-loading { color: #64748b; font-size: 0.8rem; font-style: italic; }
 .sp-progress-stats {
     display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.6rem;

@@ -3736,17 +3736,63 @@ function wireProfileLinks(container, lookup) {
     const radarCanvas = document.getElementById('spRadar');
     const radarEmpty = document.getElementById('spRadarEmpty');
     const elProgEvent = document.getElementById('spProgressEvent');
+    const elProgMeet = document.getElementById('spProgressMeet');
     const elProgLoading = document.getElementById('spProgressLoading');
     const elProgStats = document.getElementById('spProgressStats');
     const elProgChartWrap = document.getElementById('spProgressChartWrap');
     const elProgChart = document.getElementById('spProgressChart');
     const elProgHistory = document.getElementById('spProgressHistory');
+    const elProgModeBtns = document.querySelectorAll('.sp-mode-btn');
     let radarChart = null;
     let progressChart = null;
     let currentMember = null;
     let currentCourse = 'SCY';
+    let progressMode = 'event';     // 'event' | 'meet'
+    let allSwimsCache = null;        // cached for the open profile
 
     if (elProgEvent) elProgEvent.addEventListener('change', loadProgress);
+    if (elProgMeet) elProgMeet.addEventListener('change', loadMeetView);
+    elProgModeBtns.forEach(b => b.addEventListener('click', () => setProgressMode(b.dataset.mode)));
+
+    // Compute championship-age from birth + swim date (the same age-up
+    // rule the rest of the app applies). When birth_month unknown, fall
+    // back to year-only July midpoint.
+    function ageAt(member, dateStr) {
+        if (!member || !dateStr) return null;
+        const by = member.birth_year, bm = member.birth_month;
+        const m = String(dateStr).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if (!m) return null;
+        const swimY = +m[3], swimMo = +m[1], swimD = +m[2];
+        if (by) {
+            const month = bm || 7;
+            const day = bm ? 1 : 1;
+            let age = swimY - by;
+            if (swimMo < month || (swimMo === month && swimD < day)) age -= 1;
+            return age >= 0 && age <= 25 ? age : null;
+        }
+        return null;
+    }
+
+    function setProgressMode(mode) {
+        if (mode === progressMode) return;
+        progressMode = mode;
+        elProgModeBtns.forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
+        if (mode === 'event') {
+            elProgEvent.classList.remove('hidden');
+            elProgMeet.classList.add('hidden');
+        } else {
+            elProgEvent.classList.add('hidden');
+            elProgMeet.classList.remove('hidden');
+            // Lazy-load all swims so the meet dropdown gets populated.
+            elProgLoading.classList.remove('hidden');
+            ensureAllSwimsLoaded().finally(() => elProgLoading.classList.add('hidden'));
+        }
+        // Reset visual state when toggling
+        elProgStats.innerHTML = '';
+        elProgHistory.innerHTML = '';
+        elProgChartWrap.classList.add('hidden');
+        if (progressChart) { progressChart.destroy(); progressChart = null; }
+    }
 
     document.getElementById('spClose').addEventListener('click', closeProfile);
     document.getElementById('spDone').addEventListener('click', closeProfile);
@@ -3777,11 +3823,96 @@ function wireProfileLinks(container, lookup) {
             .filter(ev => ev.history_url)
             .map(ev => `<option value="${encodeURIComponent(ev.history_url)}|${encodeURIComponent(ev.event)}">${ev.event}</option>`);
         elProgEvent.innerHTML = '<option value="">— Select an event —</option>' + opts.join('');
+        // Reset meet dropdown — populated lazily on first 'By Meet' click.
+        if (elProgMeet) elProgMeet.innerHTML = '<option value="">— Select a meet —</option>';
+        allSwimsCache = null;
+        // Default back to Event mode each time the modal opens.
+        progressMode = 'event';
+        elProgModeBtns.forEach(b => b.classList.toggle('on', b.dataset.mode === 'event'));
+        elProgEvent.classList.remove('hidden');
+        if (elProgMeet) elProgMeet.classList.add('hidden');
         // Reset visual state
         elProgStats.innerHTML = '';
         elProgHistory.innerHTML = '';
         elProgChartWrap.classList.add('hidden');
         if (progressChart) { progressChart.destroy(); progressChart = null; }
+    }
+
+    async function ensureAllSwimsLoaded() {
+        if (allSwimsCache) return allSwimsCache;
+        if (!currentMember?.ct_id) { allSwimsCache = []; return allSwimsCache; }
+        try {
+            const r = await fetch(`/api/swimmer_all_swims?ct_id=${encodeURIComponent(currentMember.ct_id)}`);
+            const d = await r.json();
+            allSwimsCache = d.swims || [];
+        } catch (e) {
+            allSwimsCache = [];
+        }
+        // Populate meet dropdown: distinct meets, sorted newest-first by date.
+        const meetMap = new Map();
+        allSwimsCache.forEach(s => {
+            const key = s.ct_meet_id || `${s.meet}|${s.date}`;
+            if (!meetMap.has(key)) {
+                meetMap.set(key, { key, meet: s.meet, date: s.date, ct_meet_id: s.ct_meet_id });
+            }
+        });
+        const meets = [...meetMap.values()].sort((a, b) => {
+            // newest-first by date (m/d/yyyy)
+            const pa = (a.date || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            const pb = (b.date || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            const da = pa ? new Date(+pa[3], +pa[1] - 1, +pa[2]).getTime() : 0;
+            const db = pb ? new Date(+pb[3], +pb[1] - 1, +pb[2]).getTime() : 0;
+            return db - da;
+        });
+        const opts = meets.map(m => {
+            const lbl = `${m.date || '—'} · ${m.meet || '—'}`;
+            return `<option value="${encodeURIComponent(m.key)}">${lbl}</option>`;
+        });
+        elProgMeet.innerHTML = '<option value="">— Select a meet —</option>' + opts.join('');
+        return allSwimsCache;
+    }
+
+    async function loadMeetView() {
+        if (!elProgMeet) return;
+        const val = elProgMeet.value;
+        if (!val) {
+            elProgStats.innerHTML = '';
+            elProgHistory.innerHTML = '';
+            elProgChartWrap.classList.add('hidden');
+            return;
+        }
+        await ensureAllSwimsLoaded();
+        const key = decodeURIComponent(val);
+        const swims = (allSwimsCache || []).filter(s => (s.ct_meet_id || `${s.meet}|${s.date}`) === key);
+        if (!swims.length) {
+            elProgStats.innerHTML = '';
+            elProgHistory.innerHTML = '<p style="padding:0.5rem;color:#94a3b8">No swims at this meet.</p>';
+            elProgChartWrap.classList.add('hidden');
+            return;
+        }
+        elProgChartWrap.classList.add('hidden');
+        if (progressChart) { progressChart.destroy(); progressChart = null; }
+        const meetLabel = `${swims[0].date} · ${swims[0].meet}`;
+        elProgStats.innerHTML = `
+            <div class="sp-stat"><span class="lbl">Meet</span><span class="val" style="font-size:0.78rem">${swims[0].meet || '—'}</span></div>
+            <div class="sp-stat"><span class="lbl">Date</span><span class="val" style="font-size:0.85rem">${swims[0].date || '—'}</span></div>
+            <div class="sp-stat"><span class="lbl">Events</span><span class="val">${swims.length}</span></div>
+        `;
+        // Render table grouped by event (one row per swim).
+        // Sort by event name for predictable ordering.
+        swims.sort((a, b) => (a.event || '').localeCompare(b.event || ''));
+        let html = '<table><thead><tr><th>Event</th><th>Time</th><th>Age</th><th>Type</th></tr></thead><tbody>';
+        swims.forEach(s => {
+            const age = ageAt(currentMember, s.date);
+            html += `<tr>
+                <td>${s.event || '—'}</td>
+                <td>${s.time || '—'}</td>
+                <td>${age != null ? age : '—'}</td>
+                <td>${s.swim_type || '—'}</td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        elProgHistory.innerHTML = html;
     }
 
     async function loadProgress() {
@@ -3887,12 +4018,14 @@ function wireProfileLinks(container, lookup) {
     function renderProgressHistory(history) {
         const chrono = [...history].reverse();
         const bestSecs = Math.min(...chrono.map(h => timeToSeconds(h.time)));
-        let html = '<table><thead><tr><th>Date</th><th>Time</th><th>Meet</th></tr></thead><tbody>';
+        let html = '<table><thead><tr><th>Date</th><th>Age</th><th>Time</th><th>Meet</th></tr></thead><tbody>';
         // Newest-first reads better
         history.forEach(h => {
             const isBest = timeToSeconds(h.time) === bestSecs;
+            const age = ageAt(currentMember, h.date);
             html += `<tr>
                 <td>${h.date || '—'}</td>
+                <td>${age != null ? age : '—'}</td>
                 <td class="${isBest ? 'tbest' : ''}">${h.time}${isBest ? ' ★' : ''}</td>
                 <td>${h.meet || '—'}</td>
             </tr>`;

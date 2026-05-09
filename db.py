@@ -316,6 +316,36 @@ def get_event_history(history_url):
     return out
 
 
+def get_member_all_swims(swimmer_ct_id: str):
+    """Return every cached swim for a swimmer, flattened across all events.
+    Each row: {event, time, swim_type, date, ct_meet_id, meet_name}.
+    Used by the profile-modal Event Progression block for the 'View by
+    Meet' filter (one row per swim, pivot client-side)."""
+    if not swimmer_ct_id:
+        return []
+    with get_conn() as conn:
+        rows = conn.execute("""
+            SELECT eh.event, eh.time, eh.swim_type, eh.date, eh.ct_meet_id,
+                   m.meet_name
+            FROM event_history eh
+            LEFT JOIN meet_pdf_cache m ON m.ct_meet_id = eh.ct_meet_id
+            WHERE eh.swimmer_ct_id = ?
+            ORDER BY eh.date DESC, eh.event
+        """, (swimmer_ct_id,)).fetchall()
+    out = []
+    for r in rows:
+        meet_name = (r['meet_name'] or '').strip() or (r['swim_type'] or '')
+        out.append({
+            'event': r['event'] or '',
+            'time': r['time'] or '',
+            'swim_type': r['swim_type'] or '',
+            'date': r['date'] or '',
+            'ct_meet_id': r['ct_meet_id'] or '',
+            'meet': meet_name,
+        })
+    return out
+
+
 def get_member_meet_history(member_id: int):
     """Return distinct (ct_meet_id, date) tuples across all of one member's
     cached event_history rows. The triangulator uses these to figure out

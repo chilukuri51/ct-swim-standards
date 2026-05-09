@@ -488,9 +488,23 @@ def api_list_team_members():
 @login_required
 def api_my_swimmers():
     """Roster + cached best_times for the logged-in role.
-    Currently coach/admin only — parent role is disabled."""
-    members = db.list_team_members_with_times()
+    Currently coach/admin only — parent role is disabled.
+
+    include_birth=True so the profile modal can compute swim-time age
+    client-side (championship-age rule applied per meet date)."""
+    members = db.list_team_members_with_times(include_birth=True)
     return jsonify({'members': members, 'count': len(members)})
+
+
+@app.route('/api/swimmer_all_swims', methods=['GET'])
+@login_required
+def api_swimmer_all_swims():
+    """All cached swims for one swimmer, flattened across events.
+    Powers the profile-modal 'View by Meet' filter."""
+    ct_id = (request.args.get('ct_id') or '').strip()
+    if not ct_id:
+        return jsonify({'error': 'ct_id required'}), 400
+    return jsonify({'swims': db.get_member_all_swims(ct_id)})
 
 
 @app.route('/api/team_members/auto_link', methods=['POST'])
