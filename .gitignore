@@ -19,3 +19,8 @@ data/standards.json
 # Local-only operational notes — not for source control
 DEPLOY_DIGITALOCEAN.md
 DEPLOY_RENDER.md
+
+# Local PDF testing artifacts (scripts/download_all_pdfs.py +
+# scripts/analyze_pdfs.py). Can be hundreds of MBs.
+pdfs_local/
+parser_report/
