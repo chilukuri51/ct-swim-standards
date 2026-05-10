@@ -119,6 +119,35 @@ CREATE TABLE IF NOT EXISTS meet_pdf_swimmers (
 
 CREATE INDEX IF NOT EXISTS idx_meet_pdf_sw_lookup
     ON meet_pdf_swimmers(name_key, ct_meet_id);
+
+-- One row per swimmer-event-swim parsed from a meet PDF. Powers the
+-- admin Data tab and gives age_filler a richer picture per meet (the
+-- swimmer-level meet_pdf_swimmers table only carries one age per
+-- swimmer per meet, but a single meet can have a swimmer in 8 events).
+-- (ct_meet_id, name_key, event_name, time) is the natural unique key
+-- for de-duplication on re-parse.
+CREATE TABLE IF NOT EXISTS meet_pdf_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ct_meet_id TEXT NOT NULL,
+    name_key TEXT NOT NULL,
+    first_name TEXT,
+    last_name TEXT,
+    age INTEGER,
+    gender TEXT,
+    team TEXT,
+    event_name TEXT,         -- "Girls 8 & Under 25 Yard Freestyle"
+    distance INTEGER,        -- 25
+    stroke TEXT,             -- FREE/BACK/BREAST/FLY/IM/FREE_RELAY/MEDLEY_RELAY
+    course TEXT,             -- 'Y' (SCY) or 'L' (LCM)
+    time TEXT,               -- '1:33.33' or '19.06' or NULL for DQ/relay legs
+    UNIQUE(ct_meet_id, name_key, event_name, time),
+    FOREIGN KEY (ct_meet_id) REFERENCES meet_pdf_cache(ct_meet_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_meet_pdf_results_lookup
+    ON meet_pdf_results(name_key, ct_meet_id);
+CREATE INDEX IF NOT EXISTS idx_meet_pdf_results_event
+    ON meet_pdf_results(distance, stroke, course);
 """
 
 
@@ -174,6 +203,12 @@ def init_db():
         # bump auto-invalidates stale rows without an admin reset.
         try:
             conn.execute("ALTER TABLE meet_pdf_cache ADD COLUMN parser_version INTEGER")
+        except sqlite3.OperationalError:
+            pass
+        # parse_diagnostics is a JSON blob (per-PDF row counts + sample
+        # of likely-missed lines). Surfaces parser quality in the Data tab.
+        try:
+            conn.execute("ALTER TABLE meet_pdf_cache ADD COLUMN parse_diagnostics TEXT")
         except sqlite3.OperationalError:
             pass
         # One-time migration: backfill birth_year/month from any existing dob values.
@@ -426,7 +461,8 @@ def get_meet_cache(ct_meet_id: str):
 def save_meet_cache(ct_meet_id: str, meet_name: str = None,
                     start_date: str = None, end_date: str = None,
                     pdf_url: str = None, parsed_at: str = None,
-                    note: str = None, parser_version: int = None):
+                    note: str = None, parser_version: int = None,
+                    parse_diagnostics: str = None):
     """Upsert one row of meet_pdf_cache. Only non-None args overwrite existing."""
     with get_conn() as conn:
         existing = conn.execute(
@@ -442,24 +478,34 @@ def save_meet_cache(ct_meet_id: str, meet_name: str = None,
                     pdf_url = COALESCE(?, pdf_url),
                     parsed_at = COALESCE(?, parsed_at),
                     note = ?,
-                    parser_version = COALESCE(?, parser_version)
+                    parser_version = COALESCE(?, parser_version),
+                    parse_diagnostics = COALESCE(?, parse_diagnostics)
                 WHERE ct_meet_id = ?
             """, (meet_name, start_date, end_date, pdf_url,
-                  parsed_at, note, parser_version, ct_meet_id))
+                  parsed_at, note, parser_version, parse_diagnostics,
+                  ct_meet_id))
         else:
             conn.execute("""
                 INSERT INTO meet_pdf_cache
                   (ct_meet_id, meet_name, start_date, end_date, pdf_url,
-                   parsed_at, note, parser_version)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                   parsed_at, note, parser_version, parse_diagnostics)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (ct_meet_id, meet_name, start_date, end_date, pdf_url,
-                  parsed_at, note, parser_version))
+                  parsed_at, note, parser_version, parse_diagnostics))
 
 
 def save_meet_pdf_swimmers(ct_meet_id: str, swimmers: list):
-    """Bulk insert parsed PDF rows. Replaces any existing rows for this meet."""
+    """Bulk insert parsed PDF rows. Replaces any existing rows for this meet.
+
+    Writes to BOTH meet_pdf_swimmers (one row per swimmer-meet, the
+    triangulation source) and meet_pdf_results (one row per swimmer-event-
+    swim, the Data tab source). Both are derived from the same parser
+    output so they stay consistent.
+    """
     with get_conn() as conn:
         conn.execute("DELETE FROM meet_pdf_swimmers WHERE ct_meet_id = ?",
+                     (ct_meet_id,))
+        conn.execute("DELETE FROM meet_pdf_results WHERE ct_meet_id = ?",
                      (ct_meet_id,))
         for sw in swimmers:
             try:
@@ -471,6 +517,18 @@ def save_meet_pdf_swimmers(ct_meet_id: str, swimmers: list):
                       sw.get('last'), sw.get('age'), sw.get('gender'),
                       sw.get('team')))
             except Exception:
+                pass
+            try:
+                conn.execute("""
+                    INSERT OR IGNORE INTO meet_pdf_results
+                      (ct_meet_id, name_key, first_name, last_name, age, gender,
+                       team, event_name, distance, stroke, course, time)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (ct_meet_id, sw.get('name_key'), sw.get('first'),
+                      sw.get('last'), sw.get('age'), sw.get('gender'),
+                      sw.get('team'), sw.get('event_name'), sw.get('distance'),
+                      sw.get('stroke'), sw.get('course'), sw.get('time')))
+            except Exception:
                 continue
 
 
@@ -479,6 +537,7 @@ def reset_pdf_caches():
     been improved and we want fresh re-parsing on the next age-fill run."""
     with get_conn() as conn:
         conn.execute("DELETE FROM meet_pdf_swimmers")
+        conn.execute("DELETE FROM meet_pdf_results")
         conn.execute("DELETE FROM meet_pdf_cache")
 
 
@@ -540,6 +599,39 @@ def lookup_swimmer_age_at_meet(ct_meet_id: str, name_key: str,
             (ct_meet_id, prefix_key)
         ).fetchone()
     return dict(row) if row else None
+
+
+def lookup_member_observations(name_key: str, prefer_team: str = None) -> list:
+    """All cached PDF observations for a swimmer across every parsed meet.
+
+    Joins meet_pdf_swimmers + meet_pdf_cache to surface (age, gender,
+    team, meet_date) tuples. Powers the triangulation fast-path: a
+    newly-added swimmer who already appears in cached PDF data gets
+    triangulated immediately without any CT Swim round-trips.
+
+    When prefer_team is provided we return ONLY rows from that team — a
+    mixed-team result set would conflate two different swimmers with the
+    same name_key (e.g., two "John Smith"s at IVY and WRAT) and produce
+    a wrong triangulation. If no prefer_team match exists, return empty
+    so the caller falls back to the slow path which has per-meet team
+    disambiguation built in.
+    """
+    prefix_key = name_key + '%'
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT s.ct_meet_id, s.age, s.gender, s.team, "
+            "       c.start_date AS meet_date "
+            "FROM meet_pdf_swimmers s "
+            "JOIN meet_pdf_cache c ON c.ct_meet_id = s.ct_meet_id "
+            "WHERE (s.name_key = ? OR s.name_key LIKE ?) "
+            "  AND c.start_date IS NOT NULL "
+            "  AND s.age IS NOT NULL",
+            (name_key, prefix_key)
+        ).fetchall()
+    out = [dict(r) for r in rows]
+    if prefer_team:
+        return [r for r in out if (r.get('team') or '').upper() == prefer_team.upper()]
+    return out
 
 
 # ===== Sync logging =====

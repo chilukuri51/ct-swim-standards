@@ -24,6 +24,7 @@
             <button class="nav-btn" data-tab="roster" data-requires="roster">Roster</button>
             <button class="nav-btn" data-tab="stdedit" data-requires="standards_edit">Standards Editor</button>
             <button class="nav-btn" data-tab="admin" data-requires="batch">Admin</button>
+            <button class="nav-btn" data-tab="datatab" data-requires="batch">Data</button>
         </nav>
     </header>
     <script>
@@ -861,6 +862,82 @@
                     <table id="syncLogTable">
                         <thead><tr><th>Time</th><th>Action</th><th>Status</th><th>Message</th></tr></thead>
                         <tbody id="syncLogBody"><tr><td colspan="4" style="padding:1rem;color:#94a3b8">No activity yet</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== Data tab (admin only) ===== -->
+        <section id="datatab" class="tab-content">
+            <div class="tool-card" style="max-width:1200px">
+                <h2>Parsed PDF Data</h2>
+                <p class="tool-desc">Every swimmer-event-swim row extracted from CT Swim meet result PDFs. Source of truth for age/gender triangulation. Adding a new swimmer to the roster who already appears in these rows triangulates instantly without an extra fetch.</p>
+
+                <!-- Summary cards -->
+                <div class="admin-stats" id="dtSummary">
+                    <div class="pstat-card"><div class="pstat-value" id="dtMeetsParsed">-</div><div class="pstat-label">Meets parsed</div></div>
+                    <div class="pstat-card"><div class="pstat-value" id="dtMeetsTotal">-</div><div class="pstat-label">Meets known</div></div>
+                    <div class="pstat-card"><div class="pstat-value" id="dtMeetsNoPdf">-</div><div class="pstat-label">No PDF found</div></div>
+                    <div class="pstat-card"><div class="pstat-value" id="dtMeetsFailed">-</div><div class="pstat-label">Parse failed</div></div>
+                    <div class="pstat-card"><div class="pstat-value" id="dtSwimmersTotal">-</div><div class="pstat-label">Unique swimmers</div></div>
+                    <div class="pstat-card"><div class="pstat-value" id="dtResultsTotal">-</div><div class="pstat-label">Total swims</div></div>
+                </div>
+
+                <!-- Filters -->
+                <div class="dt-filters">
+                    <input type="text" id="dtName" placeholder="Name (first or last)" class="batch-input">
+                    <input type="text" id="dtTeam" placeholder="Team code" class="batch-input" style="max-width:120px">
+                    <select id="dtCourse" class="batch-input" style="max-width:110px">
+                        <option value="">All courses</option>
+                        <option value="Y">SCY</option>
+                        <option value="L">LCM</option>
+                    </select>
+                    <select id="dtStroke" class="batch-input" style="max-width:130px">
+                        <option value="">All strokes</option>
+                        <option value="FREE">Free</option>
+                        <option value="BACK">Back</option>
+                        <option value="BREAST">Breast</option>
+                        <option value="FLY">Fly</option>
+                        <option value="IM">IM</option>
+                        <option value="FREE_RELAY">Free relay</option>
+                        <option value="MEDLEY_RELAY">Medley relay</option>
+                    </select>
+                    <input type="number" id="dtDistance" placeholder="Distance" class="batch-input" style="max-width:110px" min="25" step="25">
+                    <select id="dtGender" class="batch-input" style="max-width:110px">
+                        <option value="">Any gender</option>
+                        <option value="F">Girls</option>
+                        <option value="M">Boys</option>
+                    </select>
+                    <input type="number" id="dtAgeMin" placeholder="Age ≥" class="batch-input" style="max-width:90px" min="5" max="25">
+                    <input type="number" id="dtAgeMax" placeholder="Age ≤" class="batch-input" style="max-width:90px" min="5" max="25">
+                    <input type="date" id="dtFrom" class="batch-input" style="max-width:160px" title="Meet date from">
+                    <input type="date" id="dtTo" class="batch-input" style="max-width:160px" title="Meet date to">
+                    <button id="dtApply" class="btn-primary" style="max-width:120px">Apply</button>
+                    <button id="dtClear" class="btn-secondary" style="max-width:90px">Clear</button>
+                </div>
+
+                <!-- Results table -->
+                <div class="table-container" style="max-height:560px;overflow:auto;margin-top:1rem">
+                    <table id="dtResultsTable">
+                        <thead><tr>
+                            <th>Date</th><th>Meet</th><th>Last</th><th>First</th>
+                            <th>Age</th><th>G</th><th>Team</th>
+                            <th>Dist</th><th>Stroke</th><th>Course</th><th>Time</th>
+                        </tr></thead>
+                        <tbody id="dtResultsBody"></tbody>
+                    </table>
+                </div>
+                <div class="dt-pager" id="dtPager"></div>
+
+                <!-- Per-meet diagnostics -->
+                <h3 class="section-title" style="margin-top:1.5rem;font-size:0.95rem">Recent meets — what was scanned, what was missed</h3>
+                <div class="table-container" style="max-height:400px;overflow:auto">
+                    <table id="dtDiagTable">
+                        <thead><tr>
+                            <th>Date</th><th>Meet</th><th>Status</th>
+                            <th>PDFs</th><th>Rows</th><th>Unmatched sample</th>
+                        </tr></thead>
+                        <tbody id="dtDiagBody"></tbody>
                     </table>
                 </div>
             </div>

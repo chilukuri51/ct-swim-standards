@@ -34,7 +34,8 @@ INDEX_MAX_PAGES = 50  # generous upper bound; loop stops on first empty page
 #   v5: + DQ/--- anchor, Format C (champs no -CT, First Last), relay legs
 #   v6: matcher only (no row-shape change); bump kept for clarity, not
 #       strictly required since v6 doesn't alter parse_results_pdf output.
-PARSER_VERSION = 5
+#   v7: + per-row event/distance/stroke/course/time capture (Data tab)
+PARSER_VERSION = 7
 
 USER_AGENT = (
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
@@ -444,17 +445,62 @@ _GENDER_HEADER_RE = re.compile(
 # to a Men's event header, which then overwrote a correct earlier 'F').
 _GENDER_TO_FM = {'GIRLS': 'F', 'WOMEN': 'F', 'BOYS': 'M', 'MEN': 'M'}
 
+# Full event header — captures distance, course, stroke alongside gender.
+# Examples:
+#   "Girls 8 & Under 25 Yard Freestyle"
+#   "Boys 13-14 200 Meter Backstroke"
+#   "(Girls 8 & Under 25 Yard Backstroke)"  ← continuation page
+#   "Mixed 11-12 200 Yard Medley Relay"
+_EVENT_HEADER_RE = re.compile(
+    r"\(?\s*(Girls|Boys|Women|Men|Mixed)\s+"
+    r"(?:\d+\s*&\s*Under|\d+\s*&\s*Over|\d+\s*-\s*\d+|\d+)\s+"
+    r"(\d+)\s+(Yard|Meter)\s+"
+    r"(Freestyle|Backstroke|Breaststroke|Butterfly|"
+    r"Individual\s+Medley|IM|"
+    r"Free\s+Relay|Medley\s+Relay)\b",
+    re.IGNORECASE
+)
+_STROKE_TO_CODE = {
+    'FREESTYLE': 'FREE', 'BACKSTROKE': 'BACK', 'BREASTSTROKE': 'BREAST',
+    'BUTTERFLY': 'FLY', 'IM': 'IM', 'INDIVIDUAL MEDLEY': 'IM',
+    'FREE RELAY': 'FREE_RELAY', 'MEDLEY RELAY': 'MEDLEY_RELAY',
+}
 
-def parse_results_pdf(path_or_bytes) -> list[dict]:
+# After a swimmer row regex matches, look for the time on the same line.
+# Format: "M:SS.cc" (e.g. 1:33.33) or "SS.cc" (e.g. 19.06). DQ rows have
+# no time on the line, so missing match → None. We tolerate one rank
+# digit/space between the row anchor and the time.
+_TIME_AFTER_RE = re.compile(r"\b(\d{1,2}:\d{2}\.\d{2}|\d{1,3}\.\d{2})\b")
+
+# Lines that LOOK like swimmer rows but didn't match any of A/B/C/D —
+# used for parser-quality diagnostics. A line containing "-CT" with a
+# digit is a strong tell.
+_LIKELY_ROW_RE = re.compile(r"-CT\s+\d|-CT\b.*\d")
+
+
+def _extract_time_after(line: str, end_pos: int) -> Optional[str]:
+    """Find the first time pattern in `line` at or after `end_pos`.
+    Returns the time string (e.g. '1:33.33' or '19.06') or None when the
+    line has no time (DQ/NS rows)."""
+    tail = line[end_pos:]
+    m = _TIME_AFTER_RE.search(tail)
+    return m.group(1) if m else None
+
+
+def parse_results_pdf(path_or_bytes, return_diagnostics: bool = False):
     """Parse one Hy-Tek result PDF using pypdf (lighter than pdfplumber:
     ~37 MB peak vs ~154 MB, important on Render Starter's 512 MB cap).
 
-    Tries both Format A (newer, name-before-time) and Format B (older,
-    time-before-name) regexes per line. Returns one dict per swimmer-
-    event row: {first, last, name_key, age, team, gender}.
+    Tries Format A/B/C/D regexes per line. Returns one dict per swimmer-
+    event row: {first, last, name_key, age, team, gender, event_name,
+    distance, stroke, course, time}.
 
-    Gender comes from the most recent "Girls 10 & Under"-style header
-    seen above the row in the extracted text.
+    Gender + event metadata come from the most recent "Girls 10 & Under
+    25 Yard Freestyle"-style header seen above the row.
+
+    When return_diagnostics=True, returns (rows, diagnostics) tuple. The
+    diagnostics dict has total_lines, matched, and unmatched_sample so
+    the Data tab can show parser quality per PDF.
     """
     out = []
     if isinstance(path_or_bytes, (bytes, bytearray)):
@@ -463,24 +509,59 @@ def parse_results_pdf(path_or_bytes) -> list[dict]:
         reader = PdfReader(path_or_bytes)
 
     current_gender = ''
+    current_event = {'event_name': '', 'distance': None, 'stroke': '',
+                     'course': ''}
+    total_lines = 0
+    unmatched_sample = []
+
+    def _row_with_event(base: dict, time: Optional[str]) -> dict:
+        """Stamp the running event metadata + time onto a parsed row."""
+        return {
+            **base,
+            'event_name': current_event['event_name'],
+            'distance': current_event['distance'],
+            'stroke': current_event['stroke'],
+            'course': current_event['course'],
+            'time': time,
+        }
+
     for page in reader.pages:
         text = page.extract_text() or ''
         for line in text.split('\n'):
-            g = _GENDER_HEADER_RE.search(line)
-            if g:
-                current_gender = _GENDER_TO_FM.get(g.group(1).upper(), '')
+            total_lines += 1
+            # Event header (also stamps gender so the standalone gender
+            # regex below is now mostly belt-and-suspenders).
+            eh = _EVENT_HEADER_RE.search(line)
+            if eh:
+                gender_word, dist, course_word, stroke_word = eh.groups()
+                current_gender = _GENDER_TO_FM.get(
+                    gender_word.upper(), current_gender
+                )
+                stroke_norm = re.sub(r'\s+', ' ', stroke_word.strip()).upper()
+                current_event = {
+                    'event_name': re.sub(r'\s+', ' ', eh.group(0)).strip(' ()'),
+                    'distance': int(dist),
+                    'stroke': _STROKE_TO_CODE.get(stroke_norm, stroke_norm),
+                    'course': 'Y' if course_word.upper().startswith('YARD') else 'L',
+                }
+            else:
+                g = _GENDER_HEADER_RE.search(line)
+                if g:
+                    current_gender = _GENDER_TO_FM.get(
+                        g.group(1).upper(), ''
+                    )
             # Try Format A first
             matched_spans = []
             for m in _PDF_ROW_A_RE.finditer(line):
                 team, age, last, first = m.groups()
-                out.append({
+                out.append(_row_with_event({
                     'first': first.strip(),
                     'last': last.strip(),
                     'name_key': normalize_name(first.strip(), last.strip()),
                     'age': int(age),
                     'team': team,
                     'gender': current_gender,
-                })
+                }, _extract_time_after(line, m.end())))
                 matched_spans.append(m.span())
             # Then Format B in any spans Format A didn't claim
             for m in _PDF_ROW_B_RE.finditer(line):
@@ -489,14 +570,21 @@ def parse_results_pdf(path_or_bytes) -> list[dict]:
                 team, age, last, first = m.groups()
                 # Strip trailing single-letter initial like "Delaney M"
                 first_clean = re.sub(r'\s+[A-Z]$', '', first.strip())
-                out.append({
+                # Format B has time BEFORE name — extract it from inside
+                # the matched span (group 0).
+                time_b = None
+                inside = m.group(0)
+                tm = re.search(r"(\d{1,2}:\d{2}\.\d{2}|\d{1,3}\.\d{2})", inside)
+                if tm:
+                    time_b = tm.group(1)
+                out.append(_row_with_event({
                     'first': first_clean,
                     'last': last.strip(),
                     'name_key': normalize_name(first_clean, last.strip()),
                     'age': int(age),
                     'team': team,
                     'gender': current_gender,
-                })
+                }, time_b))
                 matched_spans.append(m.span())
             # Format C: championship "TEAM AGE First Last Rank Time" with
             # NO -CT marker and NO comma between names. Only match if A/B
@@ -505,30 +593,45 @@ def parse_results_pdf(path_or_bytes) -> list[dict]:
                 m = _PDF_ROW_C_RE.match(line)
                 if m:
                     team, age, first, last = m.groups()
-                    out.append({
+                    out.append(_row_with_event({
                         'first': first.strip(),
                         'last': last.strip(),
                         'name_key': normalize_name(first.strip(), last.strip()),
                         'age': int(age),
                         'team': team,
                         'gender': current_gender,
-                    })
+                    }, _extract_time_after(line, m.end())))
                     matched_spans.append(m.span())
             # Format D: relay legs "1) Last, First [Mid] Age" — finditer
-            # captures all 4 legs in one row. These provide additional age
-            # observations for triangulation.
+            # captures all 4 legs in one row. Relay legs don't carry a
+            # per-leg final time (only splits, which we don't need for
+            # triangulation), so time stays None.
             for m in _PDF_RELAY_RE.finditer(line):
                 if any(s <= m.start() < e for s, e in matched_spans):
                     continue
                 last, first, age = m.groups()
-                out.append({
+                out.append(_row_with_event({
                     'first': first.strip(),
                     'last': last.strip(),
                     'name_key': normalize_name(first.strip(), last.strip()),
                     'age': int(age),
-                    'team': '',  # team not present on relay leg lines
+                    'team': '',
                     'gender': current_gender,
-                })
+                }, None))
+            # Diagnostic: line LOOKS like a swimmer row but no format
+            # claimed it. Capture a small sample for admin visibility.
+            if (not matched_spans
+                    and _LIKELY_ROW_RE.search(line)
+                    and len(unmatched_sample) < 10):
+                unmatched_sample.append(line.strip()[:200])
+
+    if return_diagnostics:
+        diag = {
+            'total_lines': total_lines,
+            'matched': len(out),
+            'unmatched_sample': unmatched_sample,
+        }
+        return out, diag
     return out
 
 

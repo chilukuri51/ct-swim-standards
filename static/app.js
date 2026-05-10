@@ -5234,6 +5234,183 @@ if (hasPerm('batch')) {
 }
 
 
+// ===== DATA TAB (admin only) =====
+// Renders parsed PDF data + per-meet diagnostics. Data populates as the
+// age-filler runs (or as admins manually upload PDFs); the tab itself is
+// just a viewer. We lazy-load on first activation so opening other tabs
+// stays fast.
+if (hasPerm('batch')) {
+    const dtTabBtn = document.querySelector('.nav-btn[data-tab="datatab"]');
+    let dtLoaded = false;
+    let dtState = { page: 1, size: 50 };
+
+    function dtCollectFilters() {
+        const v = id => (document.getElementById(id).value || '').trim();
+        return {
+            name: v('dtName'),
+            team: v('dtTeam'),
+            course: v('dtCourse'),
+            stroke: v('dtStroke'),
+            distance: v('dtDistance'),
+            gender: v('dtGender'),
+            age_min: v('dtAgeMin'),
+            age_max: v('dtAgeMax'),
+            date_from: v('dtFrom'),
+            date_to: v('dtTo'),
+        };
+    }
+
+    async function dtLoadResults(page = 1) {
+        const f = dtCollectFilters();
+        const qs = new URLSearchParams();
+        for (const [k, val] of Object.entries(f)) {
+            if (val) qs.set(k, val);
+        }
+        qs.set('page', page);
+        qs.set('size', dtState.size);
+        const tbody = document.getElementById('dtResultsBody');
+        tbody.innerHTML = '<tr><td colspan="11" style="padding:1rem;color:#94a3b8">Loading…</td></tr>';
+        try {
+            const r = await fetch(`/api/admin/data_tab/results?${qs.toString()}`);
+            const d = await r.json();
+            dtState.page = d.page;
+            dtState.pages = d.pages;
+            dtState.total = d.total;
+            renderDtRows(d.rows);
+            renderDtPager();
+        } catch (e) {
+            tbody.innerHTML = `<tr><td colspan="11" style="padding:1rem;color:#dc2626">Error: ${e.message}</td></tr>`;
+        }
+    }
+
+    function fmtDate(iso) {
+        if (!iso) return '';
+        const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+        return m ? `${m[2]}/${m[3]}/${m[1].slice(2)}` : iso;
+    }
+
+    function renderDtRows(rows) {
+        const tbody = document.getElementById('dtResultsBody');
+        if (!rows || !rows.length) {
+            tbody.innerHTML = '<tr><td colspan="11" style="padding:1rem;color:#94a3b8">No matching rows.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = rows.map(r => `<tr>
+            <td>${fmtDate(r.start_date)}</td>
+            <td title="${(r.meet_name || '').replace(/"/g, '&quot;')}" style="max-width:240px;overflow:hidden;text-overflow:ellipsis">${r.meet_name || '—'}</td>
+            <td>${r.last_name || ''}</td>
+            <td>${r.first_name || ''}</td>
+            <td>${r.age != null ? r.age : ''}</td>
+            <td>${r.gender || ''}</td>
+            <td>${r.team || ''}</td>
+            <td>${r.distance != null ? r.distance : ''}</td>
+            <td>${r.stroke || ''}</td>
+            <td>${r.course || ''}</td>
+            <td class="dt-time">${r.time || '—'}</td>
+        </tr>`).join('');
+    }
+
+    function renderDtPager() {
+        const el = document.getElementById('dtPager');
+        const { page, pages, total } = dtState;
+        if (!total) { el.innerHTML = ''; return; }
+        const start = (page - 1) * dtState.size + 1;
+        const end = Math.min(page * dtState.size, total);
+        el.innerHTML = `
+            <span>${start}–${end} of ${total}</span>
+            <button id="dtPrev" ${page <= 1 ? 'disabled' : ''}>Prev</button>
+            <span>Page ${page} / ${pages}</span>
+            <button id="dtNext" ${page >= pages ? 'disabled' : ''}>Next</button>
+        `;
+        const prev = document.getElementById('dtPrev');
+        const next = document.getElementById('dtNext');
+        if (prev) prev.addEventListener('click', () => dtLoadResults(page - 1));
+        if (next) next.addEventListener('click', () => dtLoadResults(page + 1));
+    }
+
+    async function dtLoadSummary() {
+        try {
+            const r = await fetch('/api/admin/data_tab/summary');
+            const d = await r.json();
+            const t = d.totals || {};
+            document.getElementById('dtMeetsParsed').textContent = t.meets_parsed ?? '—';
+            document.getElementById('dtMeetsTotal').textContent = t.meets_total ?? '—';
+            document.getElementById('dtMeetsNoPdf').textContent = t.meets_no_pdf ?? '—';
+            document.getElementById('dtMeetsFailed').textContent = t.meets_failed ?? '—';
+            document.getElementById('dtSwimmersTotal').textContent = (t.swimmers_total ?? 0).toLocaleString();
+            document.getElementById('dtResultsTotal').textContent = (t.results_total ?? 0).toLocaleString();
+            renderDtDiag(d.recent_meets || []);
+        } catch (e) {
+            // silently leave at -
+        }
+    }
+
+    function renderDtDiag(meets) {
+        const tbody = document.getElementById('dtDiagBody');
+        if (!meets.length) {
+            tbody.innerHTML = '<tr><td colspan="6" style="padding:1rem;color:#94a3b8">No meets parsed yet.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = meets.slice(0, 200).map(m => {
+            let status = 'ok';
+            let label = 'Parsed';
+            if (m.note === 'no_pdf') { status = 'warn'; label = 'No PDF'; }
+            else if (m.note && m.note !== 'no_pdf') { status = 'err'; label = m.note; }
+            else if (!m.parsed_at) { status = 'warn'; label = 'Pending'; }
+            const pdfs = (m.parse_diagnostics && m.parse_diagnostics.pdfs) || [];
+            const totalRows = pdfs.reduce((a, p) => a + (p.rows || 0), 0);
+            const pdfCount = pdfs.length || (m.pdf_url ? m.pdf_url.split(',').length : 0);
+            const samples = [];
+            for (const p of pdfs) {
+                if (p.unmatched_sample && p.unmatched_sample.length) {
+                    samples.push(...p.unmatched_sample);
+                }
+            }
+            const sampleHtml = samples.length
+                ? `<span class="dt-unmatched-sample" title="${samples.slice(0, 5).join(' | ').replace(/"/g, '&quot;')}">${samples[0].slice(0, 80)}${samples.length > 1 ? ` (+${samples.length - 1} more)` : ''}</span>`
+                : '<span style="color:#cbd5e0">—</span>';
+            return `<tr>
+                <td>${fmtDate(m.start_date)}</td>
+                <td title="${(m.meet_name || '').replace(/"/g, '&quot;')}" style="max-width:280px;overflow:hidden;text-overflow:ellipsis">${m.meet_name || m.ct_meet_id}</td>
+                <td><span class="dt-diag-status ${status}">${label}</span></td>
+                <td>${pdfCount}</td>
+                <td>${totalRows.toLocaleString()}</td>
+                <td>${sampleHtml}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    function dtClearFilters() {
+        ['dtName', 'dtTeam', 'dtCourse', 'dtStroke', 'dtDistance',
+         'dtGender', 'dtAgeMin', 'dtAgeMax', 'dtFrom', 'dtTo'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+    }
+
+    document.getElementById('dtApply')?.addEventListener('click', () => dtLoadResults(1));
+    document.getElementById('dtClear')?.addEventListener('click', () => {
+        dtClearFilters();
+        dtLoadResults(1);
+    });
+    // Pressing Enter in any filter input applies the filters
+    document.querySelectorAll('.dt-filters input').forEach(inp => {
+        inp.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') dtLoadResults(1);
+        });
+    });
+
+    if (dtTabBtn) {
+        dtTabBtn.addEventListener('click', () => {
+            if (dtLoaded) return;
+            dtLoaded = true;
+            dtLoadSummary();
+            dtLoadResults(1);
+        });
+    }
+}
+
+
 // ===== CHAMPIONSHIP QUALIFICATION TAB (admin & coach) =====
 if (hasPerm('dashboard')) {
     const cqProgram = document.getElementById('cqProgram');

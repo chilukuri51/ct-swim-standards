@@ -1,5 +1,6 @@
 import os
 import re
+import json
 from datetime import timedelta
 from functools import wraps
 import requests
@@ -756,6 +757,167 @@ def api_unmatched_meets():
     return jsonify({'meets': [dict(r) for r in rows]})
 
 
+# ===== Data tab: parsed-PDF data view (admin only) =====
+
+@app.route('/api/admin/data_tab/results', methods=['GET'])
+@role_required('admin')
+def api_data_tab_results():
+    """Paginated view of every parsed swimmer-event-swim across all meets.
+
+    Filters: name (matches first/last partial), team, course (Y/L),
+    stroke (FREE/BACK/...), distance (int), date_from, date_to (ISO),
+    age_min, age_max, gender (F/M).
+
+    Pagination: page (1-indexed) + size (default 50, max 500).
+    """
+    args = request.args
+    where = []
+    params = []
+
+    name = (args.get('name') or '').strip().lower()
+    if name:
+        where.append("(LOWER(r.first_name) LIKE ? OR LOWER(r.last_name) LIKE ?)")
+        params.extend([f'%{name}%', f'%{name}%'])
+    team = (args.get('team') or '').strip().upper()
+    if team:
+        where.append("UPPER(r.team) = ?")
+        params.append(team)
+    course = (args.get('course') or '').strip().upper()
+    if course in ('Y', 'L'):
+        where.append("r.course = ?")
+        params.append(course)
+    stroke = (args.get('stroke') or '').strip().upper()
+    if stroke:
+        where.append("r.stroke = ?")
+        params.append(stroke)
+    distance = (args.get('distance') or '').strip()
+    if distance.isdigit():
+        where.append("r.distance = ?")
+        params.append(int(distance))
+    gender = (args.get('gender') or '').strip().upper()
+    if gender in ('F', 'M'):
+        where.append("r.gender = ?")
+        params.append(gender)
+    age_min = args.get('age_min')
+    if age_min and age_min.isdigit():
+        where.append("r.age >= ?")
+        params.append(int(age_min))
+    age_max = args.get('age_max')
+    if age_max and age_max.isdigit():
+        where.append("r.age <= ?")
+        params.append(int(age_max))
+    date_from = (args.get('date_from') or '').strip()
+    if re.fullmatch(r'\d{4}-\d{2}-\d{2}', date_from):
+        where.append("c.start_date >= ?")
+        params.append(date_from)
+    date_to = (args.get('date_to') or '').strip()
+    if re.fullmatch(r'\d{4}-\d{2}-\d{2}', date_to):
+        where.append("c.start_date <= ?")
+        params.append(date_to)
+
+    try:
+        page = max(1, int(args.get('page', '1')))
+    except ValueError:
+        page = 1
+    try:
+        size = min(500, max(1, int(args.get('size', '50'))))
+    except ValueError:
+        size = 50
+    offset = (page - 1) * size
+
+    where_sql = (' WHERE ' + ' AND '.join(where)) if where else ''
+    with db.get_conn() as conn:
+        total_row = conn.execute(
+            f"SELECT COUNT(*) AS n FROM meet_pdf_results r "
+            f"LEFT JOIN meet_pdf_cache c ON c.ct_meet_id = r.ct_meet_id "
+            f"{where_sql}",
+            params
+        ).fetchone()
+        total = int(total_row['n']) if total_row else 0
+        rows = conn.execute(
+            f"SELECT r.ct_meet_id, c.meet_name, c.start_date, "
+            f"       r.first_name, r.last_name, r.age, r.gender, r.team, "
+            f"       r.event_name, r.distance, r.stroke, r.course, r.time "
+            f"FROM meet_pdf_results r "
+            f"LEFT JOIN meet_pdf_cache c ON c.ct_meet_id = r.ct_meet_id "
+            f"{where_sql} "
+            f"ORDER BY c.start_date DESC, r.last_name, r.first_name, r.distance "
+            f"LIMIT ? OFFSET ?",
+            params + [size, offset]
+        ).fetchall()
+    return jsonify({
+        'rows': [dict(r) for r in rows],
+        'total': total,
+        'page': page,
+        'size': size,
+        'pages': (total + size - 1) // size if total else 0,
+    })
+
+
+@app.route('/api/admin/data_tab/summary', methods=['GET'])
+@role_required('admin')
+def api_data_tab_summary():
+    """Top-level Data tab counts + per-meet diagnostics.
+
+    Returns:
+      meets_total, meets_parsed, meets_no_pdf, meets_failed,
+      results_total, swimmers_total,
+      recent_meets[]: per-meet diagnostics (PDFs scanned, rows parsed,
+                      unmatched-line samples) sorted newest first.
+    """
+    with db.get_conn() as conn:
+        cache_rows = conn.execute("""
+            SELECT ct_meet_id, meet_name, start_date, end_date, pdf_url,
+                   parsed_at, note, parser_version, parse_diagnostics
+            FROM meet_pdf_cache
+            ORDER BY (start_date IS NULL), start_date DESC, ct_meet_id DESC
+            LIMIT 500
+        """).fetchall()
+        meets_total = conn.execute(
+            "SELECT COUNT(*) AS n FROM meet_pdf_cache"
+        ).fetchone()['n']
+        meets_parsed = conn.execute(
+            "SELECT COUNT(*) AS n FROM meet_pdf_cache WHERE parsed_at IS NOT NULL"
+        ).fetchone()['n']
+        meets_no_pdf = conn.execute(
+            "SELECT COUNT(*) AS n FROM meet_pdf_cache WHERE note = 'no_pdf'"
+        ).fetchone()['n']
+        meets_failed = conn.execute(
+            "SELECT COUNT(*) AS n FROM meet_pdf_cache "
+            "WHERE note IS NOT NULL AND note NOT IN ('no_pdf')"
+        ).fetchone()['n']
+        results_total = conn.execute(
+            "SELECT COUNT(*) AS n FROM meet_pdf_results"
+        ).fetchone()['n']
+        swimmers_total = conn.execute(
+            "SELECT COUNT(DISTINCT name_key) AS n FROM meet_pdf_results"
+        ).fetchone()['n']
+
+    recent = []
+    for r in cache_rows:
+        d = dict(r)
+        diag = None
+        if d.get('parse_diagnostics'):
+            try:
+                diag = json.loads(d['parse_diagnostics'])
+            except (ValueError, TypeError):
+                diag = None
+        d['parse_diagnostics'] = diag
+        recent.append(d)
+
+    return jsonify({
+        'totals': {
+            'meets_total': meets_total,
+            'meets_parsed': meets_parsed,
+            'meets_no_pdf': meets_no_pdf,
+            'meets_failed': meets_failed,
+            'results_total': results_total,
+            'swimmers_total': swimmers_total,
+        },
+        'recent_meets': recent,
+    })
+
+
 @app.route('/api/admin/register_meet_pdf', methods=['POST'])
 @role_required('admin')
 def api_register_meet_pdf():
@@ -782,17 +944,22 @@ def api_register_meet_pdf():
         return jsonify({'error': 'PDF download failed', 'pdf_url': pdf_url}), 502
 
     try:
-        rows = _ctp.parse_results_pdf(pdf_bytes)
+        rows, diag = _ctp.parse_results_pdf(pdf_bytes, return_diagnostics=True)
     except Exception as e:
         return jsonify({'error': f'parse failed: {type(e).__name__}: {e}'}), 500
 
     # Save to cache + swimmers (stamp the current parser version so this
     # row stays valid until the parser code changes meaningfully).
+    diag_blob = json.dumps({'pdfs': [{'url': pdf_url,
+                                      'rows': len(rows),
+                                      'total_lines': diag['total_lines'],
+                                      'unmatched_sample': diag['unmatched_sample']}]})
     db.save_meet_cache(
         meet_id, pdf_url=pdf_url,
         parsed_at=datetime.now(timezone.utc).isoformat(),
         note=None,
         parser_version=_ctp.PARSER_VERSION,
+        parse_diagnostics=diag_blob,
     )
     db.save_meet_pdf_swimmers(meet_id, rows)
 

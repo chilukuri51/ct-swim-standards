@@ -386,23 +386,33 @@ def _resolve_meet_pdf(swimmer_ct_id: str, ct_meet_id: str) -> Optional[dict]:
     all_rows = []
     parsed_urls = []
     last_err = None
+    diag_pdfs = []
     for pdf in pdfs:
         body = ct_pdf.download_pdf(pdf['url'])
         if not body:
+            diag_pdfs.append({'url': pdf['url'], 'error': 'download_failed'})
             continue
         try:
-            rows = ct_pdf.parse_results_pdf(body)
+            rows, diag = ct_pdf.parse_results_pdf(body, return_diagnostics=True)
         except Exception as e:
             last_err = f'parse_error:{type(e).__name__}'
+            diag_pdfs.append({'url': pdf['url'], 'error': last_err})
             continue
         if rows:
             all_rows.extend(rows)
             parsed_urls.append(pdf['url'])
+        diag_pdfs.append({
+            'url': pdf['url'],
+            'rows': len(rows),
+            'total_lines': diag['total_lines'],
+            'unmatched_sample': diag['unmatched_sample'],
+        })
 
     if not parsed_urls:
         # Nothing downloaded or parsed cleanly
         db.save_meet_cache(ct_meet_id, pdf_url=pdfs[0]['url'],
-                           note=last_err or 'download_failed')
+                           note=last_err or 'download_failed',
+                           parse_diagnostics=json.dumps({'pdfs': diag_pdfs}))
         return db.get_meet_cache(ct_meet_id)
 
     # Step 4: save merged swimmers + mark cache complete. Store all
@@ -412,7 +422,8 @@ def _resolve_meet_pdf(swimmer_ct_id: str, ct_meet_id: str) -> Optional[dict]:
                        pdf_url=','.join(parsed_urls),
                        parsed_at=_now_iso(),
                        note=None,
-                       parser_version=ct_pdf.PARSER_VERSION)
+                       parser_version=ct_pdf.PARSER_VERSION,
+                       parse_diagnostics=json.dumps({'pdfs': diag_pdfs}))
     with _lock:
         _state.pdfs_parsed += len(parsed_urls)
     return db.get_meet_cache(ct_meet_id)
@@ -433,23 +444,33 @@ def _reparse_cached_pdf(ct_meet_id: str, pdf_url: str) -> Optional[dict]:
     all_rows = []
     parsed_urls = []
     last_err = None
+    diag_pdfs = []
     for u in urls:
         body = ct_pdf.download_pdf(u)
         if not body:
+            diag_pdfs.append({'url': u, 'error': 'download_failed'})
             continue
         try:
-            rows = ct_pdf.parse_results_pdf(body)
+            rows, diag = ct_pdf.parse_results_pdf(body, return_diagnostics=True)
         except Exception as e:
             last_err = f'parse_error:{type(e).__name__}'
+            diag_pdfs.append({'url': u, 'error': last_err})
             continue
         if rows:
             all_rows.extend(rows)
             parsed_urls.append(u)
+        diag_pdfs.append({
+            'url': u,
+            'rows': len(rows),
+            'total_lines': diag['total_lines'],
+            'unmatched_sample': diag['unmatched_sample'],
+        })
 
     if not parsed_urls:
         # All known URLs failed to parse — leave the existing cache row
         # alone but don't claim it's current. Add a diagnostic note.
-        db.save_meet_cache(ct_meet_id, note=last_err or 'reparse_failed')
+        db.save_meet_cache(ct_meet_id, note=last_err or 'reparse_failed',
+                           parse_diagnostics=json.dumps({'pdfs': diag_pdfs}))
         return db.get_meet_cache(ct_meet_id)
 
     db.save_meet_pdf_swimmers(ct_meet_id, all_rows)
@@ -457,7 +478,8 @@ def _reparse_cached_pdf(ct_meet_id: str, pdf_url: str) -> Optional[dict]:
                        pdf_url=','.join(parsed_urls),
                        parsed_at=_now_iso(),
                        note=None,
-                       parser_version=ct_pdf.PARSER_VERSION)
+                       parser_version=ct_pdf.PARSER_VERSION,
+                       parse_diagnostics=json.dumps({'pdfs': diag_pdfs}))
     with _lock:
         _state.pdfs_parsed += len(parsed_urls)
     return db.get_meet_cache(ct_meet_id)
@@ -489,7 +511,96 @@ def _process_member(member: dict, force_all: bool = False) -> dict:
             ).fetchone()
         if row and row['team_code']:
             prefer_team = row['team_code'].upper()
+    if not prefer_team:
+        # Default to IVY for unlinked members — this is an IVY app, so a
+        # name_key match within IVY is the strongest signal we have. If
+        # the swimmer isn't actually IVY (e.g., a parent added their kid
+        # who swims at WRAT), the lookup_member_observations fallback
+        # still matches by name_key alone when no IVY rows exist.
+        prefer_team = 'IVY'
 
+    # ===== FAST PATH =====
+    # Before fetching CT Swim, see if we already have parsed-PDF data
+    # for this swimmer (same name_key, ideally same team). For newly-
+    # added swimmers we often already have observations — running the
+    # full slow path just re-confirms what's already in the DB.
+    cached_obs = db.lookup_member_observations(name_key, prefer_team=prefer_team)
+    fast_path_taken = False
+    if cached_obs:
+        records = []
+        gender_votes = {'F': 0, 'M': 0}
+        observed_age = None
+        most_recent = date(1900, 1, 1)
+        for o in cached_obs:
+            md = ct_pdf.parse_us_date(o['meet_date']) if o.get('meet_date') else None
+            if not md:
+                # meet_date in cache is ISO; parse_us_date handles that too
+                try:
+                    md = date.fromisoformat(o['meet_date'][:10])
+                except (ValueError, TypeError):
+                    md = None
+            if not md:
+                continue
+            records.append({'age': o['age'], 'meet_date': md})
+            g = o.get('gender') or ''
+            if g in gender_votes:
+                gender_votes[g] += 1
+            if md >= most_recent:
+                most_recent = md
+                observed_age = o['age']
+        # Need ≥2 records spanning at least 30 days to triangulate, or
+        # ≥3 records to be confident enough to skip CT Swim. Otherwise
+        # we fall through to the slow path which may discover more meets.
+        if records and member.get('ct_id') is None:
+            # Manually-entered swimmer: skip CT Swim entirely (no ct_id
+            # to fetch from anyway). One observation is enough to give
+            # an age_observed; triangulation kicks in if records permit.
+            fast_path_taken = True
+        elif len(records) >= 3:
+            dates = [r['meet_date'] for r in records]
+            span = (max(dates) - min(dates)).days
+            if span >= 30:
+                fast_path_taken = True
+
+        if fast_path_taken:
+            observed_gender = None
+            if gender_votes['F'] > gender_votes['M']:
+                observed_gender = 'F'
+            elif gender_votes['M'] > gender_votes['F']:
+                observed_gender = 'M'
+            gender_filled = False
+            if observed_gender and (force_all or not member.get('gender')):
+                if observed_gender != member.get('gender'):
+                    db.update_team_member(member['id'], gender=observed_gender)
+                    gender_filled = True
+            tri = triangulate(records)
+            if tri is None:
+                db.save_member_triangulation(
+                    member['id'], age_observed=observed_age
+                )
+                return {
+                    'status': 'observed_only' if observed_age is not None else 'skipped',
+                    'gender_filled': gender_filled,
+                    'fast_path': True,
+                }
+            db.save_member_triangulation(
+                member['id'],
+                birth_year=tri.get('birth_year'),
+                birth_month=tri.get('birth_month'),
+                window_days=tri.get('window_days'),
+                age_observed=observed_age,
+            )
+            return {
+                'status': 'updated',
+                'tri': tri,
+                'narrowed_year': tri.get('birth_year') is not None,
+                'narrowed_month': tri.get('birth_month') is not None,
+                'gender_filled': gender_filled,
+                'samples': tri.get('samples'),
+                'fast_path': True,
+            }
+
+    # ===== SLOW PATH =====
     with _lock:
         _state.current = f'{full_name}: collecting meet history…'
 
