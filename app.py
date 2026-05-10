@@ -721,10 +721,18 @@ def api_reset_age_data():
     """
     body = request.json or {}
     keep_uploaded = bool(body.get('keep_uploaded'))
+    skip_autofill = bool(body.get('skip_autofill'))
     if keep_uploaded:
         # Keep cache rows that have a pdf_url (manually registered) and
         # their parsed swimmer rows. Drop the rest.
         with db.get_conn() as conn:
+            conn.execute("""
+                DELETE FROM meet_pdf_results
+                WHERE ct_meet_id IN (
+                    SELECT ct_meet_id FROM meet_pdf_cache
+                    WHERE pdf_url IS NULL OR pdf_url = ''
+                )
+            """)
             conn.execute("""
                 DELETE FROM meet_pdf_swimmers
                 WHERE ct_meet_id IN (
@@ -740,7 +748,10 @@ def api_reset_age_data():
         db.reset_pdf_caches()
     db.reset_member_triangulation()
 
-    started = age_filler.start_autofill(force_all=True)
+    # skip_autofill=True is for the Data tab "Wipe" button: caller wants
+    # a clean slate to test manual PDF uploads, NOT to immediately
+    # re-trigger CT Swim fetches that would repopulate the cache.
+    started = False if skip_autofill else age_filler.start_autofill(force_all=True)
     return jsonify({'ok': True, 'auto_fill_started': started,
                     'kept_uploaded_pdfs': keep_uploaded})
 
@@ -785,6 +796,10 @@ def api_data_tab_results():
     if team:
         where.append("UPPER(r.team) = ?")
         params.append(team)
+    meet_id = (args.get('meet_id') or '').strip()
+    if meet_id:
+        where.append("r.ct_meet_id = ?")
+        params.append(meet_id)
     course = (args.get('course') or '').strip().upper()
     if course in ('Y', 'L'):
         where.append("r.course = ?")

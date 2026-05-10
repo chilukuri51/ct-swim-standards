@@ -873,11 +873,41 @@
                 <h2>Parsed PDF Data</h2>
                 <p class="tool-desc">Every swimmer-event-swim row extracted from CT Swim meet result PDFs. Source of truth for age/gender triangulation. Adding a new swimmer to the roster who already appears in these rows triangulates instantly without an extra fetch.</p>
 
-                <!-- Upload PDF -->
+                <!-- Upload PDF + wipe -->
                 <div class="dt-upload-bar">
                     <input type="file" id="dtPdfFile" accept="application/pdf,.pdf" class="hidden">
                     <button id="dtPdfPick" class="btn-secondary" style="max-width:180px">Upload PDF</button>
                     <span id="dtUploadHint" class="dt-upload-hint">Drop a Hy-Tek result PDF here or click Upload PDF. Duplicates are detected automatically.</span>
+                    <button id="dtWipeBtn" class="btn-secondary" style="max-width:180px;margin-left:auto;color:#dc2626;border-color:#fecaca">Wipe parsed data</button>
+                </div>
+
+                <!-- Wipe confirmation modal -->
+                <div id="dtWipeModal" class="modal-backdrop hidden">
+                    <div class="modal" style="max-width:520px">
+                        <div class="modal-header">
+                            <h3 style="color:#dc2626">Wipe parsed PDF data?</h3>
+                            <button class="modal-close" id="dtWipeClose">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <p style="margin:0">This will permanently delete:</p>
+                            <ul style="margin:0;padding-left:1.2rem;font-size:0.88rem;color:#475569">
+                                <li><strong id="dtWipeMeets">—</strong> meet cache rows</li>
+                                <li><strong id="dtWipeSwimmers">—</strong> swimmer-meet records</li>
+                                <li><strong id="dtWipeResults">—</strong> swim-event-time records</li>
+                                <li>All triangulation state on team_members (birth_year, birth_month, age_observed, age_synced_at)</li>
+                            </ul>
+                            <p style="margin:0.5rem 0 0;font-size:0.85rem;color:#1e293b"><strong>Roster identity preserved:</strong> first/last name, gender, ct_id, parent email, training group, notes.</p>
+                            <label class="mc-toggle" style="margin-top:0.5rem">
+                                <input type="checkbox" id="dtKeepUploaded">
+                                Keep manually-uploaded PDFs (only wipe auto-discovered cache)
+                            </label>
+                            <p style="margin:0;font-size:0.78rem;color:#dc2626"><strong>This cannot be undone.</strong> Use this when restarting parser-quality testing from a clean slate.</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button id="dtWipeCancel" class="btn-secondary" style="max-width:110px">Cancel</button>
+                            <button id="dtWipeConfirm" class="btn-primary" style="max-width:200px;background:#dc2626;border-color:#dc2626">Yes, wipe data</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Upload preview modal -->
@@ -915,6 +945,7 @@
                 <div class="dt-filters">
                     <input type="text" id="dtName" placeholder="Name (first or last)" class="batch-input">
                     <input type="text" id="dtTeam" placeholder="Team code" class="batch-input" style="max-width:120px">
+                    <input type="text" id="dtMeetId" placeholder="Meet ID" class="batch-input" style="max-width:140px" title="Filter by ct_meet_id, e.g. manual_2974b8ea">
                     <select id="dtCourse" class="batch-input" style="max-width:110px">
                         <option value="">All courses</option>
                         <option value="Y">SCY</option>

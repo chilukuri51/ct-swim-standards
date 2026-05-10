@@ -5249,6 +5249,7 @@ if (hasPerm('batch')) {
         return {
             name: v('dtName'),
             team: v('dtTeam'),
+            meet_id: v('dtMeetId'),
             course: v('dtCourse'),
             stroke: v('dtStroke'),
             distance: v('dtDistance'),
@@ -5371,17 +5372,30 @@ if (hasPerm('batch')) {
                 : '<span style="color:#cbd5e0">—</span>';
             return `<tr>
                 <td>${fmtDate(m.start_date)}</td>
-                <td title="${(m.meet_name || '').replace(/"/g, '&quot;')}" style="max-width:280px;overflow:hidden;text-overflow:ellipsis">${m.meet_name || m.ct_meet_id}</td>
+                <td title="${(m.meet_name || '').replace(/"/g, '&quot;')}\n${m.ct_meet_id}" style="max-width:280px;overflow:hidden;text-overflow:ellipsis">
+                    ${m.meet_name || m.ct_meet_id}
+                    <a href="#" class="dt-diag-isolate" data-meet-id="${m.ct_meet_id}" style="color:#0055a4;font-size:0.72rem;margin-left:0.4rem">isolate</a>
+                </td>
                 <td><span class="dt-diag-status ${status}">${label}</span></td>
                 <td>${pdfCount}</td>
                 <td>${totalRows.toLocaleString()}</td>
                 <td>${sampleHtml}</td>
             </tr>`;
         }).join('');
+        // Wire the "isolate" links to populate the meet_id filter
+        tbody.querySelectorAll('.dt-diag-isolate').forEach(a => {
+            a.addEventListener('click', (e) => {
+                e.preventDefault();
+                const id = a.getAttribute('data-meet-id');
+                document.getElementById('dtMeetId').value = id;
+                dtLoadResults(1);
+                document.getElementById('dtResultsTable').scrollIntoView({behavior: 'smooth', block: 'start'});
+            });
+        });
     }
 
     function dtClearFilters() {
-        ['dtName', 'dtTeam', 'dtCourse', 'dtStroke', 'dtDistance',
+        ['dtName', 'dtTeam', 'dtMeetId', 'dtCourse', 'dtStroke', 'dtDistance',
          'dtGender', 'dtAgeMin', 'dtAgeMax', 'dtFrom', 'dtTo'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.value = '';
@@ -5602,6 +5616,65 @@ if (hasPerm('batch')) {
         uplConfirm.addEventListener('click', () => {
             if (!pendingFile) return;
             runCommitUpload(pendingFile, uplForce.checked);
+        });
+    }
+
+    // ===== Wipe parsed PDF data =====
+    // Calls the existing /api/admin/reset_age_data endpoint (which both
+    // prod and local use). Two-step confirm: clicking "Wipe" populates
+    // the modal with current totals so the admin sees what they're
+    // about to destroy before clicking "Yes, wipe data".
+    const wipeBtn = document.getElementById('dtWipeBtn');
+    const wipeModal = document.getElementById('dtWipeModal');
+    const wipeClose = document.getElementById('dtWipeClose');
+    const wipeCancel = document.getElementById('dtWipeCancel');
+    const wipeConfirm = document.getElementById('dtWipeConfirm');
+    const wipeKeepUploaded = document.getElementById('dtKeepUploaded');
+
+    function openWipeModal() {
+        // Pull current totals into the confirmation copy so the admin
+        // knows what's at stake.
+        document.getElementById('dtWipeMeets').textContent =
+            (document.getElementById('dtMeetsTotal').textContent || '0');
+        document.getElementById('dtWipeSwimmers').textContent =
+            'all'; // swimmers count not exposed top-level — show 'all'
+        document.getElementById('dtWipeResults').textContent =
+            (document.getElementById('dtResultsTotal').textContent || '0');
+        wipeKeepUploaded.checked = false;
+        wipeConfirm.disabled = false;
+        wipeConfirm.textContent = 'Yes, wipe data';
+        wipeModal.classList.remove('hidden');
+    }
+    function closeWipeModal() { wipeModal.classList.add('hidden'); }
+
+    if (wipeBtn) wipeBtn.addEventListener('click', openWipeModal);
+    if (wipeClose) wipeClose.addEventListener('click', closeWipeModal);
+    if (wipeCancel) wipeCancel.addEventListener('click', closeWipeModal);
+    if (wipeConfirm) {
+        wipeConfirm.addEventListener('click', async () => {
+            wipeConfirm.disabled = true;
+            wipeConfirm.textContent = 'Wiping…';
+            try {
+                const r = await fetch('/api/admin/reset_age_data', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        keep_uploaded: !!wipeKeepUploaded.checked,
+                        skip_autofill: true,
+                    }),
+                });
+                const d = await r.json();
+                if (!r.ok) throw new Error(d.error || 'wipe failed');
+                wipeConfirm.textContent = 'Wiped ✓';
+                // Refresh the Data tab views
+                dtLoadSummary();
+                dtLoadResults(1);
+                setTimeout(closeWipeModal, 800);
+            } catch (e) {
+                wipeConfirm.textContent = 'Failed';
+                wipeConfirm.disabled = false;
+                alert('Wipe failed: ' + e.message);
+            }
         });
     }
 }
