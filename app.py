@@ -788,34 +788,46 @@ def api_data_tab_results():
     where = []
     params = []
 
+    # Excel-style multi-select: any of these may carry a comma-joined
+    # list of values from a header dropdown ('IVY,WRAT,LEHY'). We turn
+    # it into a SQL IN (...) clause when there are multiple values, or
+    # = when there's just one. Empty string means no filter.
+    def _multi(col, raw, normalize=lambda v: v):
+        if not raw:
+            return
+        vals = [normalize(v.strip()) for v in raw.split(',') if v.strip()]
+        if not vals:
+            return
+        if len(vals) == 1:
+            where.append(f"{col} = ?")
+            params.append(vals[0])
+        else:
+            where.append(f"{col} IN ({','.join('?' * len(vals))})")
+            params.extend(vals)
+
     name = (args.get('name') or '').strip().lower()
     if name:
         where.append("(LOWER(r.first_name) LIKE ? OR LOWER(r.last_name) LIKE ?)")
         params.extend([f'%{name}%', f'%{name}%'])
-    team = (args.get('team') or '').strip().upper()
-    if team:
-        where.append("UPPER(r.team) = ?")
-        params.append(team)
+    _multi("UPPER(r.team)", args.get('team', ''),
+           normalize=lambda v: v.upper())
     meet_id = (args.get('meet_id') or '').strip()
     if meet_id:
         where.append("r.ct_meet_id = ?")
         params.append(meet_id)
-    course = (args.get('course') or '').strip().upper()
-    if course in ('Y', 'L'):
-        where.append("r.course = ?")
-        params.append(course)
-    stroke = (args.get('stroke') or '').strip().upper()
-    if stroke:
-        where.append("r.stroke = ?")
-        params.append(stroke)
-    distance = (args.get('distance') or '').strip()
-    if distance.isdigit():
-        where.append("r.distance = ?")
-        params.append(int(distance))
-    gender = (args.get('gender') or '').strip().upper()
-    if gender in ('F', 'M'):
-        where.append("r.gender = ?")
-        params.append(gender)
+    _multi("r.course", args.get('course', ''),
+           normalize=lambda v: v.upper())
+    _multi("r.stroke", args.get('stroke', ''),
+           normalize=lambda v: v.upper())
+    _multi("r.distance", args.get('distance', ''),
+           normalize=lambda v: int(v) if v.isdigit() else v)
+    _multi("r.gender", args.get('gender', ''),
+           normalize=lambda v: v.upper())
+    # Relay rows are noisy for verification (no time, no rank, names
+    # split awkwardly) — exclude by default. Pass include_relays=1 to
+    # see them.
+    if not (args.get('include_relays') in ('1', 'true', 'True')):
+        where.append("(r.stroke IS NULL OR r.stroke NOT IN ('FREE_RELAY', 'MEDLEY_RELAY'))")
     age_min = args.get('age_min')
     if age_min and age_min.isdigit():
         where.append("r.age >= ?")
@@ -853,7 +865,7 @@ def api_data_tab_results():
         ).fetchone()
         total = int(total_row['n']) if total_row else 0
         rows = conn.execute(
-            f"SELECT r.ct_meet_id, c.meet_name, c.start_date, "
+            f"SELECT r.id, r.ct_meet_id, c.meet_name, c.start_date, "
             f"       r.first_name, r.last_name, r.age, r.gender, r.team, "
             f"       r.event_name, r.distance, r.stroke, r.course, r.time "
             f"FROM meet_pdf_results r "
@@ -869,6 +881,90 @@ def api_data_tab_results():
         'page': page,
         'size': size,
         'pages': (total + size - 1) // size if total else 0,
+    })
+
+
+@app.route('/api/admin/data_tab/distinct', methods=['GET'])
+@role_required('admin')
+def api_data_tab_distinct():
+    """Distinct values for one column, used by the Excel-style header
+    filter dropdowns. Honors any currently-applied filters EXCEPT the
+    one being filtered (so you can refine other columns and still see
+    the full distinct list for this column).
+
+    Query: column=<team|stroke|distance|course|gender|meet_id>
+    """
+    col_map = {
+        'team': 'UPPER(r.team)',
+        'stroke': 'r.stroke',
+        'distance': 'r.distance',
+        'course': 'r.course',
+        'gender': 'r.gender',
+        'meet_id': 'r.ct_meet_id',
+    }
+    col = (request.args.get('column') or '').lower()
+    if col not in col_map:
+        return jsonify({'error': f'unknown column: {col}'}), 400
+    expr = col_map[col]
+
+    # Honor cross-column filters but NOT the column we're listing.
+    where, params = [], []
+
+    def _multi(sql_col, raw, normalize=lambda v: v):
+        if not raw:
+            return
+        vals = [normalize(v.strip()) for v in raw.split(',') if v.strip()]
+        if not vals:
+            return
+        if len(vals) == 1:
+            where.append(f"{sql_col} = ?")
+            params.append(vals[0])
+        else:
+            where.append(f"{sql_col} IN ({','.join('?' * len(vals))})")
+            params.extend(vals)
+
+    args = request.args
+    name = (args.get('name') or '').strip().lower()
+    if name:
+        where.append("(LOWER(r.first_name) LIKE ? OR LOWER(r.last_name) LIKE ?)")
+        params.extend([f'%{name}%', f'%{name}%'])
+    if col != 'team':
+        _multi("UPPER(r.team)", args.get('team', ''),
+               normalize=lambda v: v.upper())
+    if col != 'meet_id':
+        mid = (args.get('meet_id') or '').strip()
+        if mid:
+            where.append("r.ct_meet_id = ?")
+            params.append(mid)
+    if col != 'course':
+        _multi("r.course", args.get('course', ''),
+               normalize=lambda v: v.upper())
+    if col != 'stroke':
+        _multi("r.stroke", args.get('stroke', ''),
+               normalize=lambda v: v.upper())
+    if col != 'distance':
+        _multi("r.distance", args.get('distance', ''),
+               normalize=lambda v: int(v) if v.isdigit() else v)
+    if col != 'gender':
+        _multi("r.gender", args.get('gender', ''),
+               normalize=lambda v: v.upper())
+    if not (args.get('include_relays') in ('1', 'true', 'True')):
+        where.append("(r.stroke IS NULL OR r.stroke NOT IN ('FREE_RELAY', 'MEDLEY_RELAY'))")
+    where_sql = (' WHERE ' + ' AND '.join(where)) if where else ''
+
+    with db.get_conn() as conn:
+        rows = conn.execute(
+            f"SELECT {expr} AS value, COUNT(*) AS n FROM meet_pdf_results r "
+            f"LEFT JOIN meet_pdf_cache c ON c.ct_meet_id = r.ct_meet_id "
+            f"{where_sql} "
+            f"GROUP BY {expr} "
+            f"ORDER BY {expr}",
+            params
+        ).fetchall()
+    return jsonify({
+        'column': col,
+        'values': [{'value': r['value'], 'count': r['n']}
+                   for r in rows if r['value'] is not None],
     })
 
 
@@ -934,6 +1030,55 @@ def api_data_tab_summary():
         },
         'recent_meets': recent,
     })
+
+
+@app.route('/api/admin/data_tab/meets', methods=['GET'])
+@role_required('admin')
+def api_data_tab_meets():
+    """Lightweight list of all known meets (id + name + date) for the
+    add-row dropdown. Newest first."""
+    return jsonify({'meets': db.list_meet_pdf_meets()})
+
+
+@app.route('/api/admin/data_tab/row', methods=['POST'])
+@role_required('admin')
+def api_data_tab_row_add():
+    """Manually add one Data-tab row.
+
+    POST JSON: {ct_meet_id, first_name, last_name, age, gender, team,
+                event_name, distance, stroke, course, time}
+    Required: ct_meet_id, first_name, last_name. Empty strings → NULL.
+    """
+    payload = request.get_json(silent=True) or {}
+    try:
+        row = db.insert_meet_pdf_result(payload)
+    except ValueError as e:
+        return jsonify({'error': 'invalid', 'message': str(e)}), 400
+    return jsonify({'ok': True, 'row': row})
+
+
+@app.route('/api/admin/data_tab/row/<int:row_id>', methods=['PATCH'])
+@role_required('admin')
+def api_data_tab_row_update(row_id):
+    """Update one Data-tab row. Body carries only the fields to change."""
+    payload = request.get_json(silent=True) or {}
+    try:
+        row = db.update_meet_pdf_result(row_id, payload)
+    except ValueError as e:
+        return jsonify({'error': 'invalid', 'message': str(e)}), 400
+    if row is None:
+        return jsonify({'error': 'not_found'}), 404
+    return jsonify({'ok': True, 'row': row})
+
+
+@app.route('/api/admin/data_tab/row/<int:row_id>', methods=['DELETE'])
+@role_required('admin')
+def api_data_tab_row_delete(row_id):
+    """Delete one Data-tab row by id."""
+    ok = db.delete_meet_pdf_result(row_id)
+    if not ok:
+        return jsonify({'error': 'not_found'}), 404
+    return jsonify({'ok': True})
 
 
 @app.route('/api/admin/register_meet_pdf', methods=['POST'])

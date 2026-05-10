@@ -608,6 +608,147 @@ def save_meet_pdf_swimmers(ct_meet_id: str, swimmers: list,
                 continue
 
 
+# ===== Manual CRUD on Data-tab rows =====
+# Lets the admin fix individual swimmer-event rows in the UI without
+# re-uploading the entire PDF: edit a misparsed name/age/time, delete
+# a junk row, or add a row when a swimmer is missing.
+
+_MEET_RESULT_EDITABLE = {
+    'ct_meet_id', 'first_name', 'last_name', 'age', 'gender', 'team',
+    'event_name', 'distance', 'stroke', 'course', 'time',
+}
+_UPPERCASE_FIELDS = {'gender', 'team', 'stroke', 'course'}
+_INT_FIELDS = {'age', 'distance'}
+
+
+def _coerce_result_field(name, raw):
+    if raw is None:
+        return None
+    if isinstance(raw, str) and raw.strip() == '':
+        return None
+    if name in _INT_FIELDS:
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            raise ValueError(f"{name} must be an integer")
+    if name in _UPPERCASE_FIELDS and isinstance(raw, str):
+        return raw.strip().upper() or None
+    if isinstance(raw, str):
+        return raw.strip()
+    return raw
+
+
+def get_meet_pdf_result(row_id: int) -> Optional[dict]:
+    """Fetch one Data-tab row by id, joined with the meet's name/date."""
+    with get_conn() as conn:
+        r = conn.execute("""
+            SELECT r.id, r.ct_meet_id, c.meet_name, c.start_date,
+                   r.name_key, r.first_name, r.last_name, r.age, r.gender,
+                   r.team, r.event_name, r.distance, r.stroke, r.course, r.time
+            FROM meet_pdf_results r
+            LEFT JOIN meet_pdf_cache c ON c.ct_meet_id = r.ct_meet_id
+            WHERE r.id = ?
+        """, (row_id,)).fetchone()
+        return dict(r) if r else None
+
+
+def update_meet_pdf_result(row_id: int, fields: dict) -> Optional[dict]:
+    """Update one row. Regenerates name_key if first/last changed.
+    Raises ValueError on bad input or unique-constraint conflict.
+    Returns the updated row, or None if id wasn't found."""
+    from ct_pdf import normalize_name
+    set_clauses = []
+    params = []
+    coerced = {}
+    for k, v in (fields or {}).items():
+        if k not in _MEET_RESULT_EDITABLE:
+            continue
+        coerced[k] = _coerce_result_field(k, v)
+        set_clauses.append(f"{k} = ?")
+        params.append(coerced[k])
+    if 'first_name' in coerced or 'last_name' in coerced:
+        with get_conn() as conn:
+            cur = conn.execute(
+                "SELECT first_name, last_name FROM meet_pdf_results WHERE id = ?",
+                (row_id,)
+            ).fetchone()
+        if not cur:
+            return None
+        first = coerced.get('first_name', cur['first_name']) or ''
+        last = coerced.get('last_name', cur['last_name']) or ''
+        set_clauses.append("name_key = ?")
+        params.append(normalize_name(first, last))
+    if not set_clauses:
+        return get_meet_pdf_result(row_id)
+    params.append(row_id)
+    with get_conn() as conn:
+        try:
+            cur = conn.execute(
+                f"UPDATE meet_pdf_results SET {', '.join(set_clauses)} "
+                f"WHERE id = ?",
+                params
+            )
+        except sqlite3.IntegrityError as e:
+            raise ValueError(f"conflict: {e}")
+        if cur.rowcount == 0:
+            return None
+    return get_meet_pdf_result(row_id)
+
+
+def delete_meet_pdf_result(row_id: int) -> bool:
+    """Delete one row. Returns True if a row was removed."""
+    with get_conn() as conn:
+        cur = conn.execute(
+            "DELETE FROM meet_pdf_results WHERE id = ?", (row_id,)
+        )
+        return cur.rowcount > 0
+
+
+def insert_meet_pdf_result(fields: dict) -> dict:
+    """Insert a new row. ct_meet_id must reference an existing meet
+    (FK enforced). first_name + last_name required (used to derive
+    name_key). Raises ValueError on missing required fields or unique
+    conflict."""
+    from ct_pdf import normalize_name
+    coerced = {k: _coerce_result_field(k, (fields or {}).get(k))
+               for k in _MEET_RESULT_EDITABLE}
+    if not coerced.get('ct_meet_id'):
+        raise ValueError("ct_meet_id required")
+    if not coerced.get('first_name') or not coerced.get('last_name'):
+        raise ValueError("first_name and last_name required")
+    name_key = normalize_name(coerced['first_name'], coerced['last_name'])
+    cols = ['ct_meet_id', 'name_key', 'first_name', 'last_name', 'age',
+            'gender', 'team', 'event_name', 'distance', 'stroke', 'course',
+            'time']
+    vals = [coerced['ct_meet_id'], name_key,
+            coerced['first_name'], coerced['last_name'],
+            coerced.get('age'), coerced.get('gender'), coerced.get('team'),
+            coerced.get('event_name'), coerced.get('distance'),
+            coerced.get('stroke'), coerced.get('course'), coerced.get('time')]
+    with get_conn() as conn:
+        try:
+            cur = conn.execute(
+                f"INSERT INTO meet_pdf_results ({','.join(cols)}) "
+                f"VALUES ({','.join('?' * len(cols))})",
+                vals
+            )
+            new_id = cur.lastrowid
+        except sqlite3.IntegrityError as e:
+            raise ValueError(f"conflict: {e}")
+    return get_meet_pdf_result(new_id)
+
+
+def list_meet_pdf_meets() -> list:
+    """All known meets, newest first. Powers the add-row meet dropdown."""
+    with get_conn() as conn:
+        rows = conn.execute("""
+            SELECT ct_meet_id, meet_name, start_date
+            FROM meet_pdf_cache
+            ORDER BY (start_date IS NULL), start_date DESC, meet_name
+        """).fetchall()
+        return [dict(r) for r in rows]
+
+
 def reset_pdf_caches():
     """Clear all parsed-PDF data. Use when the underlying parser/data has
     been improved and we want fresh re-parsing on the next age-fill run."""

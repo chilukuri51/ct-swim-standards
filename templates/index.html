@@ -870,38 +870,38 @@
         <!-- ===== Data tab (admin only) ===== -->
         <section id="datatab" class="tab-content">
             <div class="tool-card" style="max-width:1200px">
-                <h2>Parsed PDF Data</h2>
-                <p class="tool-desc">Every swimmer-event-swim row extracted from CT Swim meet result PDFs. Source of truth for age/gender triangulation. Adding a new swimmer to the roster who already appears in these rows triangulates instantly without an extra fetch.</p>
+                <h2>Swim Data</h2>
+                <p class="tool-desc">All swims imported from meet PDFs. Upload a new meet, edit a row to fix mistakes, or add a missing swim by hand.</p>
 
-                <!-- Upload PDF + wipe -->
+                <!-- Upload + Add + Wipe -->
                 <div class="dt-upload-bar">
                     <input type="file" id="dtPdfFile" accept="application/pdf,.pdf" class="hidden">
                     <button id="dtPdfPick" class="btn-secondary" style="max-width:180px">Upload PDF</button>
-                    <span id="dtUploadHint" class="dt-upload-hint">Drop a Hy-Tek result PDF here or click Upload PDF. Duplicates are detected automatically.</span>
-                    <button id="dtWipeBtn" class="btn-secondary" style="max-width:180px;margin-left:auto;color:#dc2626;border-color:#fecaca">Wipe parsed data</button>
+                    <button id="dtAddRowBtn" class="btn-secondary" style="max-width:140px">+ Add row</button>
+                    <span id="dtUploadHint" class="dt-upload-hint">Drop a Hy-Tek result PDF here or click Upload PDF.</span>
+                    <button id="dtWipeBtn" class="btn-secondary" style="max-width:160px;margin-left:auto;color:#dc2626;border-color:#fecaca">Wipe all data</button>
                 </div>
 
                 <!-- Wipe confirmation modal -->
                 <div id="dtWipeModal" class="modal-backdrop hidden">
                     <div class="modal" style="max-width:520px">
                         <div class="modal-header">
-                            <h3 style="color:#dc2626">Wipe parsed PDF data?</h3>
+                            <h3 style="color:#dc2626">Wipe all swim data?</h3>
                             <button class="modal-close" id="dtWipeClose">×</button>
                         </div>
                         <div class="modal-body">
-                            <p style="margin:0">This will permanently delete:</p>
+                            <p style="margin:0">This permanently removes:</p>
                             <ul style="margin:0;padding-left:1.2rem;font-size:0.88rem;color:#475569">
-                                <li><strong id="dtWipeMeets">—</strong> meet cache rows</li>
-                                <li><strong id="dtWipeSwimmers">—</strong> swimmer-meet records</li>
-                                <li><strong id="dtWipeResults">—</strong> swim-event-time records</li>
-                                <li>All triangulation state on team_members (birth_year, birth_month, age_observed, age_synced_at)</li>
+                                <li><strong id="dtWipeMeets">—</strong> imported meets</li>
+                                <li><strong id="dtWipeResults">—</strong> swim records</li>
+                                <li>All age and gender data observed for roster swimmers</li>
                             </ul>
-                            <p style="margin:0.5rem 0 0;font-size:0.85rem;color:#1e293b"><strong>Roster identity preserved:</strong> first/last name, gender, ct_id, parent email, training group, notes.</p>
+                            <p style="margin:0.5rem 0 0;font-size:0.85rem;color:#1e293b"><strong>Roster is preserved:</strong> swimmer names, ct_id, parent emails, training groups, and notes stay intact.</p>
                             <label class="mc-toggle" style="margin-top:0.5rem">
                                 <input type="checkbox" id="dtKeepUploaded">
-                                Keep manually-uploaded PDFs (only wipe auto-discovered cache)
+                                Keep my uploaded PDFs (only clear cached meets)
                             </label>
-                            <p style="margin:0;font-size:0.78rem;color:#dc2626"><strong>This cannot be undone.</strong> Use this when restarting parser-quality testing from a clean slate.</p>
+                            <p style="margin:0;font-size:0.78rem;color:#dc2626"><strong>This cannot be undone.</strong></p>
                         </div>
                         <div class="modal-footer">
                             <button id="dtWipeCancel" class="btn-secondary" style="max-width:110px">Cancel</button>
@@ -923,7 +923,7 @@
                         <div class="modal-footer">
                             <label class="mc-toggle" id="dtForceToggle" style="margin-right:auto">
                                 <input type="checkbox" id="dtForce">
-                                Override duplicate guard
+                                Re-import even if duplicate
                             </label>
                             <button id="dtUploadCancel" class="btn-secondary" style="max-width:110px">Cancel</button>
                             <button id="dtUploadConfirm" class="btn-primary" style="max-width:160px">Confirm import</button>
@@ -931,12 +931,70 @@
                     </div>
                 </div>
 
+                <!-- Add / Edit row modal -->
+                <div id="dtRowModal" class="modal-backdrop hidden">
+                    <div class="modal" style="max-width:640px">
+                        <div class="modal-header">
+                            <h3 id="dtRowTitle">Add row</h3>
+                            <button class="modal-close" id="dtRowClose">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="dt-row-form">
+                                <label>Meet
+                                    <select id="dtRowMeet" class="batch-input"></select>
+                                </label>
+                                <label>Last name<input type="text" id="dtRowLast" class="batch-input"></label>
+                                <label>First name<input type="text" id="dtRowFirst" class="batch-input"></label>
+                                <label>Age<input type="number" id="dtRowAge" class="batch-input" min="4" max="25"></label>
+                                <label>Gender
+                                    <select id="dtRowGender" class="batch-input">
+                                        <option value="">—</option>
+                                        <option value="F">Girls</option>
+                                        <option value="M">Boys</option>
+                                    </select>
+                                </label>
+                                <label>Team<input type="text" id="dtRowTeam" class="batch-input" placeholder="e.g. BULL"></label>
+                                <label>Distance<input type="number" id="dtRowDistance" class="batch-input" min="25" step="25"></label>
+                                <label>Stroke
+                                    <select id="dtRowStroke" class="batch-input">
+                                        <option value="">—</option>
+                                        <option value="FREE">Free</option>
+                                        <option value="BACK">Back</option>
+                                        <option value="BREAST">Breast</option>
+                                        <option value="FLY">Fly</option>
+                                        <option value="IM">IM</option>
+                                        <option value="FREE_RELAY">Free relay</option>
+                                        <option value="MEDLEY_RELAY">Medley relay</option>
+                                    </select>
+                                </label>
+                                <label>Course
+                                    <select id="dtRowCourse" class="batch-input">
+                                        <option value="">—</option>
+                                        <option value="Y">SCY</option>
+                                        <option value="L">LCM</option>
+                                    </select>
+                                </label>
+                                <label>Time<input type="text" id="dtRowTime" class="batch-input" placeholder="1:23.45 or 19.06"></label>
+                                <label class="dt-row-form-wide">Event name
+                                    <input type="text" id="dtRowEvent" class="batch-input" placeholder="e.g. Girls 11-12 100 Yard Freestyle">
+                                </label>
+                            </div>
+                            <p id="dtRowError" class="dt-preview-error hidden"></p>
+                        </div>
+                        <div class="modal-footer">
+                            <button id="dtRowDelete" class="btn-secondary hidden" style="max-width:110px;color:#dc2626;border-color:#fecaca;margin-right:auto">Delete</button>
+                            <button id="dtRowCancel" class="btn-secondary" style="max-width:110px">Cancel</button>
+                            <button id="dtRowSave" class="btn-primary" style="max-width:140px">Save</button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Summary cards -->
                 <div class="admin-stats" id="dtSummary">
-                    <div class="pstat-card"><div class="pstat-value" id="dtMeetsParsed">-</div><div class="pstat-label">Meets parsed</div></div>
+                    <div class="pstat-card"><div class="pstat-value" id="dtMeetsParsed">-</div><div class="pstat-label">Meets imported</div></div>
                     <div class="pstat-card"><div class="pstat-value" id="dtMeetsTotal">-</div><div class="pstat-label">Meets known</div></div>
-                    <div class="pstat-card"><div class="pstat-value" id="dtMeetsNoPdf">-</div><div class="pstat-label">No PDF found</div></div>
-                    <div class="pstat-card"><div class="pstat-value" id="dtMeetsFailed">-</div><div class="pstat-label">Parse failed</div></div>
+                    <div class="pstat-card"><div class="pstat-value" id="dtMeetsNoPdf">-</div><div class="pstat-label">No PDF yet</div></div>
+                    <div class="pstat-card"><div class="pstat-value" id="dtMeetsFailed">-</div><div class="pstat-label">Import errors</div></div>
                     <div class="pstat-card"><div class="pstat-value" id="dtSwimmersTotal">-</div><div class="pstat-label">Unique swimmers</div></div>
                     <div class="pstat-card"><div class="pstat-value" id="dtResultsTotal">-</div><div class="pstat-label">Total swims</div></div>
                 </div>
@@ -971,6 +1029,10 @@
                     <input type="number" id="dtAgeMax" placeholder="Age ≤" class="batch-input" style="max-width:90px" min="5" max="25">
                     <input type="date" id="dtFrom" class="batch-input" style="max-width:160px" title="Meet date from">
                     <input type="date" id="dtTo" class="batch-input" style="max-width:160px" title="Meet date to">
+                    <label class="mc-toggle" style="margin-left:0.5rem">
+                        <input type="checkbox" id="dtShowRelays">
+                        Show relays
+                    </label>
                     <button id="dtApply" class="btn-primary" style="max-width:120px">Apply</button>
                     <button id="dtClear" class="btn-secondary" style="max-width:90px">Clear</button>
                 </div>
@@ -979,22 +1041,31 @@
                 <div class="table-container" style="max-height:560px;overflow:auto;margin-top:1rem">
                     <table id="dtResultsTable">
                         <thead><tr>
-                            <th>Date</th><th>Meet</th><th>Last</th><th>First</th>
-                            <th>Age</th><th>G</th><th>Team</th>
-                            <th>Dist</th><th>Stroke</th><th>Course</th><th>Time</th>
+                            <th>Date</th>
+                            <th>Meet</th>
+                            <th>Last</th>
+                            <th>First</th>
+                            <th>Age</th>
+                            <th data-col="gender">G <button class="dt-col-filter" data-col="gender" title="Filter Gender" type="button">▾</button><span class="dt-col-active" title="filter active"></span></th>
+                            <th data-col="team">Team <button class="dt-col-filter" data-col="team" title="Filter Team" type="button">▾</button><span class="dt-col-active" title="filter active"></span></th>
+                            <th data-col="distance">Dist <button class="dt-col-filter" data-col="distance" title="Filter Distance" type="button">▾</button><span class="dt-col-active" title="filter active"></span></th>
+                            <th data-col="stroke">Stroke <button class="dt-col-filter" data-col="stroke" title="Filter Stroke" type="button">▾</button><span class="dt-col-active" title="filter active"></span></th>
+                            <th data-col="course">Course <button class="dt-col-filter" data-col="course" title="Filter Course" type="button">▾</button><span class="dt-col-active" title="filter active"></span></th>
+                            <th>Time</th>
+                            <th class="dt-actions-th"></th>
                         </tr></thead>
                         <tbody id="dtResultsBody"></tbody>
                     </table>
                 </div>
                 <div class="dt-pager" id="dtPager"></div>
 
-                <!-- Per-meet diagnostics -->
-                <h3 class="section-title" style="margin-top:1.5rem;font-size:0.95rem">Recent meets — what was scanned, what was missed</h3>
+                <!-- Recent imports -->
+                <h3 class="section-title" style="margin-top:1.5rem;font-size:0.95rem">Recent imports</h3>
                 <div class="table-container" style="max-height:400px;overflow:auto">
                     <table id="dtDiagTable">
                         <thead><tr>
                             <th>Date</th><th>Meet</th><th>Status</th>
-                            <th>PDFs</th><th>Rows</th><th>Unmatched sample</th>
+                            <th>PDFs</th><th>Swims</th><th>Notes</th>
                         </tr></thead>
                         <tbody id="dtDiagBody"></tbody>
                     </table>

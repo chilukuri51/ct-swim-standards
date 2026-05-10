@@ -111,6 +111,34 @@ header {
     padding: 0.35rem 0.55rem; font-size: 0.82rem; white-space: nowrap;
 }
 #dtResultsTable td.dt-time { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* Row-level edit / delete actions */
+.dt-actions-th { width: 56px; }
+#dtResultsTable td.dt-actions {
+    white-space: nowrap; text-align: right; padding: 0.2rem 0.4rem;
+}
+.dt-row-edit, .dt-row-del {
+    background: transparent; border: 1px solid transparent; cursor: pointer;
+    border-radius: 4px; padding: 0.1rem 0.35rem; font-size: 0.95rem;
+    line-height: 1; color: #475569;
+}
+.dt-row-edit:hover { color: #0055a4; border-color: #cbd5e1; background: #f1f5f9; }
+.dt-row-del { color: #94a3b8; font-size: 1.1rem; }
+.dt-row-del:hover { color: #dc2626; border-color: #fecaca; background: #fef2f2; }
+
+/* Add / edit row modal form */
+.dt-row-form {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem 0.8rem;
+}
+.dt-row-form label {
+    display: flex; flex-direction: column; font-size: 0.78rem;
+    color: #475569; font-weight: 500;
+}
+.dt-row-form label input,
+.dt-row-form label select {
+    margin-top: 0.2rem;
+}
+.dt-row-form-wide { grid-column: 1 / -1; }
 .dt-diag-status { font-weight: 600; font-size: 0.78rem; }
 .dt-diag-status.ok { color: #16a34a; }
 .dt-diag-status.warn { color: #d97706; }
@@ -121,6 +149,59 @@ header {
     text-overflow: ellipsis; max-width: 380px; display: inline-block;
 }
 .dt-pdf-link { color: #0055a4; font-size: 0.78rem; word-break: break-all; }
+
+/* Excel-style per-column filter buttons + popover */
+#dtResultsTable th[data-col] { position: relative; }
+.dt-col-filter {
+    background: transparent; border: none; cursor: pointer;
+    color: #64748b; font-size: 0.75rem; padding: 0 0.15rem; margin-left: 0.15rem;
+    line-height: 1; vertical-align: middle;
+}
+.dt-col-filter:hover { color: #0055a4; }
+.dt-col-active {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: #0055a4; margin-left: 0.2rem; vertical-align: middle;
+    visibility: hidden;
+}
+.dt-col-popover {
+    background: white; border: 1px solid #cbd5e0; border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(15,23,42,0.15);
+    padding: 0.5rem; width: 300px; z-index: 2000;
+    display: flex; flex-direction: column; gap: 0.4rem;
+    font-size: 0.85rem;
+}
+.dt-col-pop-head {
+    display: flex; justify-content: space-between; align-items: center;
+    color: #003366; font-weight: 600;
+}
+.dt-col-pop-close {
+    background: none; border: none; font-size: 1.1rem; color: #64748b;
+    cursor: pointer; padding: 0; line-height: 1;
+}
+.dt-col-pop-search { padding: 0.35rem 0.55rem !important; font-size: 0.85rem !important; }
+.dt-col-pop-controls {
+    display: flex; justify-content: space-between; padding: 0 0.2rem;
+    font-size: 0.78rem;
+}
+.dt-col-pop-controls a { color: #0055a4; text-decoration: none; }
+.dt-col-pop-controls a:hover { text-decoration: underline; }
+.dt-col-pop-list {
+    max-height: 240px; overflow-y: auto; padding: 0.2rem 0.1rem;
+    border: 1px solid #e2e8f0; border-radius: 6px; background: #f8fafc;
+}
+.dt-col-pop-item {
+    display: flex; gap: 0.4rem; align-items: center;
+    padding: 0.25rem 0.4rem; cursor: pointer; font-size: 0.85rem;
+}
+.dt-col-pop-item:hover { background: #e0f2fe; }
+.dt-col-pop-item input { margin: 0; }
+.dt-col-pop-footer {
+    display: flex; gap: 0.4rem; justify-content: flex-end;
+}
+.dt-col-pop-footer .btn-primary,
+.dt-col-pop-footer .btn-secondary {
+    max-width: 80px; padding: 0.35rem 0.7rem; font-size: 0.8rem;
+}
 #dtSummary { grid-template-columns: repeat(6, 1fr); }
 @media (max-width: 900px) { #dtSummary { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 540px) { #dtSummary { grid-template-columns: repeat(2, 1fr); } }

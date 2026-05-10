@@ -24,3 +24,7 @@ DEPLOY_RENDER.md
 # scripts/analyze_pdfs.py). Can be hundreds of MBs.
 pdfs_local/
 parser_report/
+
+# One-time seed build outputs (scripts/build_seed_db.py). Re-buildable,
+# never committed.
+seed/

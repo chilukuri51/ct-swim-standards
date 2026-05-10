@@ -37,7 +37,32 @@ INDEX_MAX_PAGES = 50  # generous upper bound; loop stops on first empty page
 #   v7: + per-row event/distance/stroke/course/time capture (Data tab)
 #   v8: event header accepts 'LC Meter'/'SC Yard'/etc and optional age
 #       group; Format C (championship rows) now captures the time
-PARSER_VERSION = 8
+#   v9: event header recognizes 'Freestyle Relay' (was matching just
+#       'Freestyle' before relay legs got the wrong stroke); compound
+#       name parts require a letter as 2nd char so DQ rows like
+#       'Botelho, Rowan E--- DQ' don't absorb ' E---' as a name word
+#  v10: tightened FIRST WORD of name regex too — DQ rows like 'Aloi,
+#       Bennett--- DQ' were having 'Bennett---' captured as the first
+#       name. Names now end in a letter/apostrophe, never in '-' or '.'
+#  v11: Format B age must be 1-25 (was unconstrained 1-2 digit) so a
+#       jammed 'IVY -CT 919' row reads age 9 / rank 19 instead of
+#       age 91 / rank 9
+#  v13: name-word accepts lowercase initial ('mao', 'zoe', 'avi'),
+#       hyphen+space ('Doyle- Kusy'); first name may be wrapped in
+#       quotes ('Naidu, "yajat"30'); optional ' / X' or ' or X' second
+#       spelling absorbed ('Vicky / Victori', 'Elizabeth or Li');
+#       lowercase middle initial ('Declan j'); team allows 1-2 words
+#       up to 15 chars each ('Unattached-CT', 'Fly Fins-CT')
+#  v12: event header accepts shorthand 'Girls 8&U' (no spaces),
+#       'Girls 10 Year Olds', and short stroke names 'Free/Back/Breast/
+#       Fly' used by Nutmeg State Games / WHAT-style meets;
+#       Format B accepts '---' rank (no-rank DQ rows like
+#       'WRTS-CT 14--- DQMalinkiewicz, Maya'); DNF added to status
+#       alternation; rank anchor tolerates stray '.' and '"' between
+#       name and rank ('Kagtada, Kiaan .21', 'Alickolli, Arlind "12');
+#       names accept lowercase prefixes ('van der Weijden', 'St. Rock');
+#       first name accepts optional parens ('Burgess, (Dylan)' nicknames)
+PARSER_VERSION = 13
 
 USER_AGENT = (
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
@@ -388,6 +413,46 @@ def find_pdf_for_meet(
 # Both have TEAM-CT and "Last, First" — only the position of the time/
 # rank differs. We try Format A first (it has the cleaner anchor of
 # `,\s+First\d`), then Format B for lines that didn't match.
+# Building blocks for swimmer-name regex. Reused across formats A/B/C/D
+# so a fix in one place applies everywhere.
+#
+# _NAME_WORD: a single name word. Must start with an uppercase letter
+# and END with a letter/apostrophe — never with `.`, `-`, etc. Internal
+# hyphens/dots/apostrophes are allowed only between letters
+# ('Garcia-Alonso', 'O'Leary', 'St.John'). This is what stops a DQ row
+# like "Aloi, Bennett--- DQ" from extending the first name to
+# "Bennett---" (the trailing '---' anchor stays separate).
+#
+# _MULTI_NAME: one or more name words separated by spaces. Additional
+# words must have at least 2 chars — that's what stops "Rowan E---"
+# from being read as two name words ("Rowan" + "E---"). The regex pulls
+# "Rowan" only and lets the optional middle-initial group handle " E".
+# `[A-Za-z]` start (not `[A-Z]`) — Hy-Tek occasionally lowercases names
+# (`mao, Benjamin`, `Niguidula, zoe T`, `Connelly, Declan j`). The
+# strong `<TEAM>-CT <AGE>` anchor in Format A/B keeps false positives
+# off. The trailing-letter constraint still stops `Bennett---` overrun.
+# `\s?` after [-.'] allows hyphen+space variants ('Doyle- Kusy').
+_NAME_WORD = r"[A-Za-z][A-Za-z']*(?:[-.']\s?[A-Za-z][A-Za-z']*)*"
+# Lowercase / dot-suffix particles that show up as last-name prefixes:
+# 'van der Weijden', 'St. Rock', 'de la Cruz', 'von Trapp'. Multiple
+# particles in a row are allowed ('de la Cruz' = 'de' + 'la' + 'Cruz').
+_NAME_PARTICLE = r"(?:van\s+der|van|der|de|del|den|la|du|von|el|St\.)"
+_MULTI_NAME = (
+    rf"(?:{_NAME_PARTICLE}\s+)*"
+    rf"{_NAME_WORD}"
+    # `(?!or\s)` blocks 'or' from extending the name in the alternative-
+    # spelling pattern 'Elizabeth or Li' — those are handled by the
+    # ' or X' tail in Format A's first-name slot, not here.
+    rf"(?:\s+(?!or\s)(?:{_NAME_PARTICLE}\s+)*[A-Za-z][A-Za-z'][A-Za-z']*"
+    rf"(?:[-.']\s?[A-Za-z][A-Za-z']*)*)*"
+)
+# Team code: traditionally 2-6 uppercase letters (BULL, RYWC, IVY) but
+# some clubs register full names: 'Unattached-CT', 'Fly Fins-CT',
+# 'Yankee Clippers-CT', 'Mnbb Seals-CT', 'Woodbridge A.C.-CT'. Allow
+# 1 or 2 capitalized words (cap at 2 to limit over-match risk; the
+# `-CT` suffix is the actual anchor that stops false positives).
+_TEAM_CODE = r"[A-Z][A-Za-z]{1,14}(?:\s+[A-Z][A-Za-z.]{1,14})?"
+
 _PDF_ROW_A_RE = re.compile(
     # pypdf renders the same PDF differently across environments:
     # - Locally (Mac): age and last name jammed → "10Destefano"
@@ -399,22 +464,47 @@ _PDF_ROW_A_RE = re.compile(
     # - Middle initial appears between first name and rank → "Harper M43"
     # - DQ rows have '---' or 'DQ' in place of a numeric rank
     # \s* between fields handles both spacings; \*? handles tie markers.
-    r"\b([A-Z]{2,6})\s*-CT\s+"                                # team
-    r"(\d{1,2})\s*"                                           # age + opt whitespace
-    r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*),\s+"       # last (multi-word)
-    r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*)"           # first (multi-word)
-    r"(?:\s+[A-Z])?"                                          # optional middle initial
-    r"(?:\s*\*?\d|\s*---|\s+(?:DQ|NS|DFS|SCR)\b)"             # rank-digit OR DQ-style anchor
+    rf"\b({_TEAM_CODE})\s*-CT\s+"                             # team
+    rf"(\d{{1,2}})\s*"                                        # age + opt whitespace
+    rf"({_MULTI_NAME}),\s+"                                   # last
+    # First name may be wrapped in parens (preferred / nickname:
+    # 'Burgess, (Dylan Burgess)15', 'Craft, (Alex)13') or quotes
+    # ('Naidu, "yajat"30'). Optional `/X` or ` or X` alternative
+    # captures double-spelled names ('Vicky / Victori', 'Stef/Stefan',
+    # 'Elizabeth or Li'); the alternative is consumed but not captured.
+    rf"[\(\"]?({_MULTI_NAME})"                                # first
+    rf"(?:\s*/\s*[A-Za-z][A-Za-z']*|\s+or\s+[A-Za-z][A-Za-z']*)?"
+    rf"[\)\"]?"
+    rf"(?:\s+[A-Za-z])?"                                      # optional middle initial
+    # Rank anchor: a digit (with optional stray dash before it for
+    # quirky rows like 'Puka, Ala -22 35.15'), or '---' for DQ-with-dashes
+    # rows, or one of the DQ status keywords. Stray '.', '"', and ')'
+    # before the rank are tolerated — Hy-Tek extracts dropped chars from
+    # nicknames/initials so 'Kagtada, Kiaan .21', 'Alickolli, Arlind "12',
+    # 'Sanderson, J.T .43', and '(Jules )11' all parse cleanly.
+    rf"(?:[\s.\")]*-*\*?\d|[\s.\")]*---|\s+(?:DQ|DNF|NS|DFS|SCR)\b)"
 )
-# Format B: name comes AFTER time (older NCA-style PDFs). Same spacing
-# flexibility as Format A.
+# Format B: name comes AFTER time (older NCA-style PDFs). Age and rank
+# are often jammed together with no separator ("919" = age 9 + rank 19),
+# so we constrain age to a realistic range (1-25). Without that
+# constraint, greedy '\d{1,2}' picks "91" → age 91, rank 9 — wrong.
+#
+# Alternatives are listed LONGEST FIRST (2[0-5] | 1\d | [1-9]) so the
+# regex engine prefers 2-digit ages when valid (10-25), and only falls
+# back to single-digit when 2-digit can't fit. Combined with the
+# leading-non-zero constraint on rank ([1-9]\d{0,2}), this resolves
+# "1015..." as age=10, rank=15 (not age=1, rank=015) and "919..." as
+# age=9, rank=19 (not age=91, rank=9).
 _PDF_ROW_B_RE = re.compile(
-    r"\b([A-Z]{2,6})\s*-CT\s+"                                # team
-    r"(\d{1,2})\s*"                                           # age + opt space
-    r"\d{1,2}\s+"                                             # rank
-    r"(?:\d+:\d+\.\d+|\d+\.\d+|---|DQ|NS|DFS|SCR)\s*"         # time / status
-    r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*),\s+"       # last
-    r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z](?:\s|$))?)"               # first + opt initial
+    rf"\b({_TEAM_CODE})\s*-CT\s+"                             # team
+    rf"(2[0-5]|1\d|[1-9])\s*"                                 # age (1-25)
+    # Rank is normally 1-3 digits (no leading 0), but DQ/NS rows from
+    # some meet managers (WRAT, WYW LCM May 2023 etc.) have '---' here
+    # instead of a rank, jammed against the status word that follows.
+    rf"(?:[1-9]\d{{0,2}}|---)\s+"
+    rf"(?:\d+:\d+\.\d+|\d+\.\d+|---|DQ|DNF|NS|DFS|SCR)\s*"    # time / status
+    rf"({_MULTI_NAME}),\s+"                                   # last
+    rf"({_NAME_WORD}(?:\s+[A-Za-z](?:\s|$))?)"                # first + opt initial
 )
 # Format C: championship layout (no -CT, name is "First Last" with NO
 # comma, fields jammed). E.g. "SSAC  9Cassidy Schatz1 2:38.68 AGC".
@@ -424,23 +514,23 @@ _PDF_ROW_B_RE = re.compile(
 # Format C's regex would consume the time (placing m.end() AFTER it),
 # leaving _extract_time_after with nothing to find.
 _PDF_ROW_C_RE = re.compile(
-    r"^([A-Z]{2,6})"                                          # team (no -CT suffix)
-    r"\s+(\d{1,2})\s*"                                        # age, then jammed-or-spaced
-    r"([A-Z][A-Za-z'.-]+)"                                    # first (one word)
-    r"\s+"                                                     # required space
-    r"([A-Z][A-Za-z'.-]+(?:[A-Za-z'.-]*))"                    # last (single word, may be hyphenated)
-    r"\s*\*?\d+\s+"                                           # rank
-    r"(\d+:\d+\.\d+|\d+\.\d+|---|DQ|NS|DFS|SCR)"              # time / status (captured)
+    rf"^({_TEAM_CODE})"                                       # team (no -CT suffix)
+    rf"\s+(\d{{1,2}})\s*"                                     # age, then jammed-or-spaced
+    rf"({_NAME_WORD})"                                        # first (one word)
+    rf"\s+"                                                    # required space
+    rf"({_NAME_WORD})"                                        # last (one word)
+    rf"\s*\*?\d+\s+"                                          # rank
+    rf"(\d+:\d+\.\d+|\d+\.\d+|---|DQ|DNF|NS|DFS|SCR)"             # time / status (captured)
 )
 # Format D (relay leg): "1) Last, First [MidInit] Age". Each relay row
 # lists 4 swimmers; finditer captures all of them. Gender comes from the
 # event header above (Boys/Girls relay).
 _PDF_RELAY_RE = re.compile(
-    r"\d+\)\s+"                                                # leg number
-    r"([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)*),\s+"       # last
-    r"([A-Z][A-Za-z'.-]+)"                                    # first
-    r"(?:\s+[A-Z])?"                                          # opt middle initial
-    r"\s+(\d{1,2})\b"                                         # age
+    rf"\d+\)\s+"                                              # leg number
+    rf"({_MULTI_NAME}),\s+"                                   # last
+    rf"({_NAME_WORD})"                                        # first
+    rf"(?:\s+[A-Z])?"                                         # opt middle initial
+    rf"\s+(\d{{1,2}})\b"                                      # age
 )
 _GENDER_HEADER_RE = re.compile(
     r"\b(Girls|Boys|Women|Men|Mixed)\s+\d", re.IGNORECASE
@@ -461,21 +551,30 @@ _EVENT_HEADER_RE = re.compile(
     r"\(?\s*(Girls|Boys|Women|Men|Mixed)\s+"
     # Age group is OPTIONAL — open meets ('Girls 50 LC Meter Freestyle')
     # skip it entirely, championships ('Girls 10 & Under 50 LC Meter…')
-    # include it.
-    r"(?:(?:\d+\s*&\s*Under|\d+\s*&\s*Over|\d+\s*-\s*\d+|\d+)\s+)?"
+    # include it. Accepts 'Under'/'U' and 'Over'/'O' shorthand
+    # ('Girls 8&U 50 Yard Back' from Nutmeg State Games-style PDFs).
+    r"(?:(?:\d+\s*&\s*(?:Under|U)|\d+\s*&\s*(?:Over|O)|\d+\s*-\s*\d+|\d+\s+Year\s+Olds?|\d+)\s+)?"
     r"(\d+)\s+"
     # Course prefix is OPTIONAL — 'LC Meter', 'SC Yard', 'SC Meter',
     # or just 'Yard'/'Meter' (when a meet is exclusively one course).
     r"(?:LC\s+|SC\s+)?(Yard|Meter)\s+"
-    r"(Freestyle|Backstroke|Breaststroke|Butterfly|"
-    r"Individual\s+Medley|IM|"
-    r"Free\s+Relay|Medley\s+Relay)\b",
+    # Stroke alternatives: relay variants are listed FIRST so a
+    # 'Freestyle Relay' header doesn't match the 'Freestyle' alternative
+    # and stop there (regex alternation is left-to-right, first-match).
+    # Long forms before short forms (Backstroke before Back) so the
+    # trailing \b doesn't let 'Back' eat the prefix of 'Backstroke'.
+    r"(Freestyle\s+Relay|Free\s+Relay|Medley\s+Relay|"
+    r"Individual\s+Medley|"
+    r"Freestyle|Backstroke|Breaststroke|Butterfly|"
+    r"Free|Back|Breast|Fly|IM)\b",
     re.IGNORECASE
 )
 _STROKE_TO_CODE = {
     'FREESTYLE': 'FREE', 'BACKSTROKE': 'BACK', 'BREASTSTROKE': 'BREAST',
     'BUTTERFLY': 'FLY', 'IM': 'IM', 'INDIVIDUAL MEDLEY': 'IM',
-    'FREE RELAY': 'FREE_RELAY', 'MEDLEY RELAY': 'MEDLEY_RELAY',
+    'FREE': 'FREE', 'BACK': 'BACK', 'BREAST': 'BREAST', 'FLY': 'FLY',
+    'FREE RELAY': 'FREE_RELAY', 'FREESTYLE RELAY': 'FREE_RELAY',
+    'MEDLEY RELAY': 'MEDLEY_RELAY',
 }
 
 # After a swimmer row regex matches, look for the time on the same line.

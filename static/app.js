@@ -5242,22 +5242,36 @@ if (hasPerm('batch')) {
 if (hasPerm('batch')) {
     const dtTabBtn = document.querySelector('.nav-btn[data-tab="datatab"]');
     let dtLoaded = false;
-    let dtState = { page: 1, size: 50 };
+    let dtState = { page: 1, size: 100 };
+    // Excel-style multi-select state per column. Each entry is an array
+    // of selected values; an empty array means "no filter on this column".
+    let dtMulti = { team: [], stroke: [], distance: [], course: [], gender: [] };
+    let dtIncludeRelays = false;
 
     function dtCollectFilters() {
         const v = id => (document.getElementById(id).value || '').trim();
+        // Top-row inputs are merged with the per-column multi-select
+        // state — both produce comma-joined value lists, the backend
+        // treats them identically.
+        function merge(top, multiArr) {
+            const set = new Set();
+            if (top) top.split(',').forEach(s => s && set.add(s.trim()));
+            (multiArr || []).forEach(s => s && set.add(String(s)));
+            return [...set].join(',');
+        }
         return {
             name: v('dtName'),
-            team: v('dtTeam'),
+            team: merge(v('dtTeam'), dtMulti.team),
             meet_id: v('dtMeetId'),
-            course: v('dtCourse'),
-            stroke: v('dtStroke'),
-            distance: v('dtDistance'),
-            gender: v('dtGender'),
+            course: merge(v('dtCourse'), dtMulti.course),
+            stroke: merge(v('dtStroke'), dtMulti.stroke),
+            distance: merge(v('dtDistance'), dtMulti.distance),
+            gender: merge(v('dtGender'), dtMulti.gender),
             age_min: v('dtAgeMin'),
             age_max: v('dtAgeMax'),
             date_from: v('dtFrom'),
             date_to: v('dtTo'),
+            include_relays: dtIncludeRelays ? '1' : '',
         };
     }
 
@@ -5270,7 +5284,7 @@ if (hasPerm('batch')) {
         qs.set('page', page);
         qs.set('size', dtState.size);
         const tbody = document.getElementById('dtResultsBody');
-        tbody.innerHTML = '<tr><td colspan="11" style="padding:1rem;color:#94a3b8">Loading…</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" style="padding:1rem;color:#94a3b8">Loading…</td></tr>';
         try {
             const r = await fetch(`/api/admin/data_tab/results?${qs.toString()}`);
             const d = await r.json();
@@ -5280,7 +5294,7 @@ if (hasPerm('batch')) {
             renderDtRows(d.rows);
             renderDtPager();
         } catch (e) {
-            tbody.innerHTML = `<tr><td colspan="11" style="padding:1rem;color:#dc2626">Error: ${e.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="12" style="padding:1rem;color:#dc2626">Error: ${e.message}</td></tr>`;
         }
     }
 
@@ -5290,25 +5304,37 @@ if (hasPerm('batch')) {
         return m ? `${m[2]}/${m[3]}/${m[1].slice(2)}` : iso;
     }
 
+    // Latest rendered rows, keyed by id — used by the edit modal so it
+    // doesn't have to refetch a single row from the server.
+    let dtRowsById = {};
+
     function renderDtRows(rows) {
         const tbody = document.getElementById('dtResultsBody');
+        dtRowsById = {};
         if (!rows || !rows.length) {
-            tbody.innerHTML = '<tr><td colspan="11" style="padding:1rem;color:#94a3b8">No matching rows.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" style="padding:1rem;color:#94a3b8">No matching rows.</td></tr>';
             return;
         }
-        tbody.innerHTML = rows.map(r => `<tr>
-            <td>${fmtDate(r.start_date)}</td>
-            <td title="${(r.meet_name || '').replace(/"/g, '&quot;')}" style="max-width:240px;overflow:hidden;text-overflow:ellipsis">${r.meet_name || '—'}</td>
-            <td>${r.last_name || ''}</td>
-            <td>${r.first_name || ''}</td>
-            <td>${r.age != null ? r.age : ''}</td>
-            <td>${r.gender || ''}</td>
-            <td>${r.team || ''}</td>
-            <td>${r.distance != null ? r.distance : ''}</td>
-            <td>${r.stroke || ''}</td>
-            <td>${r.course || ''}</td>
-            <td class="dt-time">${r.time || '—'}</td>
-        </tr>`).join('');
+        tbody.innerHTML = rows.map(r => {
+            dtRowsById[r.id] = r;
+            return `<tr data-row-id="${r.id}">
+                <td>${fmtDate(r.start_date)}</td>
+                <td title="${(r.meet_name || '').replace(/"/g, '&quot;')}" style="max-width:240px;overflow:hidden;text-overflow:ellipsis">${r.meet_name || '—'}</td>
+                <td>${r.last_name || ''}</td>
+                <td>${r.first_name || ''}</td>
+                <td>${r.age != null ? r.age : ''}</td>
+                <td>${r.gender || ''}</td>
+                <td>${r.team || ''}</td>
+                <td>${r.distance != null ? r.distance : ''}</td>
+                <td>${r.stroke || ''}</td>
+                <td>${r.course || ''}</td>
+                <td class="dt-time">${r.time || '—'}</td>
+                <td class="dt-actions">
+                    <button class="dt-row-edit" data-id="${r.id}" title="Edit row" type="button">✎</button>
+                    <button class="dt-row-del" data-id="${r.id}" title="Delete row" type="button">×</button>
+                </td>
+            </tr>`;
+        }).join('');
     }
 
     function renderDtPager() {
@@ -5349,12 +5375,12 @@ if (hasPerm('batch')) {
     function renderDtDiag(meets) {
         const tbody = document.getElementById('dtDiagBody');
         if (!meets.length) {
-            tbody.innerHTML = '<tr><td colspan="6" style="padding:1rem;color:#94a3b8">No meets parsed yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="padding:1rem;color:#94a3b8">No imports yet.</td></tr>';
             return;
         }
         tbody.innerHTML = meets.slice(0, 200).map(m => {
             let status = 'ok';
-            let label = 'Parsed';
+            let label = 'Imported';
             if (m.note === 'no_pdf') { status = 'warn'; label = 'No PDF'; }
             else if (m.note && m.note !== 'no_pdf') { status = 'err'; label = m.note; }
             else if (!m.parsed_at) { status = 'warn'; label = 'Pending'; }
@@ -5368,7 +5394,7 @@ if (hasPerm('batch')) {
                 }
             }
             const sampleHtml = samples.length
-                ? `<span class="dt-unmatched-sample" title="${samples.slice(0, 5).join(' | ').replace(/"/g, '&quot;')}">${samples[0].slice(0, 80)}${samples.length > 1 ? ` (+${samples.length - 1} more)` : ''}</span>`
+                ? `<span class="dt-unmatched-sample" title="${samples.slice(0, 5).join(' | ').replace(/"/g, '&quot;')}">${samples.length} line${samples.length === 1 ? '' : 's'} couldn't be read — open Edit on a row to fix</span>`
                 : '<span style="color:#cbd5e0">—</span>';
             return `<tr>
                 <td>${fmtDate(m.start_date)}</td>
@@ -5400,11 +5426,141 @@ if (hasPerm('batch')) {
             const el = document.getElementById(id);
             if (el) el.value = '';
         });
+        // Also clear per-column multi-select state and refresh chips
+        Object.keys(dtMulti).forEach(k => dtMulti[k] = []);
+        renderColFilterIndicators();
+    }
+
+    // ===== Excel-style header filter popovers =====
+    // Each filterable column shows a small ▾ button in its header.
+    // Click → fetches /api/admin/data_tab/distinct for that column,
+    // pops up a checkbox list with a search box, "Select all" and
+    // "Apply"/"Clear" buttons. Multi-select carries through to the
+    // dtCollectFilters() merge step.
+    const COL_TO_LABEL = {
+        team: 'Team', stroke: 'Stroke', distance: 'Distance',
+        course: 'Course', gender: 'Gender',
+    };
+
+    function renderColFilterIndicators() {
+        // Add a small dot next to filterable headers when their multi-
+        // select has selected values. Button position is inside the th.
+        document.querySelectorAll('#dtResultsTable th[data-col]').forEach(th => {
+            const col = th.getAttribute('data-col');
+            const dot = th.querySelector('.dt-col-active');
+            if (!dot) return;
+            const has = (dtMulti[col] || []).length > 0;
+            dot.style.visibility = has ? 'visible' : 'hidden';
+        });
+    }
+
+    let dtPopover = null;
+    function closeColPopover() {
+        if (dtPopover) { dtPopover.remove(); dtPopover = null; }
+    }
+    document.addEventListener('click', (e) => {
+        if (dtPopover && !dtPopover.contains(e.target)
+            && !e.target.classList.contains('dt-col-filter')) {
+            closeColPopover();
+        }
+    });
+
+    async function openColPopover(col, anchorEl) {
+        closeColPopover();
+        const rect = anchorEl.getBoundingClientRect();
+        const pop = document.createElement('div');
+        pop.className = 'dt-col-popover';
+        pop.style.position = 'fixed';
+        pop.style.left = Math.min(rect.left, window.innerWidth - 320) + 'px';
+        pop.style.top = (rect.bottom + 4) + 'px';
+        pop.innerHTML = `
+            <div class="dt-col-pop-head">${COL_TO_LABEL[col]}
+                <button class="dt-col-pop-close" type="button">×</button>
+            </div>
+            <input type="text" class="dt-col-pop-search batch-input" placeholder="Search…">
+            <div class="dt-col-pop-controls">
+                <a href="#" class="dt-col-pop-all">Select all</a>
+                <a href="#" class="dt-col-pop-none">Clear</a>
+            </div>
+            <div class="dt-col-pop-list">Loading…</div>
+            <div class="dt-col-pop-footer">
+                <button class="btn-secondary dt-col-pop-cancel" type="button">Cancel</button>
+                <button class="btn-primary dt-col-pop-apply" type="button">Apply</button>
+            </div>
+        `;
+        document.body.appendChild(pop);
+        dtPopover = pop;
+        // Fetch distinct values, honoring currently-applied OTHER filters
+        const f = dtCollectFilters();
+        // Strip the column we're listing — the backend does this too
+        // but we save a bit of payload.
+        delete f[col];
+        const qs = new URLSearchParams();
+        Object.entries(f).forEach(([k, v]) => v && qs.set(k, v));
+        qs.set('column', col);
+        const list = pop.querySelector('.dt-col-pop-list');
+        try {
+            const r = await fetch(`/api/admin/data_tab/distinct?${qs.toString()}`);
+            const d = await r.json();
+            const selected = new Set((dtMulti[col] || []).map(String));
+            list.innerHTML = (d.values || []).map(v => {
+                const val = String(v.value);
+                const checked = selected.has(val) ? 'checked' : '';
+                return `<label class="dt-col-pop-item">
+                    <input type="checkbox" value="${val.replace(/"/g, '&quot;')}" ${checked}>
+                    <span>${val} <span style="color:#94a3b8">(${v.count})</span></span>
+                </label>`;
+            }).join('') || '<div style="color:#94a3b8;padding:0.4rem">No values</div>';
+        } catch (e) {
+            list.innerHTML = `<div style="color:#dc2626">Error: ${e.message}</div>`;
+        }
+        // Wire up controls
+        const search = pop.querySelector('.dt-col-pop-search');
+        search.addEventListener('input', () => {
+            const q = search.value.toLowerCase();
+            pop.querySelectorAll('.dt-col-pop-item').forEach(item => {
+                const txt = item.textContent.toLowerCase();
+                item.style.display = txt.includes(q) ? '' : 'none';
+            });
+        });
+        pop.querySelector('.dt-col-pop-all').addEventListener('click', (e) => {
+            e.preventDefault();
+            pop.querySelectorAll('.dt-col-pop-item:not([style*="display: none"]) input')
+                .forEach(c => c.checked = true);
+        });
+        pop.querySelector('.dt-col-pop-none').addEventListener('click', (e) => {
+            e.preventDefault();
+            pop.querySelectorAll('.dt-col-pop-item input').forEach(c => c.checked = false);
+        });
+        pop.querySelector('.dt-col-pop-close').addEventListener('click', closeColPopover);
+        pop.querySelector('.dt-col-pop-cancel').addEventListener('click', closeColPopover);
+        pop.querySelector('.dt-col-pop-apply').addEventListener('click', () => {
+            const vals = [...pop.querySelectorAll('.dt-col-pop-item input:checked')]
+                .map(i => i.value);
+            dtMulti[col] = vals;
+            renderColFilterIndicators();
+            closeColPopover();
+            dtLoadResults(1);
+        });
+        search.focus();
+    }
+
+    function wireColumnFilterButtons() {
+        document.querySelectorAll('#dtResultsTable .dt-col-filter').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openColPopover(btn.getAttribute('data-col'), btn);
+            });
+        });
     }
 
     document.getElementById('dtApply')?.addEventListener('click', () => dtLoadResults(1));
     document.getElementById('dtClear')?.addEventListener('click', () => {
         dtClearFilters();
+        dtLoadResults(1);
+    });
+    document.getElementById('dtShowRelays')?.addEventListener('change', (e) => {
+        dtIncludeRelays = e.target.checked;
         dtLoadResults(1);
     });
     // Pressing Enter in any filter input applies the filters
@@ -5413,6 +5569,8 @@ if (hasPerm('batch')) {
             if (e.key === 'Enter') dtLoadResults(1);
         });
     });
+    // Wire the per-column ▾ filter buttons (one-time, headers don't re-render)
+    wireColumnFilterButtons();
 
     if (dtTabBtn) {
         dtTabBtn.addEventListener('click', () => {
@@ -5463,7 +5621,7 @@ if (hasPerm('batch')) {
         rows.push(`<dt>Detected meet</dt><dd>${p.detected_meet_name || '<em style="color:#94a3b8;font-weight:400">(none — header parse failed)</em>'}</dd>`);
         rows.push(`<dt>Detected date</dt><dd>${p.detected_start_date || '—'}${p.detected_end_date && p.detected_end_date !== p.detected_start_date ? ' → ' + p.detected_end_date : ''}</dd>`);
         rows.push(`<dt>CT meet ID</dt><dd>${p.ct_meet_id}${p.ct_meet_id_was_synthesized ? ' <span class="ag-tag" style="background:#fef3c7;color:#92400e">synthesized</span>' : ''}</dd>`);
-        rows.push(`<dt>Parsed swims</dt><dd>${p.parsed_rows.toLocaleString()} (${p.parsed_unique_swimmers} unique swimmers)</dd>`);
+        rows.push(`<dt>Swims found</dt><dd>${p.parsed_rows.toLocaleString()} (${p.parsed_unique_swimmers} unique swimmers)</dd>`);
         rows.push(`<dt>PDF hash</dt><dd style="font-family:ui-monospace,Menlo,monospace;font-size:0.75rem">${p.pdf_hash}</dd>`);
 
         let banner = '';
@@ -5472,7 +5630,7 @@ if (hasPerm('batch')) {
         } else if (p.will_append_to_existing) {
             banner = `<div class="dt-preview-warning"><strong>Appending</strong> to an already-parsed meet. Existing rows will be kept; new swimmers from this PDF will be added (deduped by name+event+time).</div>`;
         } else if (p.existing_cache && p.existing_cache.parsed_at) {
-            banner = `<div class="dt-preview-warning">A cached row exists for <code>${p.ct_meet_id}</code> but it's not at the current parser version — this upload will replace it.</div>`;
+            banner = `<div class="dt-preview-warning">This meet was imported earlier with an older version of the import engine — uploading now will refresh it.</div>`;
         }
 
         const sampleHtml = (p.sample_swimmers || []).map(s =>
@@ -5486,8 +5644,7 @@ if (hasPerm('batch')) {
             <div style="font-size:0.78rem;color:#64748b;margin-top:0.4rem">Sample (first ${(p.sample_swimmers || []).length} swimmers):</div>
             <div class="dt-preview-sample">${sampleHtml || '<em style="color:#94a3b8">no swimmers</em>'}</div>
             ${p.parser_diagnostics && p.parser_diagnostics.unmatched_sample && p.parser_diagnostics.unmatched_sample.length
-                ? `<div style="font-size:0.78rem;color:#64748b;margin-top:0.4rem">${p.parser_diagnostics.unmatched_sample.length} line${p.parser_diagnostics.unmatched_sample.length === 1 ? '' : 's'} looked like a swimmer row but didn't match (parser misses):</div>
-                   <div class="dt-preview-sample" style="font-family:ui-monospace,Menlo,monospace">${p.parser_diagnostics.unmatched_sample.slice(0, 5).map(l => l.replace(/</g, '&lt;')).join('<br>')}</div>`
+                ? `<div style="font-size:0.78rem;color:#64748b;margin-top:0.4rem">${p.parser_diagnostics.unmatched_sample.length} line${p.parser_diagnostics.unmatched_sample.length === 1 ? '' : 's'} couldn't be read. You can fix them by hand after importing — use Add row or Edit on the swim table.</div>`
                 : ''
             }
         `;
@@ -5497,9 +5654,9 @@ if (hasPerm('batch')) {
         let msg = '';
         if (payload.error === 'duplicate') {
             const dup = payload.duplicate_of || {};
-            msg = `<div class="dt-preview-error"><strong>Duplicate detected.</strong> This exact PDF was already imported as meet <code>${dup.ct_meet_id || '?'}</code> — "${(dup.meet_name || '').replace(/</g, '&lt;')}" (${dup.start_date || '?'}). Check "Override duplicate guard" if you really want to re-import.</div>`;
+            msg = `<div class="dt-preview-error"><strong>Duplicate.</strong> This exact PDF was already imported as meet <code>${dup.ct_meet_id || '?'}</code> — "${(dup.meet_name || '').replace(/</g, '&lt;')}" (${dup.start_date || '?'}). Check "Re-import even if duplicate" to import again.</div>`;
         } else if (payload.error === 'already_parsed') {
-            msg = `<div class="dt-preview-error"><strong>Already parsed.</strong> Meet <code>${payload.ct_meet_id}</code> already has this PDF at the current parser version. Check "Override duplicate guard" to re-import.</div>`;
+            msg = `<div class="dt-preview-error"><strong>Already imported.</strong> Meet <code>${payload.ct_meet_id}</code> already has this PDF. Check "Re-import even if duplicate" to import again.</div>`;
         } else if (payload.error === 'no_rows') {
             msg = `<div class="dt-preview-error"><strong>${payload.message || 'No swimmer rows found.'}</strong> Make sure the file is a Hy-Tek result PDF, not a meet announcement or psych sheet.</div>`;
         } else {
@@ -5552,7 +5709,7 @@ if (hasPerm('batch')) {
                 uplConfirm.textContent = 'Confirm import';
                 return;
             }
-            uplBody.innerHTML = `<div class="dt-preview-success"><strong>Imported.</strong> ${d.parsed_rows.toLocaleString()} swims saved to meet <code>${d.ct_meet_id}</code> (mode: ${d.save_mode}). ${d.matched_roster_swimmers} roster swimmer${d.matched_roster_swimmers === 1 ? '' : 's'} matched.</div>`;
+            uplBody.innerHTML = `<div class="dt-preview-success"><strong>Imported.</strong> ${d.parsed_rows.toLocaleString()} swims saved to meet <code>${d.ct_meet_id}</code>. ${d.matched_roster_swimmers} roster swimmer${d.matched_roster_swimmers === 1 ? '' : 's'} matched.</div>`;
             uplConfirm.disabled = true;
             uplConfirm.textContent = 'Done';
             // Refresh tab data
@@ -5619,11 +5776,203 @@ if (hasPerm('batch')) {
         });
     }
 
-    // ===== Wipe parsed PDF data =====
-    // Calls the existing /api/admin/reset_age_data endpoint (which both
-    // prod and local use). Two-step confirm: clicking "Wipe" populates
-    // the modal with current totals so the admin sees what they're
-    // about to destroy before clicking "Yes, wipe data".
+    // ===== Add / edit / delete row =====
+    // Opens a single modal in either "add" mode (empty form, must pick
+    // meet) or "edit" mode (pre-filled, meet locked). Delete sits inside
+    // the edit modal so the admin sees the row before removing it.
+    const rowModal = document.getElementById('dtRowModal');
+    const rowTitle = document.getElementById('dtRowTitle');
+    const rowClose = document.getElementById('dtRowClose');
+    const rowCancel = document.getElementById('dtRowCancel');
+    const rowSave = document.getElementById('dtRowSave');
+    const rowDelete = document.getElementById('dtRowDelete');
+    const rowError = document.getElementById('dtRowError');
+    const rowMeet = document.getElementById('dtRowMeet');
+    const rowFields = ['Last', 'First', 'Age', 'Gender', 'Team', 'Distance',
+                       'Stroke', 'Course', 'Time', 'Event'];
+    let rowEditingId = null;
+    let rowMeetsLoaded = false;
+
+    async function ensureRowMeetsLoaded() {
+        if (rowMeetsLoaded) return;
+        try {
+            const r = await fetch('/api/admin/data_tab/meets');
+            const d = await r.json();
+            const opts = (d.meets || []).map(m => {
+                const date = m.start_date ? `${m.start_date.slice(5,7)}/${m.start_date.slice(8,10)}/${m.start_date.slice(2,4)}` : '';
+                const label = `${date ? date + ' — ' : ''}${m.meet_name || m.ct_meet_id}`;
+                return `<option value="${m.ct_meet_id}">${label.replace(/</g,'&lt;')}</option>`;
+            }).join('');
+            rowMeet.innerHTML = '<option value="">Select a meet…</option>' + opts;
+            rowMeetsLoaded = true;
+        } catch (e) {
+            rowMeet.innerHTML = '<option value="">(failed to load meets)</option>';
+        }
+    }
+
+    function clearRowForm() {
+        rowFields.forEach(f => {
+            const el = document.getElementById('dtRow' + f);
+            if (el) el.value = '';
+        });
+        rowMeet.value = '';
+        rowError.classList.add('hidden');
+        rowError.textContent = '';
+    }
+
+    function fillRowForm(row) {
+        rowMeet.value = row.ct_meet_id || '';
+        document.getElementById('dtRowLast').value = row.last_name || '';
+        document.getElementById('dtRowFirst').value = row.first_name || '';
+        document.getElementById('dtRowAge').value = row.age != null ? row.age : '';
+        document.getElementById('dtRowGender').value = row.gender || '';
+        document.getElementById('dtRowTeam').value = row.team || '';
+        document.getElementById('dtRowDistance').value = row.distance != null ? row.distance : '';
+        document.getElementById('dtRowStroke').value = row.stroke || '';
+        document.getElementById('dtRowCourse').value = row.course || '';
+        document.getElementById('dtRowTime').value = row.time || '';
+        document.getElementById('dtRowEvent').value = row.event_name || '';
+    }
+
+    function readRowForm() {
+        return {
+            ct_meet_id: rowMeet.value,
+            last_name: document.getElementById('dtRowLast').value,
+            first_name: document.getElementById('dtRowFirst').value,
+            age: document.getElementById('dtRowAge').value,
+            gender: document.getElementById('dtRowGender').value,
+            team: document.getElementById('dtRowTeam').value,
+            distance: document.getElementById('dtRowDistance').value,
+            stroke: document.getElementById('dtRowStroke').value,
+            course: document.getElementById('dtRowCourse').value,
+            time: document.getElementById('dtRowTime').value,
+            event_name: document.getElementById('dtRowEvent').value,
+        };
+    }
+
+    function showRowError(msg) {
+        rowError.textContent = msg;
+        rowError.classList.remove('hidden');
+    }
+
+    function closeRowModal() {
+        rowModal.classList.add('hidden');
+        rowEditingId = null;
+        clearRowForm();
+    }
+
+    async function openRowModalForAdd() {
+        await ensureRowMeetsLoaded();
+        rowEditingId = null;
+        rowTitle.textContent = 'Add row';
+        rowDelete.classList.add('hidden');
+        rowMeet.disabled = false;
+        clearRowForm();
+        rowModal.classList.remove('hidden');
+    }
+
+    async function openRowModalForEdit(rowId) {
+        const row = dtRowsById[rowId];
+        if (!row) return;
+        await ensureRowMeetsLoaded();
+        rowEditingId = rowId;
+        rowTitle.textContent = 'Edit row';
+        rowDelete.classList.remove('hidden');
+        rowMeet.disabled = true; // moving a row to a different meet is rare; keep it locked
+        fillRowForm(row);
+        rowError.classList.add('hidden');
+        rowError.textContent = '';
+        rowModal.classList.remove('hidden');
+    }
+
+    async function saveRow() {
+        const payload = readRowForm();
+        if (!payload.ct_meet_id) { showRowError('Pick a meet.'); return; }
+        if (!payload.first_name || !payload.last_name) {
+            showRowError('First and last name are required.');
+            return;
+        }
+        rowSave.disabled = true;
+        rowSave.textContent = 'Saving…';
+        try {
+            let r;
+            if (rowEditingId) {
+                r = await fetch(`/api/admin/data_tab/row/${rowEditingId}`, {
+                    method: 'PATCH',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload),
+                });
+            } else {
+                r = await fetch('/api/admin/data_tab/row', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload),
+                });
+            }
+            const d = await r.json();
+            if (!r.ok) {
+                showRowError(d.message || d.error || 'Save failed');
+                return;
+            }
+            closeRowModal();
+            dtLoadResults(dtState.page || 1);
+            dtLoadSummary();
+        } catch (e) {
+            showRowError('Network error: ' + e.message);
+        } finally {
+            rowSave.disabled = false;
+            rowSave.textContent = 'Save';
+        }
+    }
+
+    async function deleteRow(rowId) {
+        if (!rowId) return;
+        if (!confirm('Delete this swim record? This cannot be undone.')) return;
+        try {
+            const r = await fetch(`/api/admin/data_tab/row/${rowId}`, {
+                method: 'DELETE',
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) {
+                alert('Delete failed: ' + (d.message || d.error || r.statusText));
+                return;
+            }
+            closeRowModal();
+            dtLoadResults(dtState.page || 1);
+            dtLoadSummary();
+        } catch (e) {
+            alert('Network error: ' + e.message);
+        }
+    }
+
+    // Top-bar "+ Add row"
+    document.getElementById('dtAddRowBtn')?.addEventListener('click', openRowModalForAdd);
+
+    // Per-row edit/delete (delegated, since rows re-render on every load)
+    document.getElementById('dtResultsBody')?.addEventListener('click', (e) => {
+        const editBtn = e.target.closest('.dt-row-edit');
+        if (editBtn) {
+            openRowModalForEdit(parseInt(editBtn.getAttribute('data-id'), 10));
+            return;
+        }
+        const delBtn = e.target.closest('.dt-row-del');
+        if (delBtn) {
+            const id = parseInt(delBtn.getAttribute('data-id'), 10);
+            if (confirm('Delete this swim record? This cannot be undone.')) {
+                deleteRow(id);
+            }
+        }
+    });
+
+    // Modal wiring
+    rowClose?.addEventListener('click', closeRowModal);
+    rowCancel?.addEventListener('click', closeRowModal);
+    rowSave?.addEventListener('click', saveRow);
+    rowDelete?.addEventListener('click', () => deleteRow(rowEditingId));
+
+    // ===== Wipe data =====
+    // Two-step confirm: clicking "Wipe" populates the modal with current
+    // totals so the admin sees what they're about to remove.
     const wipeBtn = document.getElementById('dtWipeBtn');
     const wipeModal = document.getElementById('dtWipeModal');
     const wipeClose = document.getElementById('dtWipeClose');
@@ -5636,8 +5985,6 @@ if (hasPerm('batch')) {
         // knows what's at stake.
         document.getElementById('dtWipeMeets').textContent =
             (document.getElementById('dtMeetsTotal').textContent || '0');
-        document.getElementById('dtWipeSwimmers').textContent =
-            'all'; // swimmers count not exposed top-level — show 'all'
         document.getElementById('dtWipeResults').textContent =
             (document.getElementById('dtResultsTotal').textContent || '0');
         wipeKeepUploaded.checked = false;
