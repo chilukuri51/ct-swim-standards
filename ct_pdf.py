@@ -35,7 +35,9 @@ INDEX_MAX_PAGES = 50  # generous upper bound; loop stops on first empty page
 #   v6: matcher only (no row-shape change); bump kept for clarity, not
 #       strictly required since v6 doesn't alter parse_results_pdf output.
 #   v7: + per-row event/distance/stroke/course/time capture (Data tab)
-PARSER_VERSION = 7
+#   v8: event header accepts 'LC Meter'/'SC Yard'/etc and optional age
+#       group; Format C (championship rows) now captures the time
+PARSER_VERSION = 8
 
 USER_AGENT = (
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
@@ -417,6 +419,10 @@ _PDF_ROW_B_RE = re.compile(
 # Format C: championship layout (no -CT, name is "First Last" with NO
 # comma, fields jammed). E.g. "SSAC  9Cassidy Schatz1 2:38.68 AGC".
 # Anchored at line start to avoid matching mid-paragraph text.
+# Time is captured (group 5) so callers don't need a second regex pass —
+# Format A captures rank-anchor only and runs _extract_time_after(), but
+# Format C's regex would consume the time (placing m.end() AFTER it),
+# leaving _extract_time_after with nothing to find.
 _PDF_ROW_C_RE = re.compile(
     r"^([A-Z]{2,6})"                                          # team (no -CT suffix)
     r"\s+(\d{1,2})\s*"                                        # age, then jammed-or-spaced
@@ -424,7 +430,7 @@ _PDF_ROW_C_RE = re.compile(
     r"\s+"                                                     # required space
     r"([A-Z][A-Za-z'.-]+(?:[A-Za-z'.-]*))"                    # last (single word, may be hyphenated)
     r"\s*\*?\d+\s+"                                           # rank
-    r"(?:\d+:\d+\.\d+|\d+\.\d+|---|DQ|NS|DFS|SCR)"            # time / status
+    r"(\d+:\d+\.\d+|\d+\.\d+|---|DQ|NS|DFS|SCR)"              # time / status (captured)
 )
 # Format D (relay leg): "1) Last, First [MidInit] Age". Each relay row
 # lists 4 swimmers; finditer captures all of them. Gender comes from the
@@ -453,8 +459,14 @@ _GENDER_TO_FM = {'GIRLS': 'F', 'WOMEN': 'F', 'BOYS': 'M', 'MEN': 'M'}
 #   "Mixed 11-12 200 Yard Medley Relay"
 _EVENT_HEADER_RE = re.compile(
     r"\(?\s*(Girls|Boys|Women|Men|Mixed)\s+"
-    r"(?:\d+\s*&\s*Under|\d+\s*&\s*Over|\d+\s*-\s*\d+|\d+)\s+"
-    r"(\d+)\s+(Yard|Meter)\s+"
+    # Age group is OPTIONAL — open meets ('Girls 50 LC Meter Freestyle')
+    # skip it entirely, championships ('Girls 10 & Under 50 LC Meter…')
+    # include it.
+    r"(?:(?:\d+\s*&\s*Under|\d+\s*&\s*Over|\d+\s*-\s*\d+|\d+)\s+)?"
+    r"(\d+)\s+"
+    # Course prefix is OPTIONAL — 'LC Meter', 'SC Yard', 'SC Meter',
+    # or just 'Yard'/'Meter' (when a meet is exclusively one course).
+    r"(?:LC\s+|SC\s+)?(Yard|Meter)\s+"
     r"(Freestyle|Backstroke|Breaststroke|Butterfly|"
     r"Individual\s+Medley|IM|"
     r"Free\s+Relay|Medley\s+Relay)\b",
@@ -592,7 +604,14 @@ def parse_results_pdf(path_or_bytes, return_diagnostics: bool = False):
             if not matched_spans:
                 m = _PDF_ROW_C_RE.match(line)
                 if m:
-                    team, age, first, last = m.groups()
+                    team, age, first, last, time_c_raw = m.groups()
+                    # time_c_raw is either a clock-time string (e.g.
+                    # '32.32', '1:11.95') or a status marker (DQ, NS,
+                    # DFS, SCR, ---) that we treat as no-time.
+                    if re.match(r'^\d', time_c_raw or ''):
+                        time_c = time_c_raw
+                    else:
+                        time_c = None
                     out.append(_row_with_event({
                         'first': first.strip(),
                         'last': last.strip(),
@@ -600,7 +619,7 @@ def parse_results_pdf(path_or_bytes, return_diagnostics: bool = False):
                         'age': int(age),
                         'team': team,
                         'gender': current_gender,
-                    }, _extract_time_after(line, m.end())))
+                    }, time_c))
                     matched_spans.append(m.span())
             # Format D: relay legs "1) Last, First [Mid] Age" — finditer
             # captures all 4 legs in one row. Relay legs don't carry a
