@@ -5408,6 +5408,202 @@ if (hasPerm('batch')) {
             dtLoadResults(1);
         });
     }
+
+    // ===== Upload PDF flow =====
+    // Two-step: dry-run (preview) → confirm (commit). The preview shows
+    // detected meet name + date, dedupe status, parse stats, and roster
+    // matches so the admin can sanity-check before writing to the DB.
+    const uplPick = document.getElementById('dtPdfPick');
+    const uplFile = document.getElementById('dtPdfFile');
+    const uplBar = document.querySelector('.dt-upload-bar');
+    const uplModal = document.getElementById('dtUploadModal');
+    const uplBody = document.getElementById('dtUploadBody');
+    const uplClose = document.getElementById('dtUploadClose');
+    const uplCancel = document.getElementById('dtUploadCancel');
+    const uplConfirm = document.getElementById('dtUploadConfirm');
+    const uplForce = document.getElementById('dtForce');
+    const uplForceWrap = document.getElementById('dtForceToggle');
+    let pendingFile = null;
+    let pendingPreview = null;
+
+    function openUplModal() {
+        uplModal.classList.remove('hidden');
+    }
+    function closeUplModal() {
+        uplModal.classList.add('hidden');
+        pendingFile = null;
+        pendingPreview = null;
+        uplForce.checked = false;
+        uplBody.innerHTML = '';
+        uplFile.value = '';
+    }
+
+    function fmtRosterMatch(n) {
+        if (n === 0) return '<span class="dt-preview-warning">No team-roster swimmers were found in this PDF. Is it for a meet your team attended?</span>';
+        return `${n} roster swimmer${n === 1 ? '' : 's'} matched`;
+    }
+
+    function renderUplPreview(p) {
+        const rows = [];
+        rows.push(`<dt>File</dt><dd>${(p.filename || '').replace(/</g, '&lt;')} <span style="color:#94a3b8;font-weight:400">(${(p.pdf_size/1024).toFixed(0)} KB)</span></dd>`);
+        rows.push(`<dt>Detected meet</dt><dd>${p.detected_meet_name || '<em style="color:#94a3b8;font-weight:400">(none — header parse failed)</em>'}</dd>`);
+        rows.push(`<dt>Detected date</dt><dd>${p.detected_start_date || '—'}${p.detected_end_date && p.detected_end_date !== p.detected_start_date ? ' → ' + p.detected_end_date : ''}</dd>`);
+        rows.push(`<dt>CT meet ID</dt><dd>${p.ct_meet_id}${p.ct_meet_id_was_synthesized ? ' <span class="ag-tag" style="background:#fef3c7;color:#92400e">synthesized</span>' : ''}</dd>`);
+        rows.push(`<dt>Parsed swims</dt><dd>${p.parsed_rows.toLocaleString()} (${p.parsed_unique_swimmers} unique swimmers)</dd>`);
+        rows.push(`<dt>PDF hash</dt><dd style="font-family:ui-monospace,Menlo,monospace;font-size:0.75rem">${p.pdf_hash}</dd>`);
+
+        let banner = '';
+        if (p.auto_attached_meet) {
+            banner = `<div class="dt-preview-success"><strong>Auto-attached</strong> to existing meet <code>${p.auto_attached_meet.ct_meet_id}</code> — "${(p.auto_attached_meet.meet_name || '').replace(/</g, '&lt;')}". This PDF will fill in the data for a meet that was previously known but had no PDF.</div>`;
+        } else if (p.will_append_to_existing) {
+            banner = `<div class="dt-preview-warning"><strong>Appending</strong> to an already-parsed meet. Existing rows will be kept; new swimmers from this PDF will be added (deduped by name+event+time).</div>`;
+        } else if (p.existing_cache && p.existing_cache.parsed_at) {
+            banner = `<div class="dt-preview-warning">A cached row exists for <code>${p.ct_meet_id}</code> but it's not at the current parser version — this upload will replace it.</div>`;
+        }
+
+        const sampleHtml = (p.sample_swimmers || []).map(s =>
+            `<div>${s.first || ''} ${s.last || ''} <span style="color:#64748b">· age ${s.age != null ? s.age : '?'} · ${s.gender || '?'} · ${s.team || ''}</span></div>`
+        ).join('');
+
+        uplBody.innerHTML = `
+            ${banner}
+            <dl class="dt-preview-grid">${rows.join('')}</dl>
+            <div>${fmtRosterMatch(p.matched_roster_swimmers)}</div>
+            <div style="font-size:0.78rem;color:#64748b;margin-top:0.4rem">Sample (first ${(p.sample_swimmers || []).length} swimmers):</div>
+            <div class="dt-preview-sample">${sampleHtml || '<em style="color:#94a3b8">no swimmers</em>'}</div>
+            ${p.parser_diagnostics && p.parser_diagnostics.unmatched_sample && p.parser_diagnostics.unmatched_sample.length
+                ? `<div style="font-size:0.78rem;color:#64748b;margin-top:0.4rem">${p.parser_diagnostics.unmatched_sample.length} line${p.parser_diagnostics.unmatched_sample.length === 1 ? '' : 's'} looked like a swimmer row but didn't match (parser misses):</div>
+                   <div class="dt-preview-sample" style="font-family:ui-monospace,Menlo,monospace">${p.parser_diagnostics.unmatched_sample.slice(0, 5).map(l => l.replace(/</g, '&lt;')).join('<br>')}</div>`
+                : ''
+            }
+        `;
+    }
+
+    function renderUplError(payload) {
+        let msg = '';
+        if (payload.error === 'duplicate') {
+            const dup = payload.duplicate_of || {};
+            msg = `<div class="dt-preview-error"><strong>Duplicate detected.</strong> This exact PDF was already imported as meet <code>${dup.ct_meet_id || '?'}</code> — "${(dup.meet_name || '').replace(/</g, '&lt;')}" (${dup.start_date || '?'}). Check "Override duplicate guard" if you really want to re-import.</div>`;
+        } else if (payload.error === 'already_parsed') {
+            msg = `<div class="dt-preview-error"><strong>Already parsed.</strong> Meet <code>${payload.ct_meet_id}</code> already has this PDF at the current parser version. Check "Override duplicate guard" to re-import.</div>`;
+        } else if (payload.error === 'no_rows') {
+            msg = `<div class="dt-preview-error"><strong>${payload.message || 'No swimmer rows found.'}</strong> Make sure the file is a Hy-Tek result PDF, not a meet announcement or psych sheet.</div>`;
+        } else {
+            msg = `<div class="dt-preview-error"><strong>${payload.error || 'Upload failed'}</strong>${payload.message ? ': ' + payload.message : ''}</div>`;
+        }
+        uplBody.innerHTML = msg;
+    }
+
+    async function runDryUpload(file, force) {
+        const fd = new FormData();
+        fd.append('pdf', file);
+        fd.append('dry_run', '1');
+        if (force) fd.append('force', '1');
+        uplBody.innerHTML = '<div style="padding:1rem;color:#64748b">Parsing…</div>';
+        openUplModal();
+        try {
+            const r = await fetch('/api/admin/upload_pdf', { method: 'POST', body: fd });
+            const d = await r.json();
+            if (!r.ok) {
+                renderUplError(d);
+                pendingPreview = null;
+                uplConfirm.disabled = true;
+                // Show force toggle so admin can decide
+                uplForceWrap.style.display = (d.error === 'duplicate' || d.error === 'already_parsed') ? '' : 'none';
+                return;
+            }
+            pendingPreview = d;
+            renderUplPreview(d);
+            uplConfirm.disabled = false;
+            uplForceWrap.style.display = '';
+        } catch (e) {
+            uplBody.innerHTML = `<div class="dt-preview-error">Network error: ${e.message}</div>`;
+            pendingPreview = null;
+            uplConfirm.disabled = true;
+        }
+    }
+
+    async function runCommitUpload(file, force) {
+        const fd = new FormData();
+        fd.append('pdf', file);
+        if (force) fd.append('force', '1');
+        uplConfirm.disabled = true;
+        uplConfirm.textContent = 'Importing…';
+        try {
+            const r = await fetch('/api/admin/upload_pdf', { method: 'POST', body: fd });
+            const d = await r.json();
+            if (!r.ok) {
+                renderUplError(d);
+                uplConfirm.disabled = false;
+                uplConfirm.textContent = 'Confirm import';
+                return;
+            }
+            uplBody.innerHTML = `<div class="dt-preview-success"><strong>Imported.</strong> ${d.parsed_rows.toLocaleString()} swims saved to meet <code>${d.ct_meet_id}</code> (mode: ${d.save_mode}). ${d.matched_roster_swimmers} roster swimmer${d.matched_roster_swimmers === 1 ? '' : 's'} matched.</div>`;
+            uplConfirm.disabled = true;
+            uplConfirm.textContent = 'Done';
+            // Refresh tab data
+            dtLoadSummary();
+            dtLoadResults(1);
+        } catch (e) {
+            uplBody.innerHTML = `<div class="dt-preview-error">Network error: ${e.message}</div>`;
+            uplConfirm.disabled = false;
+            uplConfirm.textContent = 'Confirm import';
+        }
+    }
+
+    function handleFileSelected(file) {
+        if (!file) return;
+        if (!file.name.toLowerCase().endsWith('.pdf')
+            && file.type !== 'application/pdf') {
+            alert('Please select a PDF file.');
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            alert('PDF is over 10 MB — that\'s likely the wrong file. Real Hy-Tek meet PDFs are typically under 1 MB.');
+            return;
+        }
+        pendingFile = file;
+        runDryUpload(file, uplForce.checked);
+    }
+
+    if (uplPick) {
+        uplPick.addEventListener('click', () => uplFile.click());
+        uplFile.addEventListener('change', (e) => handleFileSelected(e.target.files[0]));
+    }
+
+    // Drag and drop on the upload bar
+    if (uplBar) {
+        ['dragenter', 'dragover'].forEach(ev => {
+            uplBar.addEventListener(ev, (e) => {
+                e.preventDefault();
+                uplBar.classList.add('drag-over');
+            });
+        });
+        ['dragleave', 'drop'].forEach(ev => {
+            uplBar.addEventListener(ev, (e) => {
+                e.preventDefault();
+                uplBar.classList.remove('drag-over');
+            });
+        });
+        uplBar.addEventListener('drop', (e) => {
+            const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+            handleFileSelected(f);
+        });
+    }
+
+    if (uplClose) uplClose.addEventListener('click', closeUplModal);
+    if (uplCancel) uplCancel.addEventListener('click', closeUplModal);
+    if (uplForce) {
+        uplForce.addEventListener('change', () => {
+            if (pendingFile) runDryUpload(pendingFile, uplForce.checked);
+        });
+    }
+    if (uplConfirm) {
+        uplConfirm.addEventListener('click', () => {
+            if (!pendingFile) return;
+            runCommitUpload(pendingFile, uplForce.checked);
+        });
+    }
 }
 
 

@@ -873,6 +873,34 @@
                 <h2>Parsed PDF Data</h2>
                 <p class="tool-desc">Every swimmer-event-swim row extracted from CT Swim meet result PDFs. Source of truth for age/gender triangulation. Adding a new swimmer to the roster who already appears in these rows triangulates instantly without an extra fetch.</p>
 
+                <!-- Upload PDF -->
+                <div class="dt-upload-bar">
+                    <input type="file" id="dtPdfFile" accept="application/pdf,.pdf" class="hidden">
+                    <button id="dtPdfPick" class="btn-secondary" style="max-width:180px">Upload PDF</button>
+                    <span id="dtUploadHint" class="dt-upload-hint">Drop a Hy-Tek result PDF here or click Upload PDF. Duplicates are detected automatically.</span>
+                </div>
+
+                <!-- Upload preview modal -->
+                <div id="dtUploadModal" class="modal-backdrop hidden">
+                    <div class="modal" style="max-width:720px">
+                        <div class="modal-header">
+                            <h3 id="dtUploadTitle">Upload preview</h3>
+                            <button class="modal-close" id="dtUploadClose">×</button>
+                        </div>
+                        <div class="modal-body" id="dtUploadBody">
+                            <!-- preview content injected here -->
+                        </div>
+                        <div class="modal-footer">
+                            <label class="mc-toggle" id="dtForceToggle" style="margin-right:auto">
+                                <input type="checkbox" id="dtForce">
+                                Override duplicate guard
+                            </label>
+                            <button id="dtUploadCancel" class="btn-secondary" style="max-width:110px">Cancel</button>
+                            <button id="dtUploadConfirm" class="btn-primary" style="max-width:160px">Confirm import</button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Summary cards -->
                 <div class="admin-stats" id="dtSummary">
                     <div class="pstat-card"><div class="pstat-value" id="dtMeetsParsed">-</div><div class="pstat-label">Meets parsed</div></div>

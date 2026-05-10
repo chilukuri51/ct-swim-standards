@@ -635,6 +635,82 @@ def parse_results_pdf(path_or_bytes, return_diagnostics: bool = False):
     return out
 
 
+_META_DATE_RANGE_RE = re.compile(
+    r'([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})\s*-\s*([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})'
+)
+_META_SINGLE_DATE_RE = re.compile(
+    r'([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})'
+)
+_MONTH_NAMES = {'january': 1, 'february': 2, 'march': 3, 'april': 4,
+                'may': 5, 'june': 6, 'july': 7, 'august': 8,
+                'september': 9, 'october': 10, 'november': 11, 'december': 12}
+
+
+def _parse_long_date(s: str) -> Optional[date]:
+    """Parse 'January 30, 2026' or 'Jan 30 2026'-ish into a date object."""
+    m = re.match(r'([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})', s.strip())
+    if not m:
+        return None
+    mo = _MONTH_NAMES.get(m.group(1).lower()[:9])
+    if not mo:
+        return None
+    try:
+        return date(int(m.group(3)), mo, int(m.group(2)))
+    except ValueError:
+        return None
+
+
+def extract_meet_metadata_from_pdf(path_or_bytes) -> dict:
+    """Pull meet_name + start_date + end_date from a Hy-Tek PDF's header
+    text. Returns {'meet_name': str, 'start_date': date|None,
+    'end_date': date|None}.
+
+    Hy-Tek result PDFs have a stable banner on page 1:
+      Line 1: "CT Swimming - Results ONLY HY-TEK's MEET MANAGER 8.0..."
+      Line 2: "<MEET NAME>, Sanction #: <SANCTION>"
+      Line 3: "<MONTH DAY, YEAR> [- <MONTH DAY, YEAR>] - <CITY, ST>"
+
+    Used by the manual-upload endpoint to attach an out-of-CT-Swim PDF
+    to a synthesized ct_meet_id when the admin doesn't supply one.
+    """
+    out = {'meet_name': '', 'start_date': None, 'end_date': None}
+    if isinstance(path_or_bytes, (bytes, bytearray)):
+        reader = PdfReader(io.BytesIO(path_or_bytes))
+    else:
+        reader = PdfReader(path_or_bytes)
+    if not reader.pages:
+        return out
+    text = reader.pages[0].extract_text() or ''
+    lines = [ln.strip() for ln in text.split('\n') if ln.strip()]
+    # Skip the Hy-Tek banner line (HY-TEK's MEET MANAGER...)
+    candidate_lines = [ln for ln in lines[:6]
+                       if 'MEET MANAGER' not in ln.upper()
+                       and 'PAGE ' not in ln.upper()
+                       and 'RESULTS' not in ln.upper().rstrip()]
+    # Meet name: first non-banner line, often ends with ", Sanction #: ..."
+    for ln in candidate_lines:
+        nm = re.sub(r',\s*Sanction\s*#?:?\s*[A-Z0-9-]+\s*$', '', ln,
+                    flags=re.IGNORECASE).strip()
+        if 4 <= len(nm) <= 200 and not _META_DATE_RANGE_RE.search(nm):
+            out['meet_name'] = nm
+            break
+    # Date(s): scan all candidate lines for a long-form date
+    for ln in candidate_lines:
+        rng = _META_DATE_RANGE_RE.search(ln)
+        if rng:
+            out['start_date'] = _parse_long_date(rng.group(1))
+            out['end_date'] = _parse_long_date(rng.group(2))
+            break
+        single = _META_SINGLE_DATE_RE.search(ln)
+        if single:
+            d = _parse_long_date(single.group(1))
+            if d:
+                out['start_date'] = d
+                out['end_date'] = d
+                break
+    return out
+
+
 def download_pdf(url: str) -> Optional[bytes]:
     """Fetch a PDF from CT Swim. Relative URLs are resolved against the base."""
     if not url:

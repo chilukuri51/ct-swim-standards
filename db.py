@@ -6,8 +6,10 @@ No ORM - just sqlite3 for simplicity.
 
 import sqlite3
 import os
+import re
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from typing import Optional
 
 import paths
 
@@ -209,6 +211,16 @@ def init_db():
         # of likely-missed lines). Surfaces parser quality in the Data tab.
         try:
             conn.execute("ALTER TABLE meet_pdf_cache ADD COLUMN parse_diagnostics TEXT")
+        except sqlite3.OperationalError:
+            pass
+        # pdf_hashes is a comma-joined list of SHA-256 hashes (first 16
+        # chars) of every PDF byte-stream we've parsed for this meet.
+        # Powers duplicate-detection on manual upload — re-uploading the
+        # exact same file is a clear admin mistake to surface, while
+        # uploading a SECOND PDF (e.g., Senior session + AG session) for
+        # the same meet should append to the same cache row.
+        try:
+            conn.execute("ALTER TABLE meet_pdf_cache ADD COLUMN pdf_hashes TEXT")
         except sqlite3.OperationalError:
             pass
         # One-time migration: backfill birth_year/month from any existing dob values.
@@ -451,7 +463,8 @@ def get_meet_cache(ct_meet_id: str):
     with get_conn() as conn:
         row = conn.execute(
             "SELECT ct_meet_id, meet_name, start_date, end_date, pdf_url, "
-            "parsed_at, note, parser_version FROM meet_pdf_cache "
+            "parsed_at, note, parser_version, pdf_hashes "
+            "FROM meet_pdf_cache "
             "WHERE ct_meet_id = ?",
             (ct_meet_id,)
         ).fetchone()
@@ -462,7 +475,8 @@ def save_meet_cache(ct_meet_id: str, meet_name: str = None,
                     start_date: str = None, end_date: str = None,
                     pdf_url: str = None, parsed_at: str = None,
                     note: str = None, parser_version: int = None,
-                    parse_diagnostics: str = None):
+                    parse_diagnostics: str = None,
+                    pdf_hashes: str = None):
     """Upsert one row of meet_pdf_cache. Only non-None args overwrite existing."""
     with get_conn() as conn:
         existing = conn.execute(
@@ -479,34 +493,96 @@ def save_meet_cache(ct_meet_id: str, meet_name: str = None,
                     parsed_at = COALESCE(?, parsed_at),
                     note = ?,
                     parser_version = COALESCE(?, parser_version),
-                    parse_diagnostics = COALESCE(?, parse_diagnostics)
+                    parse_diagnostics = COALESCE(?, parse_diagnostics),
+                    pdf_hashes = COALESCE(?, pdf_hashes)
                 WHERE ct_meet_id = ?
             """, (meet_name, start_date, end_date, pdf_url,
                   parsed_at, note, parser_version, parse_diagnostics,
-                  ct_meet_id))
+                  pdf_hashes, ct_meet_id))
         else:
             conn.execute("""
                 INSERT INTO meet_pdf_cache
                   (ct_meet_id, meet_name, start_date, end_date, pdf_url,
-                   parsed_at, note, parser_version, parse_diagnostics)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   parsed_at, note, parser_version, parse_diagnostics,
+                   pdf_hashes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (ct_meet_id, meet_name, start_date, end_date, pdf_url,
-                  parsed_at, note, parser_version, parse_diagnostics))
+                  parsed_at, note, parser_version, parse_diagnostics,
+                  pdf_hashes))
 
 
-def save_meet_pdf_swimmers(ct_meet_id: str, swimmers: list):
-    """Bulk insert parsed PDF rows. Replaces any existing rows for this meet.
+def lookup_pdf_by_hash(pdf_hash: str) -> Optional[dict]:
+    """Find the meet whose pdf_hashes list contains this hash, if any.
+    Powers duplicate detection on manual upload."""
+    if not pdf_hash:
+        return None
+    pat = f"%{pdf_hash}%"
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT ct_meet_id, meet_name, start_date, end_date, pdf_url, "
+            "       parsed_at, parser_version "
+            "FROM meet_pdf_cache "
+            "WHERE pdf_hashes LIKE ? "
+            "LIMIT 1",
+            (pat,)
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def find_meet_by_name_date(meet_name: str, start_date: str) -> Optional[dict]:
+    """Look up an existing meet_pdf_cache row by name + start_date.
+    Used when a manually-uploaded PDF doesn't carry a known ct_meet_id —
+    we try to attach it to an already-tracked meet (which the auto-
+    discovery process may have noted as 'no_pdf')."""
+    if not meet_name or not start_date:
+        return None
+    nm = re.sub(r'\s+', ' ', meet_name).strip().lower()
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT ct_meet_id, meet_name, start_date, end_date, pdf_url, "
+            "       parsed_at, parser_version, note "
+            "FROM meet_pdf_cache "
+            "WHERE start_date = ?",
+            (start_date,)
+        ).fetchall()
+    # Pick the row whose meet_name shares the most words with the upload
+    target_words = set(nm.split())
+    best = None
+    best_overlap = 0
+    for r in rows:
+        rn = re.sub(r'\s+', ' ', (r['meet_name'] or '').lower()).strip()
+        rwords = set(rn.split())
+        overlap = len(target_words & rwords)
+        if overlap > best_overlap:
+            best = dict(r)
+            best_overlap = overlap
+    return best if best_overlap >= 2 else None
+
+
+def save_meet_pdf_swimmers(ct_meet_id: str, swimmers: list,
+                           mode: str = 'replace'):
+    """Bulk insert parsed PDF rows.
+
+    mode='replace' (default) deletes existing rows for this meet first.
+    Used by the auto-discovery + age-fill loop, which already accumulates
+    rows from every sibling PDF (find_pdfs_for_meet returns all of them)
+    before calling once.
+
+    mode='append' keeps existing rows and uses INSERT OR IGNORE for new
+    ones. Used by the manual upload endpoint when a second PDF for the
+    same meet (e.g., AG session vs Senior session of a championship) is
+    uploaded — replacing would wipe the first PDF's swimmers.
 
     Writes to BOTH meet_pdf_swimmers (one row per swimmer-meet, the
     triangulation source) and meet_pdf_results (one row per swimmer-event-
-    swim, the Data tab source). Both are derived from the same parser
-    output so they stay consistent.
+    swim, the Data tab source).
     """
     with get_conn() as conn:
-        conn.execute("DELETE FROM meet_pdf_swimmers WHERE ct_meet_id = ?",
-                     (ct_meet_id,))
-        conn.execute("DELETE FROM meet_pdf_results WHERE ct_meet_id = ?",
-                     (ct_meet_id,))
+        if mode == 'replace':
+            conn.execute("DELETE FROM meet_pdf_swimmers WHERE ct_meet_id = ?",
+                         (ct_meet_id,))
+            conn.execute("DELETE FROM meet_pdf_results WHERE ct_meet_id = ?",
+                         (ct_meet_id,))
         for sw in swimmers:
             try:
                 conn.execute("""

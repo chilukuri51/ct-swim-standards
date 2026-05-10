@@ -18,6 +18,9 @@ app.secret_key = os.environ.get('SECRET_KEY', 'change-me-in-production-please-a8
 # 'authentication required' mid-task. Combined with session.permanent=True
 # in the login handler, this is the actual cookie lifetime.
 app.permanent_session_lifetime = timedelta(days=30)
+# Cap PDF uploads at 10 MB. Real CT Swim meet PDFs are typically
+# 100-500 KB; anything larger is almost certainly the wrong file.
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 
 BASE_URL = "https://fast.ctswim.org/CTNet"
 
@@ -994,6 +997,232 @@ def api_register_meet_pdf():
         'matched_team_members': matched_team_members,
         'auto_fill_started': auto_fill_started,
     })
+
+
+@app.route('/api/admin/upload_pdf', methods=['POST'])
+@role_required('admin')
+def api_upload_pdf():
+    """Direct PDF upload (bypasses ctswim.org URL fetch).
+
+    Form fields:
+      pdf            (file, required) — Hy-Tek result PDF
+      ct_meet_id     (str, optional)  — explicit CT Swim meet id; if
+                                        omitted we auto-detect from the
+                                        PDF header or synthesize one
+      dry_run        ('1' or '0')     — preview only, no DB write
+      force          ('1' or '0')     — bypass duplicate-detection
+                                        guards (re-import same hash,
+                                        replace already-parsed meet)
+
+    Edge cases handled:
+      - Same PDF re-uploaded: SHA-256 of bytes matches an existing
+        cache row → 409 unless force=1
+      - Different PDF for same already-parsed meet (corrected exports):
+        ct_meet_id matches a cache row already at current parser_version
+        → 409 unless force=1
+      - Multiple PDFs for one meet (Senior + AG sessions): admin
+        provides the same ct_meet_id; rows APPEND (no DELETE)
+      - Out-of-CT-Swim meets: ct_meet_id omitted; we extract meet name
+        and date from the PDF header and synthesize 'manual_<hash8>'
+      - Wrong file (not a Hy-Tek PDF): parser returns 0 swimmer rows;
+        we surface 'no swimmer rows found' without writing
+      - Encrypted/corrupt PDFs: pypdf raises; surfaced as 422
+      - Oversized files: Flask's MAX_CONTENT_LENGTH (10 MB) returns 413
+        before this handler runs
+    """
+    import ct_pdf as _ctp
+    import hashlib
+    from datetime import datetime, timezone
+
+    f = request.files.get('pdf')
+    if not f or not f.filename:
+        return jsonify({'error': 'pdf file required'}), 400
+    pdf_bytes = f.read()
+    if not pdf_bytes:
+        return jsonify({'error': 'uploaded file is empty'}), 400
+    if not pdf_bytes.startswith(b'%PDF'):
+        return jsonify({'error': 'file does not look like a PDF (missing %PDF header)'}), 400
+
+    pdf_hash = hashlib.sha256(pdf_bytes).hexdigest()[:16]
+    dry_run = request.form.get('dry_run') in ('1', 'true', 'True')
+    force = request.form.get('force') in ('1', 'true', 'True')
+    ct_meet_id_input = (request.form.get('ct_meet_id') or '').strip()
+
+    # ===== Edge case 1: exact-bytes duplicate =====
+    dup = db.lookup_pdf_by_hash(pdf_hash)
+    if dup and not force:
+        return jsonify({
+            'error': 'duplicate',
+            'message': 'This exact PDF has already been ingested.',
+            'duplicate_of': dup,
+            'pdf_hash': pdf_hash,
+        }), 409
+
+    # ===== Parse the PDF =====
+    try:
+        rows, diag = _ctp.parse_results_pdf(pdf_bytes, return_diagnostics=True)
+    except Exception as e:
+        return jsonify({'error': f'parse failed: {type(e).__name__}: {e}',
+                        'pdf_hash': pdf_hash}), 422
+
+    # ===== Edge case 2: zero rows (wrong file format) =====
+    if not rows:
+        return jsonify({
+            'error': 'no_rows',
+            'message': 'No swimmer rows found. Is this a Hy-Tek result PDF?',
+            'pdf_hash': pdf_hash,
+            'diagnostics': diag,
+        }), 422
+
+    # ===== Resolve ct_meet_id =====
+    meta = _ctp.extract_meet_metadata_from_pdf(pdf_bytes)
+    detected_name = meta.get('meet_name') or ''
+    detected_start = meta.get('start_date')
+    detected_end = meta.get('end_date') or detected_start
+    start_iso = detected_start.isoformat() if detected_start else None
+    end_iso = detected_end.isoformat() if detected_end else None
+
+    auto_attached_meet = None
+    ct_meet_id = ct_meet_id_input
+    if not ct_meet_id:
+        # Try to attach to a known meet by (name, start_date)
+        candidate = db.find_meet_by_name_date(detected_name, start_iso)
+        if candidate:
+            ct_meet_id = candidate['ct_meet_id']
+            auto_attached_meet = candidate
+        else:
+            # Synthesize a stable id from the file hash
+            ct_meet_id = f'manual_{pdf_hash[:8]}'
+
+    # ===== Edge case 3: meet already parsed at current parser version =====
+    existing_cache = db.get_meet_cache(ct_meet_id)
+    already_current = (
+        existing_cache
+        and existing_cache.get('parsed_at')
+        and (existing_cache.get('parser_version') or 0) >= _ctp.PARSER_VERSION
+    )
+    same_pdf_already_in_meet = False
+    if existing_cache and existing_cache.get('pdf_hashes'):
+        existing_hashes = set(h.strip() for h in existing_cache['pdf_hashes'].split(',') if h.strip())
+        same_pdf_already_in_meet = pdf_hash in existing_hashes
+
+    # If user supplied a ct_meet_id that's already current AND this is a
+    # NEW PDF (different hash), assume they're adding a sibling session
+    # and append. If it's the SAME hash, that's a duplicate (caught above
+    # via the global hash check, but defend belt-and-suspenders).
+    will_append_to_existing = bool(
+        already_current
+        and not same_pdf_already_in_meet
+        and existing_cache and existing_cache.get('parsed_at')
+    )
+    will_replace_existing = bool(
+        already_current and same_pdf_already_in_meet
+    )
+
+    if will_replace_existing and not force:
+        return jsonify({
+            'error': 'already_parsed',
+            'message': 'This PDF has already been parsed for this meet at the current parser version.',
+            'ct_meet_id': ct_meet_id,
+            'existing': existing_cache,
+            'pdf_hash': pdf_hash,
+        }), 409
+
+    # ===== Compute roster match count =====
+    name_keys = set()
+    with db.get_conn() as conn:
+        members = conn.execute(
+            "SELECT first_name, last_name FROM team_members"
+        ).fetchall()
+        for m in members:
+            name_keys.add(_ctp.normalize_name(m['first_name'], m['last_name']))
+    matched_roster = sum(1 for r in rows if r.get('name_key') in name_keys)
+    sample_swimmers = [
+        {'first': r['first'], 'last': r['last'], 'age': r['age'],
+         'team': r.get('team', ''), 'gender': r.get('gender', '')}
+        for r in rows[:8]
+    ]
+
+    preview = {
+        'pdf_hash': pdf_hash,
+        'pdf_size': len(pdf_bytes),
+        'filename': f.filename,
+        'detected_meet_name': detected_name,
+        'detected_start_date': start_iso,
+        'detected_end_date': end_iso,
+        'ct_meet_id': ct_meet_id,
+        'ct_meet_id_was_synthesized': ct_meet_id.startswith('manual_'),
+        'auto_attached_meet': auto_attached_meet,
+        'parsed_rows': len(rows),
+        'parsed_unique_swimmers': len({r['name_key'] for r in rows}),
+        'matched_roster_swimmers': matched_roster,
+        'will_append_to_existing': will_append_to_existing,
+        'existing_cache': existing_cache,
+        'sample_swimmers': sample_swimmers,
+        'parser_diagnostics': diag,
+    }
+
+    if dry_run:
+        preview['dry_run'] = True
+        return jsonify(preview)
+
+    # ===== Commit =====
+    # IMPORTANT: meet_pdf_cache row must exist BEFORE meet_pdf_swimmers /
+    # meet_pdf_results inserts because of the foreign-key constraint on
+    # ct_meet_id. age_filler's flow does the same upsert-cache-first.
+    save_mode = 'append' if will_append_to_existing else 'replace'
+    new_hashes = pdf_hash
+    if existing_cache and existing_cache.get('pdf_hashes'):
+        existing = [h.strip() for h in existing_cache['pdf_hashes'].split(',') if h.strip()]
+        if pdf_hash not in existing:
+            new_hashes = ','.join(existing + [pdf_hash])
+        else:
+            new_hashes = existing_cache['pdf_hashes']
+    new_pdf_url_token = f'upload:{f.filename}'
+    if existing_cache and existing_cache.get('pdf_url') and save_mode == 'append':
+        existing_urls = [u.strip() for u in existing_cache['pdf_url'].split(',') if u.strip()]
+        if new_pdf_url_token not in existing_urls:
+            new_pdf_url = ','.join(existing_urls + [new_pdf_url_token])
+        else:
+            new_pdf_url = existing_cache['pdf_url']
+    else:
+        new_pdf_url = new_pdf_url_token
+
+    diag_blob = json.dumps({'pdfs': [{
+        'url': new_pdf_url_token,
+        'rows': len(rows),
+        'total_lines': diag['total_lines'],
+        'unmatched_sample': diag['unmatched_sample'],
+    }]})
+
+    db.save_meet_cache(
+        ct_meet_id,
+        meet_name=(existing_cache.get('meet_name')
+                   if existing_cache and existing_cache.get('meet_name')
+                   else detected_name) or 'Manually uploaded meet',
+        start_date=(existing_cache.get('start_date')
+                    if existing_cache and existing_cache.get('start_date')
+                    else start_iso),
+        end_date=(existing_cache.get('end_date')
+                  if existing_cache and existing_cache.get('end_date')
+                  else end_iso),
+        pdf_url=new_pdf_url,
+        parsed_at=datetime.now(timezone.utc).isoformat(),
+        note=None,
+        parser_version=_ctp.PARSER_VERSION,
+        parse_diagnostics=diag_blob,
+        pdf_hashes=new_hashes,
+    )
+    db.save_meet_pdf_swimmers(ct_meet_id, rows, mode=save_mode)
+
+    db.log_sync(None, 'pdf_upload', 'ok',
+                f"{f.filename} → {ct_meet_id} ({len(rows)} rows, "
+                f"{matched_roster} on roster) mode={save_mode}")
+
+    preview['ok'] = True
+    preview['saved'] = True
+    preview['save_mode'] = save_mode
+    return jsonify(preview)
 
 
 @app.route('/api/admin/diagnose_member', methods=['GET'])
