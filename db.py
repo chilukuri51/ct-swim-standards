@@ -957,30 +957,6 @@ def save_member_triangulation(member_id, birth_year=None, birth_month=None,
                        SET birth_year = NULL, birth_month = NULL, updated_at = ?
                      WHERE id = ?
                 """, (_utcnow_iso(), member_id))
-        # Pass 2: random-seed pattern detection.
-        # Earlier test data was seeded with birth_month=6 (year midpoint), random
-        # gender, and random birth_year. For swimmers that swimstandards can't
-        # find (404 → age_observed never set) this seed data is stuck and the
-        # earlier sanity check above never fires. Detect the seed signature and
-        # clear birth_year, birth_month, gender so the coach can re-enter, OR
-        # so a future swimstandards sync (once they're indexed) can populate
-        # cleanly. Conservative trigger: must have just synced (age_synced_at
-        # is today) AND have the exact signature.
-        row2 = conn.execute("""
-            SELECT birth_year, birth_month, age_observed, age_synced_at
-            FROM team_members WHERE id = ?
-        """, (member_id,)).fetchone()
-        if (row2
-                and row2['age_synced_at'] == today
-                and row2['birth_month'] == 6
-                and row2['age_observed'] is None
-                and row2['birth_year'] is not None):
-            conn.execute("""
-                UPDATE team_members
-                   SET birth_year = NULL, birth_month = NULL, gender = NULL,
-                       updated_at = ?
-                 WHERE id = ?
-            """, (_utcnow_iso(), member_id))
     return True
 
 
