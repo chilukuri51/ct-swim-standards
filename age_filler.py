@@ -528,26 +528,24 @@ def triangulate_one_member(member, force_all: bool = True) -> dict:
     Returns a dict with:
       status:      'updated' | 'observed_only' | 'no_data'
       samples:     number of observations used
-      birth_year:  year if narrowed, else None
+      birth_year:  year if narrowed by triangulation, else None
       birth_month: month if narrowed, else None
-      window_days: confidence window in days (smaller = tighter)
+      window_days: SIZE of the surviving birth-date band, in days.
+                   This is the only honest confidence signal under
+                   the USA Swimming age-up rule (age = age on day 1
+                   of meet). 1 obs ≈ 365 days. Observed age-ups
+                   shrink it. window_days == 0 means a consecutive-
+                   day age-up was observed and the birthday is
+                   pinned exactly. Frontend labels read off this.
       age_observed: most recent age seen in PDFs
       gender_filled: True if gender was set from observation votes
-      confidence:  'high' | 'medium' | 'low' | 'observed' | 'none'
-
-    Confidence ladder:
-      high     — birth_year AND birth_month known (window < 60 days)
-      medium   — birth_year known, month unknown (window < 365)
-      low      — only age_observed, no triangulation (1 obs or
-                 inconsistent observations)
-      none     — no observations at all
     """
     if isinstance(member, int):
         m = db.get_team_member(member)
     else:
         m = member
     if not m:
-        return {'status': 'no_data', 'confidence': 'none'}
+        return {'status': 'no_data'}
 
     name_key = ct_pdf.normalize_name(
         m.get('first_name', ''), m.get('last_name', '')
@@ -570,7 +568,7 @@ def triangulate_one_member(member, force_all: bool = True) -> dict:
 
     obs = db.lookup_member_observations(name_key, prefer_team=prefer_team)
     if not obs:
-        return {'status': 'no_data', 'samples': 0, 'confidence': 'none'}
+        return {'status': 'no_data', 'samples': 0}
 
     records, gender_votes, observed_age = _build_records_from_observations(obs)
 
@@ -594,7 +592,6 @@ def triangulate_one_member(member, force_all: bool = True) -> dict:
             'samples': len(records),
             'age_observed': observed_age,
             'gender_filled': gender_filled,
-            'confidence': 'low' if observed_age is not None else 'none',
         }
 
     db.save_member_triangulation(
@@ -604,13 +601,6 @@ def triangulate_one_member(member, force_all: bool = True) -> dict:
         window_days=tri.get('window_days'),
         age_observed=observed_age,
     )
-    # Confidence ladder
-    if tri.get('birth_month'):
-        conf = 'high'
-    elif tri.get('birth_year'):
-        conf = 'medium'
-    else:
-        conf = 'low'
     return {
         'status': 'updated',
         'samples': tri.get('samples'),
@@ -619,7 +609,6 @@ def triangulate_one_member(member, force_all: bool = True) -> dict:
         'window_days': tri.get('window_days'),
         'age_observed': observed_age,
         'gender_filled': gender_filled,
-        'confidence': conf,
     }
 
 
@@ -660,8 +649,7 @@ def triangulate_members_for_pdf(parsed_rows: list) -> dict:
                 'name': f"{m['first_name']} {m['last_name']}",
                 **{k: result.get(k) for k in (
                     'status', 'samples', 'birth_year', 'birth_month',
-                    'window_days', 'age_observed', 'confidence',
-                    'gender_filled',
+                    'window_days', 'age_observed', 'gender_filled',
                 )},
             })
     return {'triangulated': len(updated), 'members': updated}
@@ -696,7 +684,7 @@ def _process_member(member: dict, force_all: bool = False) -> dict:
         'gender_filled': result.get('gender_filled', False),
         'narrowed_year': result.get('birth_year') is not None,
         'narrowed_month': result.get('birth_month') is not None,
-        'confidence': result.get('confidence', 'none'),
+        'window_days': result.get('window_days'),
     }
 
 

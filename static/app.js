@@ -1839,20 +1839,36 @@ if (hasPerm('roster')) {
     if (reTriBtn) reTriBtn.addEventListener('click', reTriangulate);
 
     // Format a roster member's age-triangulation confidence as a short
-    // badge. Reads age_window_days + birth_year + birth_month + age_observed
-    // straight off the member dict already sent by /api/my_swimmers.
+    // badge. Reads age_window_days + birth_year + birth_month + age_observed.
+    //
+    // Confidence is driven by window_days (the SIZE of the surviving birth-
+    // date window after intersecting observations using the USA Swimming
+    // age-up rule: age = age on day 1 of the meet). A single observation
+    // gives ~365 days; observed age-ups shrink the window. Only when an
+    // age-up is observed across consecutive days does window_days go to 0.
     function ageConfidenceLabel(m) {
-        if (m.birth_year && m.birth_month && (m.age_window_days != null && m.age_window_days < 60)) {
-            return { text: '✓ DOB confirmed', color: '#16a34a', bg: '#dcfce7' };
+        const w = m.age_window_days;
+        const y = m.birth_year;
+        const mo = m.birth_month;
+        const ymd = (y && mo) ? `${y}-${String(mo).padStart(2,'0')}` : (y ? `${y}` : null);
+        if (w != null && w <= 1) {
+            return { text: '✓ DOB known (to the day)', color: '#16a34a', bg: '#dcfce7' };
         }
-        if (m.birth_year && m.birth_month) {
-            return { text: `DOB ${m.birth_year}-${String(m.birth_month).padStart(2,'0')}, ±${m.age_window_days || '?'}d`, color: '#0055a4', bg: '#dbeafe' };
+        if (w != null && w <= 14) {
+            const yr = y ? ` in ${y}` : '';
+            return { text: `DOB ±${w} days${yr}`, color: '#16a34a', bg: '#dcfce7' };
         }
-        if (m.birth_year) {
-            return { text: `Born ${m.birth_year} (month unknown)`, color: '#0055a4', bg: '#dbeafe' };
+        if (w != null && w <= 62) {
+            return { text: ymd ? `Born ${ymd} (±${w}d)` : `±${w}d window`, color: '#0055a4', bg: '#dbeafe' };
+        }
+        if (w != null && w <= 186) {
+            return { text: ymd ? `Born ~${ymd} (±${w}d)` : `Window ±${w}d`, color: '#0055a4', bg: '#dbeafe' };
+        }
+        if (y && w != null && w <= 365) {
+            return { text: `Born ${y} (month uncertain)`, color: '#0055a4', bg: '#dbeafe' };
         }
         if (m.age_observed != null) {
-            return { text: `Age ${m.age_observed} observed once`, color: '#d97706', bg: '#fef3c7' };
+            return { text: `Age ${m.age_observed} observed at 1 meet`, color: '#d97706', bg: '#fef3c7' };
         }
         if (m.age != null && m.age_source === 'entered') {
             return { text: 'Manually entered', color: '#475569', bg: '#f1f5f9' };
@@ -5029,17 +5045,24 @@ function wireProfileLinks(container, lookup) {
         if (m.gender) bits.push(m.gender === 'F' ? 'Female' : 'Male');
         if (m.roster) bits.push(m.roster);
         if (m.ct_team) bits.push(`CT: ${m.ct_team}`);
-        // Build confidence badge inline so reading flows naturally:
-        // "Age 11 · Female · ✓ DOB confirmed".
+        // Build confidence fragment inline. Honest about what we know:
+        // window_days is the SIZE of the still-possible birth-date band
+        // under the championship age-up rule (age = age on day 1 of meet).
+        const w = m.age_window_days;
+        const y = m.birth_year;
+        const mo = m.birth_month;
+        const ymd = (y && mo) ? `${y}-${String(mo).padStart(2,'0')}` : (y ? `${y}` : null);
         let confText = null;
-        if (m.birth_year && m.birth_month && (m.age_window_days != null && m.age_window_days < 60)) {
-            confText = '✓ DOB confirmed';
-        } else if (m.birth_year && m.birth_month) {
-            confText = `DOB ~${m.birth_year}-${String(m.birth_month).padStart(2,'0')}`;
-        } else if (m.birth_year) {
-            confText = `Born ${m.birth_year}`;
+        if (w != null && w <= 1) {
+            confText = '✓ DOB known';
+        } else if (w != null && w <= 14) {
+            confText = `DOB ±${w}d`;
+        } else if (w != null && w <= 186 && ymd) {
+            confText = `Born ${ymd} (±${w}d)`;
+        } else if (y) {
+            confText = `Born ${y}`;
         } else if (m.age_observed != null && m.age == null) {
-            confText = `${m.age_observed} observed (low confidence)`;
+            confText = `Age ${m.age_observed} (1 meet)`;
         }
         if (confText) bits.push(confText);
         elMeta.textContent = bits.join(' · ');
