@@ -756,21 +756,6 @@ def api_reset_age_data():
                     'kept_uploaded_pdfs': keep_uploaded})
 
 
-@app.route('/api/admin/unmatched_meets', methods=['GET'])
-@role_required('admin')
-def api_unmatched_meets():
-    """List meets that the auto-discovery couldn't match a PDF for.
-    Coach uses this to find which meets need a manual URL entry."""
-    with db.get_conn() as conn:
-        rows = conn.execute("""
-            SELECT ct_meet_id, meet_name, start_date, end_date
-            FROM meet_pdf_cache
-            WHERE note IN ('no_pdf', 'no_meta', 'download_failed')
-            ORDER BY start_date DESC, ct_meet_id
-        """).fetchall()
-    return jsonify({'meets': [dict(r) for r in rows]})
-
-
 # ===== Data tab: parsed-PDF data view (admin only) =====
 
 @app.route('/api/admin/data_tab/results', methods=['GET'])
@@ -971,13 +956,15 @@ def api_data_tab_distinct():
 @app.route('/api/admin/data_tab/summary', methods=['GET'])
 @role_required('admin')
 def api_data_tab_summary():
-    """Top-level Data tab counts + per-meet diagnostics.
+    """Top-level Data tab counts + per-import diagnostics.
 
     Returns:
-      meets_total, meets_parsed, meets_no_pdf, meets_failed,
-      results_total, swimmers_total,
-      recent_meets[]: per-meet diagnostics (PDFs scanned, rows parsed,
-                      unmatched-line samples) sorted newest first.
+      meets_parsed:  imported meets (parsed_at IS NOT NULL)
+      meets_failed:  imports that errored out
+      results_total: total swim records
+      swimmers_total: distinct swimmers across all imports
+      recent_meets[]: per-import diagnostics (PDFs scanned, rows
+                      imported, unmatched-line samples) newest first
     """
     with db.get_conn() as conn:
         cache_rows = conn.execute("""
@@ -987,18 +974,12 @@ def api_data_tab_summary():
             ORDER BY (start_date IS NULL), start_date DESC, ct_meet_id DESC
             LIMIT 500
         """).fetchall()
-        meets_total = conn.execute(
-            "SELECT COUNT(*) AS n FROM meet_pdf_cache"
-        ).fetchone()['n']
         meets_parsed = conn.execute(
             "SELECT COUNT(*) AS n FROM meet_pdf_cache WHERE parsed_at IS NOT NULL"
         ).fetchone()['n']
-        meets_no_pdf = conn.execute(
-            "SELECT COUNT(*) AS n FROM meet_pdf_cache WHERE note = 'no_pdf'"
-        ).fetchone()['n']
         meets_failed = conn.execute(
             "SELECT COUNT(*) AS n FROM meet_pdf_cache "
-            "WHERE note IS NOT NULL AND note NOT IN ('no_pdf')"
+            "WHERE note IS NOT NULL"
         ).fetchone()['n']
         results_total = conn.execute(
             "SELECT COUNT(*) AS n FROM meet_pdf_results"
@@ -1021,9 +1002,7 @@ def api_data_tab_summary():
 
     return jsonify({
         'totals': {
-            'meets_total': meets_total,
             'meets_parsed': meets_parsed,
-            'meets_no_pdf': meets_no_pdf,
             'meets_failed': meets_failed,
             'results_total': results_total,
             'swimmers_total': swimmers_total,
@@ -1079,84 +1058,6 @@ def api_data_tab_row_delete(row_id):
     if not ok:
         return jsonify({'error': 'not_found'}), 404
     return jsonify({'ok': True})
-
-
-@app.route('/api/admin/register_meet_pdf', methods=['POST'])
-@role_required('admin')
-def api_register_meet_pdf():
-    """Manually link a CT Swim meet to its result PDF when it isn't on
-    Results.aspx (e.g. championship meets that get filed under a separate
-    /CT_Age_Groups/ subdirectory).
-
-    POST JSON: {"meet_id": "7102", "pdf_url": "/Customer-Content/..."}
-
-    Side effects: writes the URL to meet_pdf_cache, downloads + parses
-    the PDF, populates meet_pdf_swimmers, and clears note='no_pdf' so the
-    next age-fill run picks it up.
-    """
-    import ct_pdf as _ctp
-    from datetime import datetime, timezone
-    body = request.json or {}
-    meet_id = (body.get('meet_id') or '').strip()
-    pdf_url = (body.get('pdf_url') or '').strip()
-    if not meet_id or not pdf_url:
-        return jsonify({'error': 'meet_id and pdf_url required'}), 400
-
-    pdf_bytes = _ctp.download_pdf(pdf_url)
-    if not pdf_bytes:
-        return jsonify({'error': 'PDF download failed', 'pdf_url': pdf_url}), 502
-
-    try:
-        rows, diag = _ctp.parse_results_pdf(pdf_bytes, return_diagnostics=True)
-    except Exception as e:
-        return jsonify({'error': f'parse failed: {type(e).__name__}: {e}'}), 500
-
-    # Save to cache + swimmers (stamp the current parser version so this
-    # row stays valid until the parser code changes meaningfully).
-    diag_blob = json.dumps({'pdfs': [{'url': pdf_url,
-                                      'rows': len(rows),
-                                      'total_lines': diag['total_lines'],
-                                      'unmatched_sample': diag['unmatched_sample']}]})
-    db.save_meet_cache(
-        meet_id, pdf_url=pdf_url,
-        parsed_at=datetime.now(timezone.utc).isoformat(),
-        note=None,
-        parser_version=_ctp.PARSER_VERSION,
-        parse_diagnostics=diag_blob,
-    )
-    db.save_meet_pdf_swimmers(meet_id, rows)
-
-    # How many of OUR roster swimmers were found in this PDF? Tells the
-    # admin whether the upload helps anyone.
-    name_keys = set()
-    with db.get_conn() as conn:
-        members = conn.execute(
-            "SELECT first_name, last_name FROM team_members"
-        ).fetchall()
-        for m in members:
-            name_keys.add(_ctp.normalize_name(m['first_name'], m['last_name']))
-    matched_team_members = sum(
-        1 for r in rows if r.get('name_key') in name_keys
-    )
-
-    # Auto-trigger age-fill so the new PDF data flows into team_members
-    # immediately. Use force_all=True so already-resolved swimmers get
-    # re-checked with the new data (their birth window might tighten).
-    auto_fill_started = False
-    try:
-        auto_fill_started = age_filler.start_autofill(force_all=True)
-    except Exception:
-        pass
-
-    return jsonify({
-        'ok': True,
-        'meet_id': meet_id,
-        'pdf_url': pdf_url,
-        'pdf_size': len(pdf_bytes),
-        'parsed_rows': len(rows),
-        'matched_team_members': matched_team_members,
-        'auto_fill_started': auto_fill_started,
-    })
 
 
 @app.route('/api/admin/upload_pdf', methods=['POST'])
@@ -1375,13 +1276,24 @@ def api_upload_pdf():
     )
     db.save_meet_pdf_swimmers(ct_meet_id, rows, mode=save_mode)
 
+    # ===== Per-PDF age triangulation =====
+    # Only the roster swimmers who actually appear in THIS PDF get
+    # re-triangulated. Reads from meet_pdf_swimmers (every prior import
+    # plus what we just saved), runs the fast path, stamps results.
+    # Pure SQL + in-memory math — no network, no thread pool.
+    import age_filler as _af
+    tri_result = _af.triangulate_members_for_pdf(rows)
+
     db.log_sync(None, 'pdf_upload', 'ok',
                 f"{f.filename} → {ct_meet_id} ({len(rows)} rows, "
-                f"{matched_roster} on roster) mode={save_mode}")
+                f"{matched_roster} on roster, "
+                f"{tri_result['triangulated']} ages updated) mode={save_mode}")
 
     preview['ok'] = True
     preview['saved'] = True
     preview['save_mode'] = save_mode
+    preview['ages_updated'] = tri_result['triangulated']
+    preview['triangulated_members'] = tri_result['members']
     return jsonify(preview)
 
 
@@ -1797,6 +1709,26 @@ def api_update_team_member(member_id):
         update_fields['birth_month'] = bm
     db.update_team_member(member_id, **update_fields)
     return jsonify({'ok': True, 'member': db.get_team_member(member_id)})
+
+
+@app.route('/api/team_members/<int:member_id>/triangulate', methods=['POST'])
+@role_required('admin', 'coach')
+def api_triangulate_member(member_id):
+    """Re-run age triangulation for one swimmer using all imported PDF
+    data. No CT Swim round-trip. Returns updated member + confidence.
+
+    Useful after the admin fixes a misparsed row in the Data tab and
+    wants to refresh the swimmer's age."""
+    import age_filler as _af
+    member = db.get_team_member(member_id, include_birth=True)
+    if not member:
+        return jsonify({'error': 'Member not found'}), 404
+    result = _af.triangulate_one_member(member, force_all=True)
+    return jsonify({
+        'ok': True,
+        'result': result,
+        'member': db.get_team_member(member_id, include_birth=True),
+    })
 
 
 @app.route('/api/team_members/<int:member_id>', methods=['DELETE'])

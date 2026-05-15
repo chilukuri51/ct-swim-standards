@@ -478,22 +478,6 @@
                 <div id="resetAgeStatus" style="font-size:0.85rem;margin-top:0.5rem"></div>
             </div>
 
-            <!-- Unmatched-meets panel: meets where the auto-fill couldn't
-                 find a PDF on Results.aspx. Admin pastes the actual URL
-                 here to register them on the fly. -->
-            <div class="autofill-panel umm-panel" data-requires="batch">
-                <div class="autofill-head">
-                    <div>
-                        <strong>Meets without a result PDF</strong>
-                        <span class="autofill-sub">Some meets aren't listed on ctswim.org's Results.aspx (championships filed under sub-folders, brand-new meets not yet indexed). Paste the PDF URL and we'll parse it on the spot.</span>
-                    </div>
-                    <button id="ummRefreshBtn" class="btn-secondary" style="padding:0.4rem 0.9rem">Refresh list</button>
-                </div>
-                <div id="ummList" class="umm-list">
-                    <div class="umm-empty">Click "Refresh list" to load.</div>
-                </div>
-            </div>
-
             <div class="table-container" id="rosterTableContainer"></div>
         </section>
 
@@ -629,9 +613,13 @@
                         <input type="month" id="rmBirthMonth" min="2000-01" placeholder="YYYY-MM">
                     </div>
                     <p class="dob-hint" id="rmDobHint" style="margin-top:-0.25rem">
-                        Year + month only — no exact birthday is stored. Age may also auto-fill
-                        from CT Swim once a fetch links this swimmer; you can leave this blank then.
+                        Year + month only — no exact birthday is stored. Age also auto-fills from imported meet PDFs.
                     </p>
+                    <div id="rmConfidenceRow" class="dob-hint hidden" style="display:flex;align-items:center;gap:0.5rem;margin-top:-0.25rem">
+                        <span id="rmConfidenceBadge"></span>
+                        <button id="rmReTriBtn" type="button" class="btn-secondary" style="font-size:0.75rem;padding:0.2rem 0.5rem;max-width:160px;height:auto">Refresh from imports</button>
+                        <span id="rmReTriResult" style="font-size:0.75rem;color:#64748b"></span>
+                    </div>
                     <div class="form-row">
                         <label>Parent Email:</label>
                         <input type="email" id="rmParentEmail" placeholder="parent@example.com" autocomplete="off">
@@ -865,6 +853,42 @@
                     </table>
                 </div>
             </div>
+
+            <!-- ===== Bulk import meet PDFs ===== -->
+            <div class="tool-card" style="max-width:760px;margin-top:1.5rem">
+                <h2>Bulk import meet PDFs</h2>
+                <p class="tool-desc">Pick or drag many Hy-Tek result PDFs at once. They're processed one at a time on the server (memory-safe) and each result is reported below. Duplicates are skipped automatically. Roster swimmer ages are refreshed after each successful import.</p>
+
+                <div class="bulk-upload-bar">
+                    <input type="file" id="bulkPdfFiles" accept="application/pdf,.pdf" multiple class="hidden">
+                    <button id="bulkPickBtn" class="btn-secondary" style="max-width:200px">Choose PDFs…</button>
+                    <span id="bulkHint" class="dt-upload-hint">Or drop PDFs anywhere on this card.</span>
+                    <button id="bulkStartBtn" class="btn-primary hidden" style="max-width:160px">Start import</button>
+                    <button id="bulkClearBtn" class="btn-secondary hidden" style="max-width:90px">Clear</button>
+                </div>
+
+                <div id="bulkSummary" class="bulk-summary hidden">
+                    <span><strong id="bulkTotalCount">0</strong> files queued</span>
+                    <span>· <strong id="bulkOkCount">0</strong> imported</span>
+                    <span>· <strong id="bulkDupCount">0</strong> duplicates</span>
+                    <span>· <strong id="bulkErrCount">0</strong> errors</span>
+                    <span>· <strong id="bulkRowsCount">0</strong> swims added</span>
+                    <span>· <strong id="bulkAgesCount">0</strong> ages updated</span>
+                </div>
+
+                <div class="table-container" style="max-height:340px;overflow:auto;margin-top:0.8rem">
+                    <table id="bulkTable" class="hidden">
+                        <thead><tr>
+                            <th style="min-width:260px">File</th>
+                            <th>Status</th>
+                            <th>Swims</th>
+                            <th>Ages updated</th>
+                            <th>Note</th>
+                        </tr></thead>
+                        <tbody id="bulkTbody"></tbody>
+                    </table>
+                </div>
+            </div>
         </section>
 
         <!-- ===== Data tab (admin only) ===== -->
@@ -992,11 +1016,9 @@
                 <!-- Summary cards -->
                 <div class="admin-stats" id="dtSummary">
                     <div class="pstat-card"><div class="pstat-value" id="dtMeetsParsed">-</div><div class="pstat-label">Meets imported</div></div>
-                    <div class="pstat-card"><div class="pstat-value" id="dtMeetsTotal">-</div><div class="pstat-label">Meets known</div></div>
-                    <div class="pstat-card"><div class="pstat-value" id="dtMeetsNoPdf">-</div><div class="pstat-label">No PDF yet</div></div>
-                    <div class="pstat-card"><div class="pstat-value" id="dtMeetsFailed">-</div><div class="pstat-label">Import errors</div></div>
                     <div class="pstat-card"><div class="pstat-value" id="dtSwimmersTotal">-</div><div class="pstat-label">Unique swimmers</div></div>
                     <div class="pstat-card"><div class="pstat-value" id="dtResultsTotal">-</div><div class="pstat-label">Total swims</div></div>
+                    <div class="pstat-card"><div class="pstat-value" id="dtMeetsFailed">-</div><div class="pstat-label">Import errors</div></div>
                 </div>
 
                 <!-- Filters -->

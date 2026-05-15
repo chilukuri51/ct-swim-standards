@@ -485,235 +485,218 @@ def _reparse_cached_pdf(ct_meet_id: str, pdf_url: str) -> Optional[dict]:
     return db.get_meet_cache(ct_meet_id)
 
 
-# ===== Per-member triangulation =====
+# ===== Per-member triangulation (fast path only) =====
+# Used by the per-PDF upload hook and the per-swimmer "Re-triangulate"
+# button. Reads only from the imported PDF data — no CT Swim round-trip.
+# The slow path further down still exists as a fallback for the bulk
+# "Auto-fill ages" admin tool, but the primary workflow uses this.
 
-def _process_member(member: dict, force_all: bool = False) -> dict:
-    """Walk one swimmer's meets, look up age in each parsed PDF, triangulate.
+def _build_records_from_observations(observations: list) -> tuple:
+    """Turn raw observations into (records, gender_votes, observed_age,
+    most_recent_date) used by triangulate()."""
+    records = []
+    gender_votes = {'F': 0, 'M': 0}
+    observed_age = None
+    most_recent = date(1900, 1, 1)
+    for o in observations:
+        md = ct_pdf.parse_us_date(o['meet_date']) if o.get('meet_date') else None
+        if not md:
+            try:
+                md = date.fromisoformat(o['meet_date'][:10])
+            except (ValueError, TypeError):
+                md = None
+        if not md:
+            continue
+        records.append({'age': o['age'], 'meet_date': md})
+        g = o.get('gender') or ''
+        if g in gender_votes:
+            gender_votes[g] += 1
+        if md >= most_recent:
+            most_recent = md
+            observed_age = o['age']
+    return records, gender_votes, observed_age
 
-    Per-meet PDF resolution runs in a ThreadPoolExecutor (PDF_CONCURRENCY
-    workers) since the bottleneck is I/O (network downloads + pdfplumber
-    parses) and ctswim.org's static PDFs have no rate limit. SQLite
-    connections are per-call so concurrent writes serialize cleanly.
+
+def triangulate_one_member(member, force_all: bool = True) -> dict:
+    """Run fast-path triangulation for a single roster swimmer.
+
+    `member` is either an int member_id or a dict from db.get_team_member.
+    Reads ALL of the swimmer's observations from meet_pdf_swimmers
+    (every PDF ever imported), runs triangulate(), and stamps the
+    result on team_members.
+
+    Returns a dict with:
+      status:      'updated' | 'observed_only' | 'no_data'
+      samples:     number of observations used
+      birth_year:  year if narrowed, else None
+      birth_month: month if narrowed, else None
+      window_days: confidence window in days (smaller = tighter)
+      age_observed: most recent age seen in PDFs
+      gender_filled: True if gender was set from observation votes
+      confidence:  'high' | 'medium' | 'low' | 'observed' | 'none'
+
+    Confidence ladder:
+      high     — birth_year AND birth_month known (window < 60 days)
+      medium   — birth_year known, month unknown (window < 365)
+      low      — only age_observed, no triangulation (1 obs or
+                 inconsistent observations)
+      none     — no observations at all
     """
-    name_key = ct_pdf.normalize_name(
-        member.get('first_name', ''), member.get('last_name', '')
-    )
-    full_name = f"{member.get('first_name','')} {member.get('last_name','')}".strip()
+    if isinstance(member, int):
+        m = db.get_team_member(member)
+    else:
+        m = member
+    if not m:
+        return {'status': 'no_data', 'confidence': 'none'}
 
-    # Resolve member's club team so we prefer in-team matches when looking
-    # up rows in PDFs that contain namesakes (Emma Baker on IVY and SMST).
+    name_key = ct_pdf.normalize_name(
+        m.get('first_name', ''), m.get('last_name', '')
+    )
+
+    # Prefer the swimmer's club team when picking observations (avoids
+    # confusing namesakes on other teams). Default to IVY for unlinked
+    # members; lookup falls back to all-teams if IVY has no rows.
     prefer_team = None
-    if member.get('ct_id'):
+    if m.get('ct_id'):
         with db.get_conn() as conn:
             row = conn.execute(
                 "SELECT team_code FROM swimmers WHERE ct_id = ?",
-                (member['ct_id'],)
+                (m['ct_id'],)
             ).fetchone()
         if row and row['team_code']:
             prefer_team = row['team_code'].upper()
     if not prefer_team:
-        # Default to IVY for unlinked members — this is an IVY app, so a
-        # name_key match within IVY is the strongest signal we have. If
-        # the swimmer isn't actually IVY (e.g., a parent added their kid
-        # who swims at WRAT), the lookup_member_observations fallback
-        # still matches by name_key alone when no IVY rows exist.
         prefer_team = 'IVY'
 
-    # ===== FAST PATH =====
-    # Before fetching CT Swim, see if we already have parsed-PDF data
-    # for this swimmer (same name_key, ideally same team). For newly-
-    # added swimmers we often already have observations — running the
-    # full slow path just re-confirms what's already in the DB.
-    cached_obs = db.lookup_member_observations(name_key, prefer_team=prefer_team)
-    fast_path_taken = False
-    if cached_obs:
-        records = []
-        gender_votes = {'F': 0, 'M': 0}
-        observed_age = None
-        most_recent = date(1900, 1, 1)
-        for o in cached_obs:
-            md = ct_pdf.parse_us_date(o['meet_date']) if o.get('meet_date') else None
-            if not md:
-                # meet_date in cache is ISO; parse_us_date handles that too
-                try:
-                    md = date.fromisoformat(o['meet_date'][:10])
-                except (ValueError, TypeError):
-                    md = None
-            if not md:
-                continue
-            records.append({'age': o['age'], 'meet_date': md})
-            g = o.get('gender') or ''
-            if g in gender_votes:
-                gender_votes[g] += 1
-            if md >= most_recent:
-                most_recent = md
-                observed_age = o['age']
-        # Need ≥2 records spanning at least 30 days to triangulate, or
-        # ≥3 records to be confident enough to skip CT Swim. Otherwise
-        # we fall through to the slow path which may discover more meets.
-        if records and member.get('ct_id') is None:
-            # Manually-entered swimmer: skip CT Swim entirely (no ct_id
-            # to fetch from anyway). One observation is enough to give
-            # an age_observed; triangulation kicks in if records permit.
-            fast_path_taken = True
-        elif len(records) >= 3:
-            dates = [r['meet_date'] for r in records]
-            span = (max(dates) - min(dates)).days
-            if span >= 30:
-                fast_path_taken = True
+    obs = db.lookup_member_observations(name_key, prefer_team=prefer_team)
+    if not obs:
+        return {'status': 'no_data', 'samples': 0, 'confidence': 'none'}
 
-        if fast_path_taken:
-            observed_gender = None
-            if gender_votes['F'] > gender_votes['M']:
-                observed_gender = 'F'
-            elif gender_votes['M'] > gender_votes['F']:
-                observed_gender = 'M'
-            gender_filled = False
-            if observed_gender and (force_all or not member.get('gender')):
-                if observed_gender != member.get('gender'):
-                    db.update_team_member(member['id'], gender=observed_gender)
-                    gender_filled = True
-            tri = triangulate(records)
-            if tri is None:
-                db.save_member_triangulation(
-                    member['id'], age_observed=observed_age
-                )
-                return {
-                    'status': 'observed_only' if observed_age is not None else 'skipped',
-                    'gender_filled': gender_filled,
-                    'fast_path': True,
-                }
-            db.save_member_triangulation(
-                member['id'],
-                birth_year=tri.get('birth_year'),
-                birth_month=tri.get('birth_month'),
-                window_days=tri.get('window_days'),
-                age_observed=observed_age,
-            )
-            return {
-                'status': 'updated',
-                'tri': tri,
-                'narrowed_year': tri.get('birth_year') is not None,
-                'narrowed_month': tri.get('birth_month') is not None,
-                'gender_filled': gender_filled,
-                'samples': tri.get('samples'),
-                'fast_path': True,
-            }
+    records, gender_votes, observed_age = _build_records_from_observations(obs)
 
-    # ===== SLOW PATH =====
-    with _lock:
-        _state.current = f'{full_name}: collecting meet history…'
-
-    meets = _gather_meet_history(member)
-    if not meets:
-        db.save_member_triangulation(member['id'])
-        return {'status': 'not_found'}
-
-    # Filter to only meets with valid date + meet_id BEFORE parallelizing.
-    valid_meets = []
-    for m in meets:
-        if not m.get('ct_meet_id'):
-            continue
-        if not ct_pdf.parse_us_date(m.get('date', '')):
-            continue
-        valid_meets.append(m)
-
-    total = len(valid_meets)
-    records = []
-    observed_age = None
+    # Fill gender from vote majority if not already set (or force_all).
     observed_gender = None
-
-    if total == 0:
-        db.save_member_triangulation(member['id'])
-        return {'status': 'not_found'}
-
-    def _resolve_one(meet):
-        """Worker: resolve one meet's PDF, return (meet, cache_row, err) tuple."""
-        try:
-            cache = _resolve_meet_pdf(member['ct_id'], meet['ct_meet_id'])
-            return meet, cache, None
-        except Exception as e:
-            return meet, None, f"{type(e).__name__}: {e}"
-
-    completed = 0
-    gender_votes = {'F': 0, 'M': 0}
-    with ThreadPoolExecutor(max_workers=PDF_CONCURRENCY) as executor:
-        futures = {executor.submit(_resolve_one, m): m for m in valid_meets}
-        for fut in as_completed(futures):
-            with _lock:
-                if _state.cancelled:
-                    executor.shutdown(wait=False, cancel_futures=True)
-                    break
-            completed += 1
-            with _lock:
-                _state.current = f'{full_name}: meet {completed}/{total}'
-            meet, cache, err = fut.result()
-            if err:
-                with _lock:
-                    if len(_state.errors) < 5:
-                        _state.errors.append(
-                            f"{full_name} meet {meet.get('ct_meet_id')}: {err}"
-                        )
-                continue
-            if not cache or not cache.get('parsed_at'):
-                continue
-            hit = db.lookup_swimmer_age_at_meet(
-                meet['ct_meet_id'], name_key, prefer_team=prefer_team
-            )
-            if not hit:
-                continue
-            meet_date = ct_pdf.parse_us_date(meet['date'])
-            records.append({'age': hit['age'], 'meet_date': meet_date})
-            # Tally gender votes across ALL observations. One mis-attributed
-            # row in a multi-column PDF can't flip a swimmer's gender — only
-            # the majority across all parsed meets does.
-            g = hit.get('gender') or ''
-            if g in gender_votes:
-                gender_votes[g] += 1
-            # Track most-recent observation for age_observed
-            most_recent = max((r['meet_date'] for r in records), default=date(1900, 1, 1))
-            if meet_date >= most_recent:
-                observed_age = hit['age']
-
-    # Resolve gender by majority vote across all observations
     if gender_votes['F'] > gender_votes['M']:
         observed_gender = 'F'
     elif gender_votes['M'] > gender_votes['F']:
         observed_gender = 'M'
-
-    if not records:
-        db.save_member_triangulation(member['id'])
-        return {'status': 'not_found'}
-
-    # Gender: fill if missing (or force_all on a re-verify pass).
     gender_filled = False
-    if observed_gender and (force_all or not member.get('gender')):
-        if observed_gender != member.get('gender'):
-            db.update_team_member(member['id'], gender=observed_gender)
+    if observed_gender and (force_all or not m.get('gender')):
+        if observed_gender != m.get('gender'):
+            db.update_team_member(m['id'], gender=observed_gender)
             gender_filled = True
 
-    tri = triangulate(records)
+    tri = triangulate(records) if records else None
     if tri is None:
-        db.save_member_triangulation(member['id'], age_observed=observed_age)
+        db.save_member_triangulation(m['id'], age_observed=observed_age)
         return {
-            'status': 'observed_only' if observed_age is not None else 'skipped',
+            'status': 'observed_only' if observed_age is not None else 'no_data',
+            'samples': len(records),
+            'age_observed': observed_age,
             'gender_filled': gender_filled,
+            'confidence': 'low' if observed_age is not None else 'none',
         }
 
     db.save_member_triangulation(
-        member['id'],
+        m['id'],
         birth_year=tri.get('birth_year'),
         birth_month=tri.get('birth_month'),
         window_days=tri.get('window_days'),
         age_observed=observed_age,
     )
+    # Confidence ladder
+    if tri.get('birth_month'):
+        conf = 'high'
+    elif tri.get('birth_year'):
+        conf = 'medium'
+    else:
+        conf = 'low'
     return {
         'status': 'updated',
-        'tri': tri,
-        'narrowed_year': tri.get('birth_year') is not None,
-        'narrowed_month': tri.get('birth_month') is not None,
-        'gender_filled': gender_filled,
         'samples': tri.get('samples'),
+        'birth_year': tri.get('birth_year'),
+        'birth_month': tri.get('birth_month'),
+        'window_days': tri.get('window_days'),
+        'age_observed': observed_age,
+        'gender_filled': gender_filled,
+        'confidence': conf,
+    }
+
+
+def triangulate_members_for_pdf(parsed_rows: list) -> dict:
+    """After a PDF upload commits, re-triangulate only the roster
+    swimmers who actually appear in that PDF.
+
+    Efficient: a typical meet has 50-100 swimmers. Each is a single
+    name_key lookup + in-memory triangulation. No network calls.
+
+    Returns: {triangulated: int, members: [{id, name, confidence,
+    age_observed, birth_year, ...}, ...]}
+    """
+    name_keys = set()
+    for r in parsed_rows or []:
+        nk = r.get('name_key')
+        if nk:
+            name_keys.add(nk)
+    if not name_keys:
+        return {'triangulated': 0, 'members': []}
+
+    with db.get_conn() as conn:
+        members = conn.execute("""
+            SELECT id, first_name, last_name, gender, ct_id
+            FROM team_members
+        """).fetchall()
+        roster = [dict(m) for m in members]
+
+    updated = []
+    for m in roster:
+        mk = ct_pdf.normalize_name(m.get('first_name', ''), m.get('last_name', ''))
+        if mk not in name_keys:
+            continue
+        result = triangulate_one_member(m, force_all=False)
+        if result.get('status') in ('updated', 'observed_only'):
+            updated.append({
+                'id': m['id'],
+                'name': f"{m['first_name']} {m['last_name']}",
+                **{k: result.get(k) for k in (
+                    'status', 'samples', 'birth_year', 'birth_month',
+                    'window_days', 'age_observed', 'confidence',
+                    'gender_filled',
+                )},
+            })
+    return {'triangulated': len(updated), 'members': updated}
+
+
+# ===== Per-member triangulation (legacy slow path for bulk auto-fill) =====
+
+def _process_member(member: dict, force_all: bool = False) -> dict:
+    """Bulk auto-fill wrapper. Delegates to triangulate_one_member (PDF-only,
+    no CT Swim round-trip). Kept as a thin shim so the existing start_autofill
+    loop and its status accounting keep working.
+
+    Status mapping (matches the legacy bulk-loop expectations):
+      'updated'        — triangulation narrowed birth_year/month
+      'observed_only'  — at least one PDF mention, but not enough to triangulate
+      'not_found'      — zero observations in imported PDFs
+      'skipped'        — anything else
+    """
+    result = triangulate_one_member(member, force_all=force_all)
+    raw_status = result.get('status')
+    if raw_status == 'updated':
+        status = 'updated'
+    elif raw_status == 'observed_only':
+        status = 'observed_only'
+    elif raw_status == 'no_data':
+        status = 'not_found'
+    else:
+        status = 'skipped'
+    return {
+        'status': status,
+        'samples': result.get('samples', 0),
+        'gender_filled': result.get('gender_filled', False),
+        'narrowed_year': result.get('birth_year') is not None,
+        'narrowed_month': result.get('birth_month') is not None,
+        'confidence': result.get('confidence', 'none'),
     }
 
 

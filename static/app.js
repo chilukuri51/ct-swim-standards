@@ -1826,12 +1826,86 @@ if (hasPerm('roster')) {
     const fNotes = document.getElementById('rmNotes');
     const fDobHint = document.getElementById('rmDobHint');
     const deleteBtn = document.getElementById('rosterDeleteBtn');
+    const confRow = document.getElementById('rmConfidenceRow');
+    const confBadge = document.getElementById('rmConfidenceBadge');
+    const reTriBtn = document.getElementById('rmReTriBtn');
+    const reTriResult = document.getElementById('rmReTriResult');
 
     document.getElementById('rosterAddBtn').addEventListener('click', openAddModal);
     document.getElementById('rosterModalClose').addEventListener('click', closeModal);
     document.getElementById('rosterCancelBtn').addEventListener('click', closeModal);
     document.getElementById('rosterSaveBtn').addEventListener('click', saveMember);
     deleteBtn.addEventListener('click', deleteMember);
+    if (reTriBtn) reTriBtn.addEventListener('click', reTriangulate);
+
+    // Format a roster member's age-triangulation confidence as a short
+    // badge. Reads age_window_days + birth_year + birth_month + age_observed
+    // straight off the member dict already sent by /api/my_swimmers.
+    function ageConfidenceLabel(m) {
+        if (m.birth_year && m.birth_month && (m.age_window_days != null && m.age_window_days < 60)) {
+            return { text: '✓ DOB confirmed', color: '#16a34a', bg: '#dcfce7' };
+        }
+        if (m.birth_year && m.birth_month) {
+            return { text: `DOB ${m.birth_year}-${String(m.birth_month).padStart(2,'0')}, ±${m.age_window_days || '?'}d`, color: '#0055a4', bg: '#dbeafe' };
+        }
+        if (m.birth_year) {
+            return { text: `Born ${m.birth_year} (month unknown)`, color: '#0055a4', bg: '#dbeafe' };
+        }
+        if (m.age_observed != null) {
+            return { text: `Age ${m.age_observed} observed once`, color: '#d97706', bg: '#fef3c7' };
+        }
+        if (m.age != null && m.age_source === 'entered') {
+            return { text: 'Manually entered', color: '#475569', bg: '#f1f5f9' };
+        }
+        return { text: 'No age data yet', color: '#94a3b8', bg: '#f1f5f9' };
+    }
+
+    function renderConfidenceRow(m) {
+        if (!confRow || !confBadge) return;
+        if (!editingMemberId) {
+            // Hide on the Add modal — no observations possible yet
+            confRow.classList.add('hidden');
+            return;
+        }
+        const c = ageConfidenceLabel(m);
+        confBadge.style.cssText = `display:inline-block;padding:0.15rem 0.5rem;border-radius:999px;font-size:0.75rem;font-weight:600;color:${c.color};background:${c.bg}`;
+        confBadge.textContent = c.text;
+        confRow.classList.remove('hidden');
+        if (reTriResult) reTriResult.textContent = '';
+    }
+
+    async function reTriangulate() {
+        if (!editingMemberId) return;
+        reTriBtn.disabled = true;
+        reTriBtn.textContent = 'Refreshing…';
+        if (reTriResult) reTriResult.textContent = '';
+        try {
+            const r = await fetch(`/api/team_members/${editingMemberId}/triangulate`, { method: 'POST' });
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.message || d.error || 'failed');
+            const res = d.result || {};
+            const member = d.member;
+            if (res.status === 'no_data') {
+                if (reTriResult) reTriResult.textContent = 'No imported PDFs reference this swimmer yet.';
+            } else if (res.status === 'observed_only') {
+                if (reTriResult) reTriResult.textContent = `Updated: ${res.samples} observation(s), age ${res.age_observed}.`;
+            } else {
+                if (reTriResult) reTriResult.textContent = `Updated from ${res.samples} observations.`;
+            }
+            // Re-render badge with fresh member data
+            if (member) renderConfidenceRow(member);
+            // Reload roster table in background so list reflects the new age
+            loadMembers().catch(() => {});
+        } catch (e) {
+            if (reTriResult) {
+                reTriResult.textContent = 'Failed: ' + e.message;
+                reTriResult.style.color = '#dc2626';
+            }
+        } finally {
+            reTriBtn.disabled = false;
+            reTriBtn.textContent = 'Refresh from imports';
+        }
+    }
 
     [groupFilter, genderFilter].forEach(el => el.addEventListener('change', renderRoster));
     searchFilter.addEventListener('input', renderRoster);
@@ -1961,7 +2035,8 @@ if (hasPerm('roster')) {
         fFirst.value = ''; fLast.value = ''; fRoster.value = '';
         fGender.value = ''; fBirthMonth.value = ''; fParentEmail.value = '';
         if (fNotes) fNotes.value = '';
-        fDobHint.textContent = 'Year + month only. Or leave blank — age will auto-fill from CT Swim once linked.';
+        fDobHint.textContent = 'Year + month only. Or leave blank — age will auto-fill once you import a meet PDF this swimmer attended.';
+        if (confRow) confRow.classList.add('hidden');
         errorBox.classList.add('hidden');
         modal.classList.remove('hidden');
         fFirst.focus();
@@ -1982,13 +2057,14 @@ if (hasPerm('roster')) {
         if (fNotes) fNotes.value = m.notes || '';
         let hint;
         if (m.age != null && m.age_source === 'observed') {
-            hint = `Age ${m.age} pulled from CT Swim. Enter year/month to override; leave blank to keep auto-updates.`;
+            hint = `Age ${m.age} from imported meet data. Enter year/month to override.`;
         } else if (m.age != null && m.age_source === 'entered') {
-            hint = `Currently age ${m.age} (from saved year/month). Leave blank to keep existing value.`;
+            hint = `Currently age ${m.age} (from saved year/month). Leave blank to keep.`;
         } else {
-            hint = 'No age on file. Enter year/month — or leave blank and run a CT Swim fetch to auto-fill.';
+            hint = 'No age yet. Enter year/month — or upload a meet PDF this swimmer attended.';
         }
         fDobHint.textContent = hint;
+        renderConfidenceRow(m);
         errorBox.classList.add('hidden');
         modal.classList.remove('hidden');
     }
@@ -2214,112 +2290,6 @@ if (hasPerm('batch')) {
             } catch (e) {
                 resetStatus.innerHTML = `<span style="color:#dc2626">${e.message}</span>`;
                 resetBtn.disabled = false;
-            }
-        });
-    }
-}
-
-
-// ===== UNMATCHED MEETS PANEL (admin) =====
-if (hasPerm('batch')) {
-    const ummList = document.getElementById('ummList');
-    const ummRefresh = document.getElementById('ummRefreshBtn');
-    if (ummList && ummRefresh) {
-        function escapeUmm(s) {
-            return String(s ?? '').replace(/[&<>"']/g, c => ({
-                '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-            }[c]));
-        }
-
-        async function loadUnmatched() {
-            ummList.innerHTML = '<div class="umm-empty">Loading…</div>';
-            try {
-                const r = await fetch('/api/admin/unmatched_meets');
-                if (r.status === 401) {
-                    ummList.innerHTML = `<div class="umm-empty" style="color:#dc2626">Session expired. <a href="/login?next=/" style="color:#003366;text-decoration:underline">Re-login as admin</a> and click Refresh again.</div>`;
-                    return;
-                }
-                if (r.status === 403) {
-                    ummList.innerHTML = `<div class="umm-empty" style="color:#dc2626">This panel requires admin login (you're signed in as coach).</div>`;
-                    return;
-                }
-                const data = await r.json();
-                const meets = data.meets || [];
-                if (meets.length === 0) {
-                    ummList.innerHTML = '<div class="umm-empty" style="color:#16a34a">All meets have a matched PDF — nothing to register.</div>';
-                    return;
-                }
-                ummList.innerHTML = meets.map(m => {
-                    const name = escapeUmm(m.meet_name || '(no name)');
-                    const date = escapeUmm(m.start_date || '?');
-                    return `
-                    <div class="umm-row" data-meet-id="${escapeUmm(m.ct_meet_id)}">
-                        <div class="umm-meta">
-                            <div class="umm-name">${name}</div>
-                            <div class="umm-date">${date} <span class="umm-mid">• meet ${escapeUmm(m.ct_meet_id)}</span></div>
-                        </div>
-                        <div class="umm-form">
-                            <input type="text" class="umm-url" placeholder="https://www.ctswim.org/Customer-Content/...pdf">
-                            <button type="button" class="btn-primary umm-register" style="padding:0.4rem 0.8rem">Register</button>
-                        </div>
-                        <div class="umm-result"></div>
-                    </div>`;
-                }).join('');
-            } catch (e) {
-                ummList.innerHTML = `<div class="umm-empty" style="color:#dc2626">Error: ${escapeUmm(e.message)}</div>`;
-            }
-        }
-
-        ummRefresh.addEventListener('click', loadUnmatched);
-
-        ummList.addEventListener('click', async (ev) => {
-            const btn = ev.target.closest('.umm-register');
-            if (!btn) return;
-            const row = btn.closest('.umm-row');
-            const meetId = row.dataset.meetId;
-            const urlInput = row.querySelector('.umm-url');
-            const result = row.querySelector('.umm-result');
-            const url = (urlInput.value || '').trim();
-            if (!url) {
-                result.innerHTML = '<span style="color:#dc2626">Paste a PDF URL first.</span>';
-                return;
-            }
-            btn.disabled = true;
-            result.innerHTML = '<span style="color:#64748b">Downloading + parsing…</span>';
-            try {
-                const r = await fetch('/api/admin/register_meet_pdf', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({meet_id: meetId, pdf_url: url}),
-                });
-                const data = await r.json();
-                if (!r.ok) {
-                    if (r.status === 401) {
-                        result.innerHTML = `<span style="color:#dc2626">Session expired. <a href="/login?next=/" style="color:#003366;text-decoration:underline">Re-login as admin</a> and try again.</span>`;
-                    } else if (r.status === 403) {
-                        result.innerHTML = `<span style="color:#dc2626">Forbidden — this action requires the admin account, not coach.</span>`;
-                    } else {
-                        result.innerHTML = `<span style="color:#dc2626">${escapeUmm(data.error || 'failed')}</span>`;
-                    }
-                    btn.disabled = false;
-                    return;
-                }
-                const sizeKb = (data.pdf_size/1024).toFixed(0);
-                const n = data.parsed_rows || 0;
-                const teamN = data.matched_team_members || 0;
-                const af = data.auto_fill_started ? ' Auto-fill running now — refresh in 1-2 min.' : '';
-                if (n === 0) {
-                    result.innerHTML = `<span style="color:#d97706">⚠ Downloaded ${sizeKb} KB but parsed 0 swimmers — this PDF's layout isn't recognized. Enter birth year/month manually for affected swimmers in the Roster.</span>`;
-                } else if (teamN === 0) {
-                    result.innerHTML = `<span style="color:#d97706">⚠ Parsed ${n} swimmers but none match your roster. Likely the wrong meet's PDF.</span>`;
-                    btn.textContent = 'Done';
-                } else {
-                    result.innerHTML = `<span style="color:#16a34a">✓ Parsed ${n} swimmers (${teamN} on your roster).${af}</span>`;
-                    btn.textContent = 'Done';
-                }
-            } catch (e) {
-                result.innerHTML = `<span style="color:#dc2626">${escapeUmm(e.message)}</span>`;
-                btn.disabled = false;
             }
         });
     }
@@ -5059,6 +5029,19 @@ function wireProfileLinks(container, lookup) {
         if (m.gender) bits.push(m.gender === 'F' ? 'Female' : 'Male');
         if (m.roster) bits.push(m.roster);
         if (m.ct_team) bits.push(`CT: ${m.ct_team}`);
+        // Build confidence badge inline so reading flows naturally:
+        // "Age 11 · Female · ✓ DOB confirmed".
+        let confText = null;
+        if (m.birth_year && m.birth_month && (m.age_window_days != null && m.age_window_days < 60)) {
+            confText = '✓ DOB confirmed';
+        } else if (m.birth_year && m.birth_month) {
+            confText = `DOB ~${m.birth_year}-${String(m.birth_month).padStart(2,'0')}`;
+        } else if (m.birth_year) {
+            confText = `Born ${m.birth_year}`;
+        } else if (m.age_observed != null && m.age == null) {
+            confText = `${m.age_observed} observed (low confidence)`;
+        }
+        if (confText) bits.push(confText);
         elMeta.textContent = bits.join(' · ');
         modal.classList.remove('hidden');
         const stale = modal.querySelector('.sp-render-error');
@@ -5234,6 +5217,174 @@ if (hasPerm('batch')) {
 }
 
 
+// ===== BULK PDF UPLOAD (Admin tab, admin only) =====
+// Picks N PDFs, posts them one-at-a-time to /api/admin/upload_pdf, and
+// streams each result into a status row. Sequential, not parallel — keeps
+// memory under Render Starter's 512 MB cap (each pypdf parse peaks
+// at ~37 MB) and avoids overwhelming the single gunicorn worker.
+if (hasPerm('batch')) {
+    const bulkPick = document.getElementById('bulkPickBtn');
+    const bulkInput = document.getElementById('bulkPdfFiles');
+    const bulkStart = document.getElementById('bulkStartBtn');
+    const bulkClear = document.getElementById('bulkClearBtn');
+    const bulkTable = document.getElementById('bulkTable');
+    const bulkTbody = document.getElementById('bulkTbody');
+    const bulkSummary = document.getElementById('bulkSummary');
+    const bulkHint = document.getElementById('bulkHint');
+    const bulkCard = bulkPick ? bulkPick.closest('.tool-card') : null;
+    if (bulkPick) {
+        let queue = [];       // [{file, status, swims, ages, note}, ...]
+        let running = false;
+
+        function fmtStatus(s) {
+            const map = {
+                queued: '<span style="color:#94a3b8">Queued</span>',
+                uploading: '<span style="color:#0055a4">Uploading…</span>',
+                ok: '<span style="color:#16a34a;font-weight:600">Imported</span>',
+                duplicate: '<span style="color:#d97706">Duplicate</span>',
+                already: '<span style="color:#d97706">Already imported</span>',
+                no_rows: '<span style="color:#dc2626">No swims found</span>',
+                error: '<span style="color:#dc2626;font-weight:600">Failed</span>',
+            };
+            return map[s] || s;
+        }
+
+        function renderTable() {
+            if (!queue.length) {
+                bulkTable.classList.add('hidden');
+                bulkSummary.classList.add('hidden');
+                bulkStart.classList.add('hidden');
+                bulkClear.classList.add('hidden');
+                return;
+            }
+            bulkTable.classList.remove('hidden');
+            bulkSummary.classList.remove('hidden');
+            bulkClear.classList.remove('hidden');
+            bulkTbody.innerHTML = queue.map((q, i) => `<tr data-i="${i}">
+                <td title="${q.file.name.replace(/"/g, '&quot;')}" style="max-width:280px;overflow:hidden;text-overflow:ellipsis">${q.file.name}</td>
+                <td>${fmtStatus(q.status)}</td>
+                <td>${q.swims != null ? q.swims.toLocaleString() : ''}</td>
+                <td>${q.ages != null ? q.ages : ''}</td>
+                <td style="font-size:0.78rem;color:#64748b;max-width:260px;overflow:hidden;text-overflow:ellipsis">${q.note || ''}</td>
+            </tr>`).join('');
+            const ok = queue.filter(q => q.status === 'ok').length;
+            const dup = queue.filter(q => q.status === 'duplicate' || q.status === 'already').length;
+            const err = queue.filter(q => q.status === 'error' || q.status === 'no_rows').length;
+            const rows = queue.reduce((a, q) => a + (q.swims || 0), 0);
+            const ages = queue.reduce((a, q) => a + (q.ages || 0), 0);
+            document.getElementById('bulkTotalCount').textContent = queue.length;
+            document.getElementById('bulkOkCount').textContent = ok;
+            document.getElementById('bulkDupCount').textContent = dup;
+            document.getElementById('bulkErrCount').textContent = err;
+            document.getElementById('bulkRowsCount').textContent = rows.toLocaleString();
+            document.getElementById('bulkAgesCount').textContent = ages;
+        }
+
+        function enqueue(files) {
+            const valid = [...files].filter(f => f.name.toLowerCase().endsWith('.pdf') || f.type === 'application/pdf');
+            const tooBig = valid.filter(f => f.size > 10 * 1024 * 1024);
+            const good = valid.filter(f => f.size <= 10 * 1024 * 1024);
+            for (const f of good) {
+                queue.push({file: f, status: 'queued', swims: null, ages: null, note: ''});
+            }
+            for (const f of tooBig) {
+                queue.push({file: f, status: 'error', swims: 0, ages: 0,
+                            note: 'over 10 MB — likely the wrong file'});
+            }
+            bulkStart.classList.remove('hidden');
+            renderTable();
+        }
+
+        async function uploadOne(idx) {
+            const q = queue[idx];
+            q.status = 'uploading';
+            renderTable();
+            const fd = new FormData();
+            fd.append('pdf', q.file);
+            try {
+                const r = await fetch('/api/admin/upload_pdf', {method: 'POST', body: fd});
+                const d = await r.json();
+                if (r.ok) {
+                    q.status = 'ok';
+                    q.swims = d.parsed_rows || 0;
+                    q.ages = d.ages_updated || 0;
+                    q.note = d.detected_meet_name
+                        ? `${d.detected_meet_name} (${d.ct_meet_id})`
+                        : d.ct_meet_id;
+                } else if (d.error === 'duplicate') {
+                    q.status = 'duplicate';
+                    q.swims = 0; q.ages = 0;
+                    q.note = `Same PDF already imported as ${(d.duplicate_of || {}).ct_meet_id || '?'}`;
+                } else if (d.error === 'already_parsed') {
+                    q.status = 'already';
+                    q.swims = 0; q.ages = 0;
+                    q.note = `Already imported at current parser version`;
+                } else if (d.error === 'no_rows') {
+                    q.status = 'no_rows';
+                    q.swims = 0; q.ages = 0;
+                    q.note = 'Not a Hy-Tek result PDF';
+                } else {
+                    q.status = 'error';
+                    q.swims = 0; q.ages = 0;
+                    q.note = d.message || d.error || `HTTP ${r.status}`;
+                }
+            } catch (e) {
+                q.status = 'error';
+                q.swims = 0; q.ages = 0;
+                q.note = 'Network: ' + e.message;
+            }
+            renderTable();
+        }
+
+        async function runAll() {
+            running = true;
+            bulkStart.disabled = true;
+            bulkStart.textContent = 'Importing…';
+            bulkPick.disabled = true;
+            for (let i = 0; i < queue.length; i++) {
+                if (queue[i].status === 'queued') await uploadOne(i);
+            }
+            bulkStart.disabled = false;
+            bulkStart.textContent = 'Done';
+            bulkPick.disabled = false;
+            running = false;
+        }
+
+        bulkPick.addEventListener('click', () => bulkInput.click());
+        bulkInput.addEventListener('change', e => {
+            enqueue(e.target.files);
+            bulkInput.value = '';
+        });
+        bulkStart.addEventListener('click', runAll);
+        bulkClear.addEventListener('click', () => {
+            if (running) return;
+            queue = [];
+            bulkStart.textContent = 'Start import';
+            renderTable();
+        });
+
+        // Drag-drop on the whole card
+        if (bulkCard) {
+            ['dragenter', 'dragover'].forEach(ev => {
+                bulkCard.addEventListener(ev, e => {
+                    e.preventDefault();
+                    bulkCard.classList.add('drag-over');
+                });
+            });
+            ['dragleave', 'drop'].forEach(ev => {
+                bulkCard.addEventListener(ev, e => {
+                    e.preventDefault();
+                    bulkCard.classList.remove('drag-over');
+                });
+            });
+            bulkCard.addEventListener('drop', e => {
+                if (e.dataTransfer && e.dataTransfer.files) enqueue(e.dataTransfer.files);
+            });
+        }
+    }
+}
+
+
 // ===== DATA TAB (admin only) =====
 // Renders parsed PDF data + per-meet diagnostics. Data populates as the
 // age-filler runs (or as admins manually upload PDFs); the tab itself is
@@ -5361,8 +5512,6 @@ if (hasPerm('batch')) {
             const d = await r.json();
             const t = d.totals || {};
             document.getElementById('dtMeetsParsed').textContent = t.meets_parsed ?? '—';
-            document.getElementById('dtMeetsTotal').textContent = t.meets_total ?? '—';
-            document.getElementById('dtMeetsNoPdf').textContent = t.meets_no_pdf ?? '—';
             document.getElementById('dtMeetsFailed').textContent = t.meets_failed ?? '—';
             document.getElementById('dtSwimmersTotal').textContent = (t.swimmers_total ?? 0).toLocaleString();
             document.getElementById('dtResultsTotal').textContent = (t.results_total ?? 0).toLocaleString();
@@ -5984,7 +6133,7 @@ if (hasPerm('batch')) {
         // Pull current totals into the confirmation copy so the admin
         // knows what's at stake.
         document.getElementById('dtWipeMeets').textContent =
-            (document.getElementById('dtMeetsTotal').textContent || '0');
+            (document.getElementById('dtMeetsParsed').textContent || '0');
         document.getElementById('dtWipeResults').textContent =
             (document.getElementById('dtResultsTotal').textContent || '0');
         wipeKeepUploaded.checked = false;

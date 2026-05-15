@@ -112,6 +112,22 @@ header {
 }
 #dtResultsTable td.dt-time { font-variant-numeric: tabular-nums; font-weight: 600; }
 
+/* Bulk PDF upload (Admin tab) */
+.bulk-upload-bar {
+    display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+    padding: 0.6rem 0.8rem; border: 2px dashed #cbd5e1; border-radius: 8px;
+    background: #f8fafc; margin-bottom: 0.8rem;
+}
+.tool-card.drag-over { background: #e0f2fe; border-color: #0055a4; }
+.bulk-summary {
+    display: flex; flex-wrap: wrap; gap: 0.3rem 0.4rem;
+    font-size: 0.85rem; color: #475569; padding: 0.3rem 0;
+}
+.bulk-summary strong { color: #1e293b; }
+#bulkTable th, #bulkTable td {
+    padding: 0.4rem 0.6rem; font-size: 0.85rem;
+}
+
 /* Row-level edit / delete actions */
 .dt-actions-th { width: 56px; }
 #dtResultsTable td.dt-actions {
@@ -1468,36 +1484,6 @@ td.event-name { font-weight: 600; color: #c0392b; }
 .wi-std-gap.pass { color: #16a34a; }
 .wi-std-gap.fail { color: #ca8a04; }
 
-/* ===== UNMATCHED MEETS PANEL ===== */
-.umm-panel { margin-top: 0.75rem; }
-.umm-list {
-    display: flex; flex-direction: column; gap: 0.6rem;
-    margin-top: 0.75rem;
-}
-.umm-empty {
-    padding: 0.85rem; text-align: center; color: #64748b;
-    background: #f8fafc; border-radius: 6px; font-size: 0.9rem;
-}
-.umm-row {
-    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;
-    padding: 0.65rem 0.85rem;
-    display: grid; grid-template-columns: 1fr; gap: 0.4rem;
-}
-.umm-meta { line-height: 1.3; }
-.umm-name { font-weight: 600; color: #003366; font-size: 0.92rem; }
-.umm-date { color: #64748b; font-size: 0.78rem; }
-.umm-mid { font-family: monospace; }
-.umm-form {
-    display: flex; gap: 0.4rem; align-items: center;
-    flex-wrap: wrap;
-}
-.umm-url {
-    flex: 1; min-width: 0; padding: 0.4rem 0.6rem;
-    border: 1px solid #cbd5e0; border-radius: 4px;
-    font-family: monospace; font-size: 0.78rem;
-}
-.umm-result { font-size: 0.82rem; min-height: 1em; }
-
 /* Responsive */
 @media (max-width: 768px) {
     header { padding: 1rem 1rem 0; }
@@ -1528,11 +1514,9 @@ td.event-name { font-weight: 600; color: #c0392b; }
     .search-form { padding: 1.25rem; margin-bottom: 1rem; }
     .search-form h2 { font-size: 1.05rem; margin-bottom: 1rem; }
 
-    /* Autofill + umm panels — stack head + actions vertically */
+    /* Autofill panel head — stack head + actions vertically */
     .autofill-head { flex-direction: column; align-items: stretch; gap: 0.5rem; }
     .autofill-actions { flex-wrap: wrap; }
-    .umm-form { flex-direction: column; align-items: stretch; }
-    .umm-form .btn-primary { width: 100%; }
 
     /* Table mobile */
     .table-container { border-radius: 6px; }
