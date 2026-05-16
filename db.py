@@ -201,6 +201,15 @@ def init_db():
             conn.execute("ALTER TABLE event_history ADD COLUMN ct_meet_id TEXT")
         except sqlite3.OperationalError:
             pass
+        # Add meet_name to event_history. Earlier scraper jammed the session
+        # label (Finals/Trials/Prelims) into swim_type AND used it as the
+        # display name; now we capture the real meet name (link text on the
+        # swimmer's CT Swim page) into meet_name and keep swim_type for
+        # session labels only.
+        try:
+            conn.execute("ALTER TABLE event_history ADD COLUMN meet_name TEXT")
+        except sqlite3.OperationalError:
+            pass
         # parser_version stamps each parsed cache row so a parser code
         # bump auto-invalidates stale rows without an admin reset.
         try:
@@ -355,7 +364,9 @@ def get_event_history(history_url):
         ) if sw else ''
         rows = conn.execute("""
             SELECT eh.time, eh.swim_type, eh.date, eh.ct_meet_id,
-                   m.meet_name, ps.age AS pdf_age
+                   eh.meet_name AS eh_meet_name,
+                   m.meet_name  AS pdf_meet_name,
+                   ps.age AS pdf_age
             FROM event_history eh
             LEFT JOIN meet_pdf_cache m ON m.ct_meet_id = eh.ct_meet_id
             LEFT JOIN meet_pdf_swimmers ps
@@ -367,7 +378,13 @@ def get_event_history(history_url):
         return None
     out = []
     for r in rows:
-        meet_name = (r['meet_name'] or '').strip() or (r['swim_type'] or '')
+        # 3-step fallback: real meet name from CT Swim scrape →
+        # meet name from parsed PDF → session label (last resort).
+        meet_name = (
+            (r['eh_meet_name'] or '').strip()
+            or (r['pdf_meet_name'] or '').strip()
+            or (r['swim_type'] or '')
+        )
         out.append({
             'time': r['time'],
             'meet': meet_name,
@@ -406,7 +423,9 @@ def get_member_all_swims(swimmer_ct_id: str):
         # is the right SQL pivot.
         rows = conn.execute("""
             SELECT eh.event, eh.time, eh.swim_type, eh.date, eh.ct_meet_id,
-                   m.meet_name, ps.age AS pdf_age
+                   eh.meet_name AS eh_meet_name,
+                   m.meet_name  AS pdf_meet_name,
+                   ps.age AS pdf_age
             FROM event_history eh
             LEFT JOIN meet_pdf_cache m ON m.ct_meet_id = eh.ct_meet_id
             LEFT JOIN meet_pdf_swimmers ps
@@ -416,7 +435,13 @@ def get_member_all_swims(swimmer_ct_id: str):
         """, (name_key or '', swimmer_ct_id)).fetchall()
     out = []
     for r in rows:
-        meet_name = (r['meet_name'] or '').strip() or (r['swim_type'] or '')
+        # 3-step fallback: real meet name from CT Swim scrape →
+        # meet name from parsed PDF → session label (last resort).
+        meet_name = (
+            (r['eh_meet_name'] or '').strip()
+            or (r['pdf_meet_name'] or '').strip()
+            or (r['swim_type'] or '')
+        )
         out.append({
             'event': r['event'] or '',
             'time': r['time'] or '',
@@ -444,16 +469,26 @@ def get_member_meet_history(member_id: int):
 
 
 def save_event_history(history_url, swimmer_ct_id, event_name, history):
+    """Replace every row for this event-history URL with the freshly-scraped
+    `history` list. Each item is a dict from the CT Swim swimmer page:
+      time, date, ct_meet_id, swim_type ('Finals'/'Prelims'/'Trials'),
+      meet_name (real meet name from the linked text in the Meet column).
+    Older payloads only had 'meet' (a session label) — kept as a fallback
+    so legacy callers still write a sensible swim_type."""
     with get_conn() as conn:
         conn.execute("DELETE FROM event_history WHERE history_url = ?", (history_url,))
         for h in history:
             conn.execute("""
                 INSERT INTO event_history
-                  (swimmer_ct_id, event, history_url, time, swim_type, date, ct_meet_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                  (swimmer_ct_id, event, history_url, time, swim_type,
+                   date, ct_meet_id, meet_name)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (swimmer_ct_id, event_name, history_url,
-                  h.get('time', ''), h.get('meet', ''), h.get('date', ''),
-                  h.get('ct_meet_id', '')))
+                  h.get('time', ''),
+                  h.get('swim_type', '') or h.get('meet', ''),
+                  h.get('date', ''),
+                  h.get('ct_meet_id', ''),
+                  h.get('meet_name', '')))
 
 
 # ===== Meet PDF cache =====

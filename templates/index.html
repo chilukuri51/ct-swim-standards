@@ -769,6 +769,19 @@
         </section>
 
         <section id="admin" class="tab-content">
+            <!-- One-click weekly maintenance: refreshes every roster swimmer
+                 from CT Swim. Drops down to the same batch flow as the panel
+                 below (mode=team_roster, only_new=false) and reuses its
+                 progress panel for status. -->
+            <div class="tool-card" style="max-width:760px;background:#f0f9ff;border:1px solid #bae6fd">
+                <h2 style="margin-top:0">Weekly sync</h2>
+                <p class="tool-desc" style="margin-bottom:0.6rem">After uploading the week's PDFs above, click this to refresh every roster swimmer's times from CT Swim. Picks up out-of-state meets and any times the PDFs missed.</p>
+                <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap">
+                    <button id="weeklySyncBtn" class="btn-primary" style="max-width:280px">Fetch latest from CT Swim</button>
+                    <span id="weeklySyncResult" style="font-size:0.85rem;color:#64748b"></span>
+                </div>
+            </div>
+
             <div class="tool-card" style="max-width:760px">
                 <h2>Batch Fetch from CT Swim</h2>
                 <p class="tool-desc">Pre-populate the local cache so parents and coaches see swimmer data instantly. Requests are sent to CT Swim with a 5-second delay between each. Safe to close the browser &mdash; the job keeps running on the server.</p>

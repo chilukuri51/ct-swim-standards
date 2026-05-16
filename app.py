@@ -257,19 +257,25 @@ def ct_fetch_event_history(history_url):
             if len(cells) < 3:
                 continue
             time_val = cells[0].get_text(strip=True)
-            swim_type = cells[1].get_text(strip=True)
+            swim_type = cells[1].get_text(strip=True)  # 'Finals', 'Prelims', 'Trials/Finals' etc.
             date_val = cells[2].get_text(strip=True)
             meet_id = ''
+            meet_name = ''  # real meet name from the link in the Meet column
             if len(cells) >= 4:
                 link = cells[3].find('a', href=True)
                 if link:
+                    meet_name = link.get_text(strip=True)
                     m = re.search(r'm=(\d+)', link['href'])
                     if m:
                         meet_id = m.group(1)
+                else:
+                    # Out-of-CT meets sometimes appear as plain text (no link).
+                    meet_name = cells[3].get_text(strip=True)
             if time_val and time_val != 'Time':
                 history.append({
                     'time': time_val,
-                    'meet': swim_type,
+                    'meet_name': meet_name,    # real meet name e.g. 'BULL Spring Invite'
+                    'swim_type': swim_type,    # session label e.g. 'Finals'
                     'date': date_val,
                     'ct_meet_id': meet_id,
                 })

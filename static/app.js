@@ -1661,7 +1661,71 @@ if (hasPerm('batch')) {
     const startBtn = document.getElementById('batchStartBtn');
     const cancelBtn = document.getElementById('batchCancelBtn');
     const progressBox = document.getElementById('batchProgress');
+    const weeklyBtn = document.getElementById('weeklySyncBtn');
+    const weeklyResult = document.getElementById('weeklySyncResult');
     let pollTimer = null;
+
+    // ===== Weekly one-click sync =====
+    // Mirrors the team_roster batch mode with only_new=false. Shares the
+    // batch-progress panel below so admin can watch progress without
+    // expanding the detailed Batch Fetch panel.
+    if (weeklyBtn) {
+        weeklyBtn.addEventListener('click', async () => {
+            weeklyBtn.disabled = true;
+            weeklyBtn.textContent = 'Starting…';
+            if (weeklyResult) weeklyResult.textContent = '';
+            try {
+                const r = await fetch('/api/batch/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: 'team_roster', only_new: false })
+                });
+                const d = await r.json();
+                if (d.error) {
+                    if (weeklyResult) {
+                        weeklyResult.textContent = d.error;
+                        weeklyResult.style.color = '#dc2626';
+                    }
+                    weeklyBtn.disabled = false;
+                    weeklyBtn.textContent = 'Fetch latest from CT Swim';
+                    return;
+                }
+                if (weeklyResult) {
+                    weeklyResult.textContent = 'Running — watch the progress panel below.';
+                    weeklyResult.style.color = '#16a34a';
+                }
+                progressBox.classList.remove('hidden');
+                cancelBtn.classList.remove('hidden');
+                startPolling();
+                weeklyBtn.textContent = 'Running…';
+                // Re-enable when the batch finishes — startPolling already
+                // updates progressBox on completion, but our button needs
+                // a reset too. Hook into the poll by checking the same
+                // status endpoint here on a short interval.
+                const reset = setInterval(async () => {
+                    try {
+                        const s = await fetch('/api/batch/status').then(x => x.json());
+                        if (!s.running) {
+                            weeklyBtn.disabled = false;
+                            weeklyBtn.textContent = 'Fetch latest from CT Swim';
+                            if (weeklyResult) {
+                                weeklyResult.textContent = 'Done.';
+                                weeklyResult.style.color = '#16a34a';
+                            }
+                            clearInterval(reset);
+                        }
+                    } catch (e) { /* swallow */ }
+                }, 4000);
+            } catch (e) {
+                if (weeklyResult) {
+                    weeklyResult.textContent = 'Failed: ' + e.message;
+                    weeklyResult.style.color = '#dc2626';
+                }
+                weeklyBtn.disabled = false;
+                weeklyBtn.textContent = 'Fetch latest from CT Swim';
+            }
+        });
+    }
 
     startBtn.addEventListener('click', async () => {
         let body = { mode: currentMode };
