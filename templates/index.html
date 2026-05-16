@@ -21,6 +21,7 @@
             <button class="nav-btn" data-tab="whatif" data-requires="whatif">What If</button>
             <button class="nav-btn" data-tab="dashboard" data-requires="dashboard">Coach Dashboard</button>
             <button class="nav-btn" data-tab="champqual" data-requires="dashboard">Championship Qual</button>
+            <button class="nav-btn" data-tab="rankings" data-requires="dashboard">Rankings</button>
             <button class="nav-btn" data-tab="roster" data-requires="roster">Roster</button>
             <button class="nav-btn" data-tab="stdedit" data-requires="standards_edit">Standards Editor</button>
             <button class="nav-btn" data-tab="admin" data-requires="batch">Admin</button>
@@ -1103,6 +1104,73 @@
                             <th>PDFs</th><th>Swims</th><th>Notes</th>
                         </tr></thead>
                         <tbody id="dtDiagBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== Rankings tab (admin + coach) ===== -->
+        <section id="rankings" class="tab-content">
+            <div class="tool-card" style="max-width:1100px">
+                <h2>Rankings</h2>
+                <p class="tool-desc">Fastest swimmers across every imported PDF, ranked by best time. Standard tag (AAAA / AAA / AA / A / BB / B / &lt;B) shows the USA Motivational level achieved for each swim.</p>
+
+                <div class="rank-filters">
+                    <select id="rkGender" class="batch-input" style="max-width:130px">
+                        <option value="F">Girls</option>
+                        <option value="M">Boys</option>
+                    </select>
+                    <select id="rkAgeGroup" class="batch-input" style="max-width:140px">
+                        <option value="10/Under">10 &amp; Under</option>
+                        <option value="11/12">11-12</option>
+                        <option value="13/14">13-14</option>
+                        <option value="15/16">15-16</option>
+                        <option value="17/18">17-18</option>
+                        <option value="Open">19 &amp; Over (Open)</option>
+                        <option value="All">All ages</option>
+                    </select>
+                    <select id="rkCourse" class="batch-input" style="max-width:110px">
+                        <option value="Y">SCY</option>
+                        <option value="L">LCM</option>
+                    </select>
+                    <select id="rkDistance" class="batch-input" style="max-width:110px">
+                        <option value="25">25</option>
+                        <option value="50" selected>50</option>
+                        <option value="100">100</option>
+                        <option value="200">200</option>
+                        <option value="400">400</option>
+                        <option value="500">500</option>
+                        <option value="800">800</option>
+                        <option value="1000">1000</option>
+                        <option value="1500">1500</option>
+                        <option value="1650">1650</option>
+                    </select>
+                    <select id="rkStroke" class="batch-input" style="max-width:120px">
+                        <option value="FREE" selected>Free</option>
+                        <option value="BACK">Back</option>
+                        <option value="BREAST">Breast</option>
+                        <option value="FLY">Fly</option>
+                        <option value="IM">IM</option>
+                    </select>
+                    <input type="date" id="rkFrom" class="batch-input" style="max-width:160px" title="Meet date from">
+                    <input type="date" id="rkTo" class="batch-input" style="max-width:160px" title="Meet date to">
+                    <button id="rkRunBtn" class="btn-primary" style="max-width:120px">Search</button>
+                </div>
+
+                <div id="rkSummary" class="rank-summary hidden"></div>
+                <div class="table-container" style="max-height:600px;overflow:auto;margin-top:0.8rem">
+                    <table id="rkTable">
+                        <thead><tr>
+                            <th style="width:50px">Rank</th>
+                            <th>Swimmer</th>
+                            <th>Team</th>
+                            <th>Age</th>
+                            <th>Time</th>
+                            <th>Standard</th>
+                            <th>Meet</th>
+                            <th>Date</th>
+                        </tr></thead>
+                        <tbody id="rkBody"><tr><td colspan="8" style="padding:1rem;color:#94a3b8">Pick filters and click Search.</td></tr></tbody>
                     </table>
                 </div>
             </div>

@@ -112,6 +112,32 @@ header {
 }
 #dtResultsTable td.dt-time { font-variant-numeric: tabular-nums; font-weight: 600; }
 
+/* Rankings tab */
+.rank-filters {
+    display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+    padding: 0.6rem 0.8rem; background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: 8px; margin-bottom: 0.6rem;
+}
+.rank-summary {
+    font-size: 0.88rem; color: #475569; padding: 0.4rem 0;
+}
+.rank-summary strong { color: #1e293b; }
+#rkTable th, #rkTable td {
+    padding: 0.45rem 0.7rem; font-size: 0.88rem;
+}
+#rkTable td.rk-time { font-variant-numeric: tabular-nums; font-weight: 700; }
+#rkTable .rk-std {
+    display: inline-block; padding: 0.1rem 0.45rem; border-radius: 999px;
+    font-size: 0.72rem; font-weight: 700; line-height: 1.4;
+}
+.rk-std.AAAA { background: #fbcfe8; color: #831843; }
+.rk-std.AAA  { background: #fde68a; color: #78350f; }
+.rk-std.AA   { background: #d9f99d; color: #365314; }
+.rk-std.A    { background: #bae6fd; color: #075985; }
+.rk-std.BB   { background: #ddd6fe; color: #4338ca; }
+.rk-std.B    { background: #e2e8f0; color: #475569; }
+.rk-std.below { background: #f8fafc; color: #94a3b8; font-style: italic; }
+
 /* Bulk PDF upload (Admin tab) */
 .bulk-upload-bar {
     display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;

@@ -959,6 +959,220 @@ def api_data_tab_distinct():
     })
 
 
+# ===== Rankings (admin + coach) =====
+# Search every imported swim by event + age group + season and rank
+# swimmers fastest first. Tags each row with the USA Motivational
+# standard achieved (AAAA / AAA / AA / A / BB / B / <B).
+
+# Stroke code from meet_pdf_results.stroke → standards abbreviation
+# used inside event names ("50 FR", "100 BK"). Relays excluded.
+_STROKE_TO_STD_ABBR = {
+    'FREE': 'FR', 'BACK': 'BK', 'BREAST': 'BR', 'FLY': 'FL', 'IM': 'IM',
+}
+
+# Championship age group → USA Motivational standards-group prefix.
+# 'Open' (19+) intentionally returns None — Motivational standards
+# stop at 17-18 in our data.
+_AGE_GROUPS = {
+    '10/Under': '10 & under',
+    '11/12':    '11-12',
+    '13/14':    '13-14',
+    '15/16':    '15-16',
+    '17/18':    '17-18',
+}
+
+
+def _age_to_group(age):
+    if age is None:
+        return None
+    try:
+        a = int(age)
+    except (TypeError, ValueError):
+        return None
+    if a <= 10:
+        return '10/Under'
+    if a <= 12:
+        return '11/12'
+    if a <= 14:
+        return '13/14'
+    if a <= 16:
+        return '15/16'
+    if a <= 18:
+        return '17/18'
+    return 'Open'
+
+
+def _time_to_seconds(t):
+    """'1:23.45' → 83.45, '30.50' → 30.5, anything else → None."""
+    if not t:
+        return None
+    s = str(t).strip()
+    if not s or s in ('---', 'DQ', 'NS', 'DFS', 'SCR', 'DNF'):
+        return None
+    try:
+        if ':' in s:
+            mins, rest = s.split(':', 1)
+            return int(mins) * 60 + float(rest)
+        return float(s)
+    except (ValueError, TypeError):
+        return None
+
+
+def _standard_for_swim(time_sec, distance, stroke, course, gender, age_group):
+    """Best USA Motivational tier achieved (AAAA highest, B lowest).
+    Returns 'AAAA' | 'AAA' | 'AA' | 'A' | 'BB' | 'B' | '<B' | None.
+    None when no standard applies (e.g. Open, missing data, unmatched event).
+    """
+    if time_sec is None or age_group is None or age_group == 'Open':
+        return None
+    ag_prefix = _AGE_GROUPS.get(age_group)
+    abbr = _STROKE_TO_STD_ABBR.get((stroke or '').upper())
+    if not ag_prefix or not abbr:
+        return None
+    course_label = 'SCY' if (course or '').upper() == 'Y' else 'LCM'
+    gender_label = 'Girls' if (gender or '').upper() == 'F' else (
+        'Boys' if (gender or '').upper() == 'M' else None)
+    if not gender_label:
+        return None
+    group_key = f"{ag_prefix} {gender_label} {course_label}"
+    full = standards_store.load()
+    prog = full.get('programs', {}).get('usa_motivational', {})
+    group = prog.get('groups', {}).get(group_key)
+    if not group:
+        return None
+    events = group.get('events', [])
+    levels = group.get('levels', [])
+    times = group.get('times', [])
+    # Find this event by distance + stroke abbrev (e.g. "50 FR")
+    target = f"{int(distance)} {abbr}"
+    idx = None
+    for i, name in enumerate(events):
+        if name.strip().upper() == target:
+            idx = i
+            break
+    if idx is None:
+        # Standards lump SCY 500 + LCM 400, SCY 1000 + LCM 800, etc.
+        # If a swim doesn't directly match, skip rather than guess.
+        return None
+    thresholds = times[idx] if idx < len(times) else []
+    # times[idx] is ordered by levels (AAAA fastest, B slowest).
+    # Highest tier passed is the first threshold our time beats or ties.
+    for j, t_str in enumerate(thresholds):
+        cut = _time_to_seconds(t_str)
+        if cut is not None and time_sec <= cut:
+            return levels[j] if j < len(levels) else None
+    return '<B'
+
+
+@app.route('/api/rankings', methods=['GET'])
+@role_required('admin', 'coach')
+def api_rankings():
+    """Rank swimmers by best time for one (gender, age_group, course,
+    distance, stroke) within an optional date window.
+
+    Returns one row per unique swimmer (name_key) carrying their fastest
+    qualifying swim plus the USA Motivational tier achieved.
+    """
+    args = request.args
+    gender = (args.get('gender') or '').upper()
+    course = (args.get('course') or '').upper()
+    age_group = args.get('age_group') or 'All'
+    try:
+        distance = int(args.get('distance') or 0)
+    except ValueError:
+        distance = 0
+    stroke = (args.get('stroke') or '').upper()
+    date_from = (args.get('date_from') or '').strip()
+    date_to = (args.get('date_to') or '').strip()
+    try:
+        limit = min(500, max(1, int(args.get('limit', '100'))))
+    except ValueError:
+        limit = 100
+
+    if not gender or not course or not distance or not stroke:
+        return jsonify({'error': 'gender, course, distance, stroke required'}), 400
+    if stroke in ('FREE_RELAY', 'MEDLEY_RELAY'):
+        return jsonify({'error': 'relays not supported'}), 400
+
+    where = ["r.gender = ?", "r.course = ?", "r.distance = ?", "r.stroke = ?",
+             "r.time IS NOT NULL", "r.time NOT IN ('---', 'DQ', 'NS', 'DFS', 'SCR', 'DNF')"]
+    params = [gender, course, distance, stroke]
+
+    # Age group filter — apply to the swim's recorded age, not the
+    # swimmer's current age, since championship age-up means a swimmer
+    # belongs to whichever age group they were when they swam.
+    if age_group != 'All' and age_group != 'Open':
+        if age_group == '10/Under':
+            where.append("r.age <= 10")
+        elif age_group == '11/12':
+            where.append("r.age BETWEEN 11 AND 12")
+        elif age_group == '13/14':
+            where.append("r.age BETWEEN 13 AND 14")
+        elif age_group == '15/16':
+            where.append("r.age BETWEEN 15 AND 16")
+        elif age_group == '17/18':
+            where.append("r.age BETWEEN 17 AND 18")
+    elif age_group == 'Open':
+        where.append("r.age >= 19")
+
+    if re.fullmatch(r'\d{4}-\d{2}-\d{2}', date_from):
+        where.append("c.start_date >= ?")
+        params.append(date_from)
+    if re.fullmatch(r'\d{4}-\d{2}-\d{2}', date_to):
+        where.append("c.start_date <= ?")
+        params.append(date_to)
+
+    where_sql = ' WHERE ' + ' AND '.join(where)
+    with db.get_conn() as conn:
+        rows = conn.execute(f"""
+            SELECT r.name_key, r.first_name, r.last_name, r.team, r.age,
+                   r.time, r.event_name, r.ct_meet_id,
+                   c.meet_name, c.start_date
+            FROM meet_pdf_results r
+            LEFT JOIN meet_pdf_cache c ON c.ct_meet_id = r.ct_meet_id
+            {where_sql}
+        """, params).fetchall()
+
+    # Best (fastest valid) swim per swimmer
+    best = {}
+    for r in rows:
+        sec = _time_to_seconds(r['time'])
+        if sec is None:
+            continue
+        key = r['name_key']
+        prev = best.get(key)
+        if prev is None or sec < prev['time_seconds']:
+            best[key] = {
+                'name_key': key,
+                'first_name': r['first_name'],
+                'last_name': r['last_name'],
+                'team': r['team'],
+                'age': r['age'],
+                'time': r['time'],
+                'time_seconds': sec,
+                'meet_name': r['meet_name'],
+                'meet_date': r['start_date'],
+                'ct_meet_id': r['ct_meet_id'],
+            }
+    ranked = sorted(best.values(), key=lambda x: x['time_seconds'])[:limit]
+
+    # Tag each row with the USA Motivational standard achieved at that age
+    for i, row in enumerate(ranked, 1):
+        row['rank'] = i
+        row_age_group = _age_to_group(row['age'])
+        row['standard'] = _standard_for_swim(
+            row['time_seconds'], distance, stroke, course, gender, row_age_group
+        )
+
+    return jsonify({
+        'rankings': ranked,
+        'total': len(ranked),
+        'event_label': f"{distance} {stroke.replace('_', ' ').title()} {'SCY' if course == 'Y' else 'LCM'}",
+        'age_group': age_group,
+        'gender': gender,
+    })
+
+
 @app.route('/api/admin/data_tab/summary', methods=['GET'])
 @role_required('admin')
 def api_data_tab_summary():

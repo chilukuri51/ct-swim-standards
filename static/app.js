@@ -5472,6 +5472,87 @@ if (hasPerm('batch')) {
 }
 
 
+// ===== RANKINGS TAB (admin + coach) =====
+// Query the rankings endpoint, render a sorted table with USA Motivational
+// standard badge per row. Lazy-loaded on first tab click.
+if (hasPerm('dashboard')) {
+    const rkTab = document.querySelector('.nav-btn[data-tab="rankings"]');
+    const rkBtn = document.getElementById('rkRunBtn');
+    const rkBody = document.getElementById('rkBody');
+    const rkSummary = document.getElementById('rkSummary');
+    let rkRanInitially = false;
+
+    function rkFormatTime(t) { return t || '—'; }
+
+    function rkStandardCell(std) {
+        if (!std) return '<span class="rk-std below">—</span>';
+        if (std === '<B') return '<span class="rk-std below">&lt;B</span>';
+        return `<span class="rk-std ${std}">${std}</span>`;
+    }
+
+    function rkFmtDate(iso) {
+        if (!iso) return '';
+        const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+        return m ? `${m[2]}/${m[3]}/${m[1].slice(2)}` : iso;
+    }
+
+    async function rkSearch() {
+        const v = id => (document.getElementById(id).value || '').trim();
+        const qs = new URLSearchParams({
+            gender: v('rkGender'),
+            age_group: v('rkAgeGroup'),
+            course: v('rkCourse'),
+            distance: v('rkDistance'),
+            stroke: v('rkStroke'),
+        });
+        if (v('rkFrom')) qs.set('date_from', v('rkFrom'));
+        if (v('rkTo'))   qs.set('date_to',   v('rkTo'));
+        rkBody.innerHTML = '<tr><td colspan="8" style="padding:1rem;color:#94a3b8">Searching…</td></tr>';
+        rkSummary.classList.add('hidden');
+        try {
+            const r = await fetch(`/api/rankings?${qs.toString()}`);
+            const d = await r.json();
+            if (!r.ok) {
+                rkBody.innerHTML = `<tr><td colspan="8" style="padding:1rem;color:#dc2626">${d.error || 'Error'}</td></tr>`;
+                return;
+            }
+            const rows = d.rankings || [];
+            rkSummary.classList.remove('hidden');
+            rkSummary.innerHTML = `<strong>${d.event_label}</strong> · ${d.age_group === 'All' ? 'all ages' : d.age_group} · ${d.gender === 'F' ? 'Girls' : 'Boys'} · <strong>${d.total}</strong> swimmer${d.total === 1 ? '' : 's'}`;
+            if (!rows.length) {
+                rkBody.innerHTML = '<tr><td colspan="8" style="padding:1rem;color:#94a3b8">No swims matched. Try a different event or expand the date range.</td></tr>';
+                return;
+            }
+            rkBody.innerHTML = rows.map(r => `<tr>
+                <td>${r.rank}</td>
+                <td>${(r.first_name || '')} ${(r.last_name || '')}</td>
+                <td>${r.team || ''}</td>
+                <td>${r.age != null ? r.age : ''}</td>
+                <td class="rk-time">${rkFormatTime(r.time)}</td>
+                <td>${rkStandardCell(r.standard)}</td>
+                <td title="${(r.meet_name || '').replace(/"/g, '&quot;')}" style="max-width:240px;overflow:hidden;text-overflow:ellipsis">${r.meet_name || '—'}</td>
+                <td>${rkFmtDate(r.meet_date)}</td>
+            </tr>`).join('');
+        } catch (e) {
+            rkBody.innerHTML = `<tr><td colspan="8" style="padding:1rem;color:#dc2626">Network: ${e.message}</td></tr>`;
+        }
+    }
+
+    if (rkBtn) rkBtn.addEventListener('click', rkSearch);
+    // Pressing Enter in any filter input runs the search
+    document.querySelectorAll('.rank-filters input, .rank-filters select').forEach(el => {
+        el.addEventListener('keydown', e => { if (e.key === 'Enter') rkSearch(); });
+    });
+    if (rkTab) {
+        rkTab.addEventListener('click', () => {
+            if (rkRanInitially) return;
+            rkRanInitially = true;
+            rkSearch();
+        });
+    }
+}
+
+
 // ===== DATA TAB (admin only) =====
 // Renders parsed PDF data + per-meet diagnostics. Data populates as the
 // age-filler runs (or as admins manually upload PDFs); the tab itself is
